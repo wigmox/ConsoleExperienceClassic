@@ -1,0 +1,23 @@
+## Interface: 11200
+## Title: ConsoleExperience |cff7fff7f Classic|r
+## Author: pepordev
+## Version: 0.0.1
+## Notes: Console Experience for WoW Vanilla
+## DefaultState: Enabled
+## LoadOnDemand: 0
+## SavedVariablesPerCharacter: ConsoleExperienceDB
+
+main.lua
+keybindings.lua
+actionbars\bars.lua
+actionbars\placement.lua
+actionbars\actionbars.xml
+cursor\cursor.lua
+cursor\tooltip.lua
+cursor\actions.lua
+cursor\keybindings.lua
+cursor\hooks.lua
+radial\radial.lua
+macros\macros.lua
+config\config.lua
+Bindings.xml
