@@ -67,6 +67,7 @@ function ActionBars:Initialize()
     self:HideDefaultBars()
     self:CreateModifierFrame()
     self:UpdateAllButtons()
+    self:InitializeBagBar()
 end
 
 function ActionBars:OnPlayerEnteringWorld()
@@ -133,10 +134,12 @@ function ActionBars:HideDefaultBars()
     -- Main action bar and related frames
     if MainMenuBar then MainMenuBar:Hide() end
     if MainMenuBarArtFrame then MainMenuBarArtFrame:Hide() end
+    -- Hide exp bar
     if MainMenuExpBar then MainMenuExpBar:Hide() end
-    if MainMenuBarPerformanceBarFrame then MainMenuBarPerformanceBarFrame:Hide() end
-    if ReputationWatchBar then ReputationWatchBar:Hide() end
     if MainMenuBarMaxLevelBar then MainMenuBarMaxLevelBar:Hide() end
+    -- Hide reputation bar
+    if ReputationWatchBar then ReputationWatchBar:Hide() end
+    if MainMenuBarPerformanceBarFrame then MainMenuBarPerformanceBarFrame:Hide() end
     
     -- Bottom left/right multi bars
     if MultiBarBottomLeft then MultiBarBottomLeft:Hide() end
@@ -155,13 +158,8 @@ function ActionBars:HideDefaultBars()
     -- Pet action bar
     if PetActionBarFrame then PetActionBarFrame:Hide() end
     
-    -- Bag bar
-    if MainMenuBarBackpackButton then MainMenuBarBackpackButton:Hide() end
-    if CharacterBag0Slot then CharacterBag0Slot:Hide() end
-    if CharacterBag1Slot then CharacterBag1Slot:Hide() end
-    if CharacterBag2Slot then CharacterBag2Slot:Hide() end
-    if CharacterBag3Slot then CharacterBag3Slot:Hide() end
-    if KeyRingButton then KeyRingButton:Hide() end
+    -- Bag bar (will be shown/hidden dynamically when bags are opened)
+    -- Don't hide here - managed by InitializeBagBar
     
     -- Micro menu buttons
     if CharacterMicroButton then CharacterMicroButton:Hide() end
@@ -592,6 +590,168 @@ function ActionBars:UpdateAllButtons()
         if button then
             self:UpdateButton(button)
         end
+    end
+end
+
+-- ============================================================================
+-- Bag Bar Management
+-- ============================================================================
+
+function ActionBars:InitializeBagBar()
+    -- Bag bar buttons
+    local bagBarButtons = {
+        MainMenuBarBackpackButton,
+        CharacterBag0Slot,
+        CharacterBag1Slot,
+        CharacterBag2Slot,
+        CharacterBag3Slot,
+        KeyRingButton
+    }
+    
+    -- Hide bag bar initially
+    self:UpdateBagBarVisibility()
+    
+    -- Create update frame to periodically check bag state
+    if not self.bagBarUpdateFrame then
+        self.bagBarUpdateFrame = CreateFrame("Frame")
+        self.bagBarUpdateFrame:RegisterEvent("BAG_UPDATE")
+        self.bagBarUpdateFrame:SetScript("OnEvent", function()
+            ActionBars:UpdateBagBarVisibility()
+        end)
+        
+        -- Also check periodically
+        self.bagBarUpdateFrame:SetScript("OnUpdate", function()
+            this.updateTimer = (this.updateTimer or 0) + arg1
+            if this.updateTimer >= 0.2 then  -- Check every 200ms
+                this.updateTimer = 0
+                ActionBars:UpdateBagBarVisibility()
+            end
+        end)
+    end
+    
+    -- Hook ContainerFrame OnShow/OnHide to detect bag open/close
+    -- Check up to 5 container frames (backpack + 4 bags)
+    for i = 1, 5 do
+        local containerFrame = getglobal("ContainerFrame" .. i)
+        if containerFrame then
+            local oldOnShow = containerFrame:GetScript("OnShow")
+            local oldOnHide = containerFrame:GetScript("OnHide")
+            
+            containerFrame:SetScript("OnShow", function()
+                if oldOnShow then oldOnShow() end
+                ActionBars:UpdateBagBarVisibility()
+            end)
+            
+            containerFrame:SetScript("OnHide", function()
+                if oldOnHide then oldOnHide() end
+                ActionBars:UpdateBagBarVisibility()
+            end)
+        end
+    end
+    
+    -- Hook bag bar buttons for cursor navigation
+    for _, button in ipairs(bagBarButtons) do
+        if button then
+            -- Enable drag and drop
+            button:RegisterForDrag("LeftButton")
+            button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+            
+            -- Hook for cursor navigation
+            if ConsoleExperience.hooks and ConsoleExperience.hooks.HookDynamicFrame then
+                ConsoleExperience.hooks:HookDynamicFrame(button, "Bag Bar Button")
+            end
+        end
+    end
+end
+
+function ActionBars:UpdateBagBarVisibility()
+    -- Check if any bag is open (check up to 5 container frames)
+    local anyBagOpen = false
+    for i = 1, 5 do
+        local containerFrame = getglobal("ContainerFrame" .. i)
+        if containerFrame and containerFrame:IsVisible() then
+            anyBagOpen = true
+            break
+        end
+    end
+    
+    -- Also check using IsBagOpen if available
+    if not anyBagOpen then
+        for i = 0, 4 do
+            if IsBagOpen and IsBagOpen(i) then
+                anyBagOpen = true
+                break
+            end
+        end
+    end
+    
+    -- Show/hide and position bag bar at bottom right corner
+    if anyBagOpen then
+        -- Position bag bar at bottom right corner
+        local buttonSize = 30  -- Approximate button size
+        local spacing = 5  -- Spacing between buttons
+        local bottomY = 20  -- Distance from bottom
+        local rightX = 20  -- Distance from right
+        
+        -- Position buttons from right to left
+        local currentX = rightX
+        
+        -- Backpack button (rightmost)
+        if MainMenuBarBackpackButton then 
+            MainMenuBarBackpackButton:SetParent(UIParent)
+            MainMenuBarBackpackButton:ClearAllPoints()
+            MainMenuBarBackpackButton:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -currentX, bottomY)
+            MainMenuBarBackpackButton:Show()
+            currentX = currentX + buttonSize + spacing
+        end
+        
+        -- Bag slots (right to left: bag 3, 2, 1, 0)
+        if CharacterBag3Slot then 
+            CharacterBag3Slot:SetParent(UIParent)
+            CharacterBag3Slot:ClearAllPoints()
+            CharacterBag3Slot:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -currentX, bottomY)
+            CharacterBag3Slot:Show()
+            currentX = currentX + buttonSize + spacing
+        end
+        
+        if CharacterBag2Slot then 
+            CharacterBag2Slot:SetParent(UIParent)
+            CharacterBag2Slot:ClearAllPoints()
+            CharacterBag2Slot:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -currentX, bottomY)
+            CharacterBag2Slot:Show()
+            currentX = currentX + buttonSize + spacing
+        end
+        
+        if CharacterBag1Slot then 
+            CharacterBag1Slot:SetParent(UIParent)
+            CharacterBag1Slot:ClearAllPoints()
+            CharacterBag1Slot:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -currentX, bottomY)
+            CharacterBag1Slot:Show()
+            currentX = currentX + buttonSize + spacing
+        end
+        
+        if CharacterBag0Slot then 
+            CharacterBag0Slot:SetParent(UIParent)
+            CharacterBag0Slot:ClearAllPoints()
+            CharacterBag0Slot:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -currentX, bottomY)
+            CharacterBag0Slot:Show()
+            currentX = currentX + buttonSize + spacing
+        end
+        
+        -- Keyring button (leftmost)
+        if KeyRingButton then 
+            KeyRingButton:SetParent(UIParent)
+            KeyRingButton:ClearAllPoints()
+            KeyRingButton:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -currentX, bottomY)
+            KeyRingButton:Show()
+        end
+    else
+        if MainMenuBarBackpackButton then MainMenuBarBackpackButton:Hide() end
+        if CharacterBag0Slot then CharacterBag0Slot:Hide() end
+        if CharacterBag1Slot then CharacterBag1Slot:Hide() end
+        if CharacterBag2Slot then CharacterBag2Slot:Hide() end
+        if CharacterBag3Slot then CharacterBag3Slot:Hide() end
+        if KeyRingButton then KeyRingButton:Hide() end
     end
 end
 

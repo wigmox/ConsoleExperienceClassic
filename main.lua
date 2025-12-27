@@ -63,6 +63,16 @@ ConsoleExperience:SetScript("OnEvent", function()
             ConsoleExperience.placement:Initialize()
         end
         
+        -- Initialize chat frame module
+        if ConsoleExperience.chat and ConsoleExperience.chat.Initialize then
+            ConsoleExperience.chat:Initialize()
+        end
+        
+        -- Initialize keyboard module
+        if ConsoleExperience.keyboard and ConsoleExperience.keyboard.Initialize then
+            ConsoleExperience.keyboard:Initialize()
+        end
+        
         CE_Debug("ConsoleExperience loaded!")
         
     elseif event == "PLAYER_ENTERING_WORLD" then
