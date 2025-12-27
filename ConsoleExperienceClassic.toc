@@ -19,5 +19,8 @@ cursor\keybindings.lua
 cursor\hooks.lua
 radial\radial.lua
 macros\macros.lua
+macros\icon_helper.lua
 config\config.lua
+chat\chat.lua
+keyboard\keyboard.lua
 Bindings.xml

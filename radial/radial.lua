@@ -88,13 +88,16 @@ local menuItems = {
         end
     },
     {
-        name = "Main Menu",
-        icon = "Interface\\Icons\\INV_Misc_Gear_01",
+        name = "Chat",
+        icon = "Interface\\Icons\\INV_Misc_Note_02",
         action = function() 
-            if GameMenuFrame:IsVisible() then
-                HideUIPanel(GameMenuFrame)
-            else
-                ShowUIPanel(GameMenuFrame)
+            if ChatFrameEditBox then
+                if ChatFrameEditBox:IsVisible() then
+                    ChatFrameEditBox:Hide()
+                else
+                    ChatFrameEditBox:Show()
+                    ChatFrameEditBox:Raise()
+                end
             end
         end
     },

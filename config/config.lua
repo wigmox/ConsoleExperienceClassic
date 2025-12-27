@@ -24,7 +24,12 @@ Config.DEFAULTS = {
     barXOffset = 0,
     barYOffset = 70,
     barPadding = 65,
+    barStarPadding = 600,  -- Padding between left and right star centers
     barScale = 1.0,
+    -- Chat settings
+    chatWidth = 400,
+    chatHeight = 150,
+    keyboardEnabled = true,  -- If true, show virtual keyboard when chat edit box is visible
     -- Keybinding settings
     useAForJump = true,  -- If true, A button (key 1) is bound to JUMP instead of CE_ACTION_1
 }
@@ -59,6 +64,12 @@ function Config:InitializeDB()
     
     -- Apply action bar layout
     self:UpdateActionBarLayout()
+    
+    -- Apply chat layout
+    if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+        ConsoleExperience.chat:UpdateChatLayout()
+    end
+    
 end
 
 function Config:Get(key)
@@ -101,6 +112,7 @@ Config.SECTIONS = {
     { id = "interface", name = "Interface" },
     { id = "keybindings", name = "Keybindings" },
     { id = "bars", name = "Action Bars" },
+    { id = "chat", name = "Chat" },
 }
 
 -- ============================================================================
@@ -174,7 +186,7 @@ function Config:CreateMainFrame()
     sidebar:SetBackdropColor(0.1, 0.1, 0.1, 0.8)
     frame.sidebar = sidebar
     
-    -- Content frame
+    -- Content frame (outer container with backdrop)
     local content = CreateFrame("Frame", nil, frame)
     content:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", self.PADDING, 0)
     content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -self.PADDING - 5, self.PADDING + 5)
@@ -188,6 +200,117 @@ function Config:CreateMainFrame()
     })
     content:SetBackdropColor(0.1, 0.1, 0.1, 0.8)
     frame.content = content
+    
+    -- Create scroll frame using native ScrollFrame type (like pfUI)
+    local scrollFrame = CreateFrame("ScrollFrame", nil, content)
+    scrollFrame:SetPoint("TOPLEFT", content, "TOPLEFT", 5, -5)
+    scrollFrame:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -20, 5)  -- Leave room for buttons
+    frame.scrollFrame = scrollFrame
+    
+    -- Create scroll child container
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetWidth(scrollFrame:GetWidth())
+    scrollChild:SetHeight(900)
+    scrollFrame:SetScrollChild(scrollChild)
+    frame.scrollChild = scrollChild
+    
+    -- Create scroll up button (like quest frames)
+    local scrollUpButton = CreateFrame("Button", nil, scrollFrame)
+    scrollUpButton:SetWidth(24)
+    scrollUpButton:SetHeight(24)
+    scrollUpButton:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, 0)
+    scrollUpButton:SetNormalTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Up")
+    scrollUpButton:SetPushedTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Down")
+    scrollUpButton:SetDisabledTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Disabled")
+    scrollUpButton:SetHighlightTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Highlight")
+    scrollUpButton:SetScript("OnClick", function()
+        local current = scrollFrame:GetVerticalScroll()
+        local new = current - 30
+        if new < 0 then new = 0 end
+        scrollFrame:SetVerticalScroll(new)
+        scrollFrame:UpdateScrollState()
+    end)
+    frame.scrollUpButton = scrollUpButton
+    
+    -- Create scroll down button (like quest frames)
+    local scrollDownButton = CreateFrame("Button", nil, scrollFrame)
+    scrollDownButton:SetWidth(24)
+    scrollDownButton:SetHeight(24)
+    scrollDownButton:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 0, 0)
+    scrollDownButton:SetNormalTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up")
+    scrollDownButton:SetPushedTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Down")
+    scrollDownButton:SetDisabledTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Disabled")
+    scrollDownButton:SetHighlightTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Highlight")
+    scrollDownButton:SetScript("OnClick", function()
+        local current = scrollFrame:GetVerticalScroll()
+        local max = scrollFrame:GetVerticalScrollRange()
+        local new = current + 30
+        if new > max then new = max end
+        scrollFrame:SetVerticalScroll(new)
+        scrollFrame:UpdateScrollState()
+    end)
+    frame.scrollDownButton = scrollDownButton
+    
+    -- Update scroll state function
+    scrollFrame.UpdateScrollState = function()
+        local range = scrollFrame:GetVerticalScrollRange()
+        local current = scrollFrame:GetVerticalScroll()
+        
+        -- Enable/disable buttons based on scroll position
+        if current <= 0 then
+            scrollUpButton:Disable()
+        else
+            scrollUpButton:Enable()
+        end
+        
+        if current >= range then
+            scrollDownButton:Disable()
+        else
+            scrollDownButton:Enable()
+        end
+        
+        -- Hide buttons if no scrolling needed
+        if range <= 0 then
+            scrollUpButton:Hide()
+            scrollDownButton:Hide()
+        else
+            scrollUpButton:Show()
+            scrollDownButton:Show()
+        end
+    end
+    
+    -- Scroll function (like pfUI)
+    scrollFrame.Scroll = function(self, step)
+        local step = step or 0
+        local current = self:GetVerticalScroll()
+        local max = self:GetVerticalScrollRange()
+        local new = current - step
+        
+        if new >= max then
+            self:SetVerticalScroll(max)
+        elseif new <= 0 then
+            self:SetVerticalScroll(0)
+        else
+            self:SetVerticalScroll(new)
+        end
+        
+        self:UpdateScrollState()
+    end
+    
+    -- Mouse wheel scrolling
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function()
+        this:Scroll(arg1 * 10)
+    end)
+    
+    -- Update scroll child on frame show
+    frame:SetScript("OnShow", function()
+        scrollChild:SetWidth(scrollFrame:GetWidth())
+        scrollFrame:UpdateScrollState()
+    end)
+    
+    -- Update content reference
+    frame.content = scrollChild
     
     -- Store reference
     self.frame = frame
@@ -286,6 +409,31 @@ function Config:CreateContentSections()
     
     -- Create Bars section
     self:CreateBarsSection()
+    
+    -- Create Chat section
+    self:CreateChatSection()
+    
+    -- Update scroll child height based on content
+    self:UpdateScrollChildHeight()
+end
+
+function Config:UpdateScrollChildHeight()
+    if not self.frame or not self.frame.scrollChild or not self.frame.scrollFrame then return end
+    
+    -- Calculate maximum height needed for all sections
+    -- Action Bars section is the tallest with all the controls
+    local maxHeight = 900  -- Enough height for all sections including Action Bars
+    
+    -- Ensure scroll child width matches scroll frame width to prevent overflow
+    self.frame.scrollChild:SetWidth(self.frame.scrollFrame:GetWidth())
+    
+    -- Set scroll child height to accommodate all content
+    self.frame.scrollChild:SetHeight(maxHeight)
+    
+    -- Update scroll state using ScrollFrame's UpdateScrollState method
+    if self.frame.scrollFrame.UpdateScrollState then
+        self.frame.scrollFrame:UpdateScrollState()
+    end
 end
 
 function Config:CreateGeneralSection()
@@ -630,9 +778,25 @@ function Config:CreateBarsSection()
         end)
     yEditBox:SetPoint("LEFT", yLabel, "RIGHT", 10, 0)
     
+    -- Star Padding (between left and right sides)
+    local starPaddingLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    starPaddingLabel:SetPoint("TOPLEFT", yLabel, "BOTTOMLEFT", 0, -15)
+    starPaddingLabel:SetText("Star Padding:")
+    
+    local starPaddingEditBox = self:CreateEditBox(section, 50, 
+        function() return tostring(Config:Get("barStarPadding")) end,
+        function(value)
+            local num = tonumber(value) or 200
+            if num < 50 then num = 50 end
+            if num > 1000 then num = 1000 end
+            Config:Set("barStarPadding", num)
+            Config:UpdateActionBarLayout()
+        end)
+    starPaddingEditBox:SetPoint("LEFT", starPaddingLabel, "RIGHT", 10, 0)
+    
     -- Scale
     local scaleLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    scaleLabel:SetPoint("TOPLEFT", yLabel, "BOTTOMLEFT", 0, -15)
+    scaleLabel:SetPoint("TOPLEFT", starPaddingLabel, "BOTTOMLEFT", 0, -15)
     scaleLabel:SetText("Scale:")
     
     local scaleEditBox = self:CreateEditBox(section, 50, 
@@ -648,10 +812,10 @@ function Config:CreateBarsSection()
     
     -- Help text
     local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    helpText:SetPoint("TOPLEFT", scaleLabel, "BOTTOMLEFT", 0, -15)
+    helpText:SetPoint("TOPLEFT", scaleLabel, "BOTTOMLEFT", 0, -25)
     helpText:SetWidth(260)
     helpText:SetJustifyH("LEFT")
-    helpText:SetText("Size: 20-80, Padding: 0-100, Scale: 0.5-2.0. X/Y offset from bottom center.")
+    helpText:SetText("Size: 20-80, Padding: 0-100, Star Padding: 50-1000, Scale: 0.5-2.0. X/Y offset from bottom center.")
     
     -- Reset to defaults button
     local resetButton = CreateFrame("Button", "CEConfigResetLayout", section, "UIPanelButtonTemplate")
@@ -662,6 +826,7 @@ function Config:CreateBarsSection()
     resetButton:SetScript("OnClick", function()
         Config:Set("barButtonSize", Config.DEFAULTS.barButtonSize)
         Config:Set("barPadding", Config.DEFAULTS.barPadding)
+        Config:Set("barStarPadding", Config.DEFAULTS.barStarPadding)
         Config:Set("barXOffset", Config.DEFAULTS.barXOffset)
         Config:Set("barYOffset", Config.DEFAULTS.barYOffset)
         Config:Set("barScale", Config.DEFAULTS.barScale)
@@ -669,6 +834,7 @@ function Config:CreateBarsSection()
         -- Refresh edit boxes
         sizeEditBox:SetText(tostring(Config.DEFAULTS.barButtonSize))
         paddingEditBox:SetText(tostring(Config.DEFAULTS.barPadding))
+        starPaddingEditBox:SetText(tostring(Config.DEFAULTS.barStarPadding))
         xEditBox:SetText(tostring(Config.DEFAULTS.barXOffset))
         yEditBox:SetText(tostring(Config.DEFAULTS.barYOffset))
         scaleEditBox:SetText(tostring(Config.DEFAULTS.barScale))
@@ -676,6 +842,117 @@ function Config:CreateBarsSection()
     end)
     
     self.contentSections["bars"] = section
+end
+
+function Config:CreateChatSection()
+    local content = self.frame.content
+    
+    local section = CreateFrame("Frame", nil, content)
+    section:SetAllPoints(content)
+    section:Hide()
+    
+    -- Title
+    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
+    title:SetText("Chat Settings")
+    
+    -- Description
+    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
+    desc:SetWidth(280)
+    desc:SetJustifyH("LEFT")
+    desc:SetText("Configure the chat frame position and size. The chat frame is centered at the bottom of the screen.")
+    
+    -- Chat Width
+    local chatWidthLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    chatWidthLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+    chatWidthLabel:SetText("Chat Width:")
+    
+    local chatWidthEditBox = self:CreateEditBox(section, 50, 
+        function() return tostring(Config:Get("chatWidth")) end,
+        function(value)
+            local num = tonumber(value) or 400
+            if num < 100 then num = 100 end
+            if num > 2000 then num = 2000 end
+            Config:Set("chatWidth", num)
+            if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+                ConsoleExperience.chat:UpdateChatLayout()
+            end
+        end)
+    chatWidthEditBox:SetPoint("LEFT", chatWidthLabel, "RIGHT", 10, 0)
+    
+    -- Chat Height
+    local chatHeightLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    chatHeightLabel:SetPoint("TOPLEFT", chatWidthLabel, "BOTTOMLEFT", 0, -15)
+    chatHeightLabel:SetText("Chat Height:")
+    
+    local chatHeightEditBox = self:CreateEditBox(section, 50, 
+        function() return tostring(Config:Get("chatHeight")) end,
+        function(value)
+            local num = tonumber(value) or 200
+            if num < 50 then num = 50 end
+            if num > 1000 then num = 1000 end
+            Config:Set("chatHeight", num)
+            if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+                ConsoleExperience.chat:UpdateChatLayout()
+            end
+        end)
+    chatHeightEditBox:SetPoint("LEFT", chatHeightLabel, "RIGHT", 10, 0)
+    
+    -- Keyboard Enabled checkbox
+    local keyboardCheck = CreateFrame("CheckButton", "CEConfigKeyboardEnabled", section, "UICheckButtonTemplate")
+    keyboardCheck:SetPoint("TOPLEFT", chatHeightLabel, "BOTTOMLEFT", 0, -15)
+    keyboardCheck:SetChecked(Config:Get("keyboardEnabled"))
+    keyboardCheck:SetScript("OnClick", function()
+        local checked = keyboardCheck:GetChecked()
+        Config:Set("keyboardEnabled", checked)
+        CE_Debug("Virtual keyboard " .. (checked and "enabled" or "disabled"))
+    end)
+    
+    -- Refresh checkbox state when section is shown
+    section:SetScript("OnShow", function()
+        keyboardCheck:SetChecked(Config:Get("keyboardEnabled"))
+    end)
+    
+    local keyboardLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    keyboardLabel:SetPoint("LEFT", keyboardCheck, "RIGHT", 5, 0)
+    keyboardLabel:SetText("Enable Virtual Keyboard")
+    
+    -- Keyboard help text
+    local keyboardHelp = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    keyboardHelp:SetPoint("TOPLEFT", keyboardCheck, "BOTTOMLEFT", 0, -5)
+    keyboardHelp:SetWidth(260)
+    keyboardHelp:SetJustifyH("LEFT")
+    keyboardHelp:SetText("When enabled, a virtual keyboard appears when typing in chat. Disable to use an external keyboard.")
+    
+    -- Help text
+    local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    helpText:SetPoint("TOPLEFT", keyboardHelp, "BOTTOMLEFT", 0, -10)
+    helpText:SetWidth(260)
+    helpText:SetJustifyH("LEFT")
+    helpText:SetText("Width: 100-2000, Height: 50-1000. The chat frame is centered at the bottom of the screen.")
+    
+    -- Reset to defaults button
+    local resetButton = CreateFrame("Button", "CEConfigResetChat", section, "UIPanelButtonTemplate")
+    resetButton:SetWidth(120)
+    resetButton:SetHeight(22)
+    resetButton:SetPoint("TOPLEFT", helpText, "BOTTOMLEFT", 0, -15)
+    resetButton:SetText("Reset Chat")
+    resetButton:SetScript("OnClick", function()
+        Config:Set("chatWidth", Config.DEFAULTS.chatWidth)
+        Config:Set("chatHeight", Config.DEFAULTS.chatHeight)
+        Config:Set("keyboardEnabled", Config.DEFAULTS.keyboardEnabled)
+        if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+            ConsoleExperience.chat:UpdateChatLayout()
+        end
+        -- Refresh edit boxes and checkbox
+        chatWidthEditBox:SetText(tostring(Config.DEFAULTS.chatWidth))
+        chatHeightEditBox:SetText(tostring(Config.DEFAULTS.chatHeight))
+        keyboardCheck:SetChecked(Config.DEFAULTS.keyboardEnabled)
+        CE_Debug("Chat settings reset to defaults")
+    end)
+    
+    self.contentSections["chat"] = section
 end
 
 -- ============================================================================
@@ -775,6 +1052,8 @@ function Config:ShowSection(sectionId)
     -- Show selected section
     if self.contentSections[sectionId] then
         self.contentSections[sectionId]:Show()
+        -- Update scroll child height when showing section
+        self:UpdateScrollChildHeight()
     end
     
     -- Highlight selected sidebar button
@@ -966,13 +1245,19 @@ Config.BUTTON_LAYOUT = {
 function Config:UpdateActionBarLayout()
     local buttonSize = self:Get("barButtonSize") or 60
     local padding = self:Get("barPadding") or 65
+    local starPadding = self:Get("barStarPadding") or 200
     local xOffset = self:Get("barXOffset") or 0
     local yOffset = self:Get("barYOffset") or 70
     local scale = self:Get("barScale") or 1.0
     
     -- Calculate star center positions
-    -- Stars are separated by (buttonSize + padding * 2) on each side of center
-    local starSpacing = buttonSize + padding + 10  -- Distance from center to each star center
+    -- Stars are separated by starPadding (half on each side)
+    local starSpacing = starPadding / 2  -- Distance from center to each star center
+    
+    -- Store star positions for chat positioning
+    self.leftStarCenterX = -starSpacing + xOffset
+    self.rightStarCenterX = starSpacing + xOffset
+    self.starYOffset = yOffset
     
     for _, buttonInfo in ipairs(self.BUTTON_LAYOUT) do
         local button = getglobal("ConsoleActionButton" .. buttonInfo.id)
@@ -980,9 +1265,9 @@ function Config:UpdateActionBarLayout()
             -- Calculate star center X position
             local starCenterX
             if buttonInfo.star == "left" then
-                starCenterX = -starSpacing + xOffset
+                starCenterX = self.leftStarCenterX
             else
-                starCenterX = starSpacing + xOffset
+                starCenterX = self.rightStarCenterX
             end
             
             -- Calculate button position relative to star center
@@ -1028,6 +1313,11 @@ function Config:UpdateActionBarLayout()
                 controllerIcon:SetHeight(iconSize)
             end
         end
+    end
+    
+    -- Update chat layout after action bars are positioned
+    if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+        ConsoleExperience.chat:UpdateChatLayout()
     end
 end
 
