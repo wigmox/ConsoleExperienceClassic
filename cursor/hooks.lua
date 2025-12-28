@@ -32,6 +32,7 @@ Hooks.frames = {
     {frame = "GossipGreetingScrollFrame", name = "Gossip Scroll"},
     {frame = "ItemTextFrame", name = "Item Text"},
     {frame = "MerchantFrame", name = "Merchant"},
+    {frame = "AuctionFrame", name = "Auction House"},
     {frame = "TradeFrame", name = "Trade"},
     {frame = "ContainerFrame1", name = "Bag 1"},
     {frame = "ContainerFrame2", name = "Bag 2"},

@@ -210,6 +210,18 @@ function Tooltip:Initialize()
             actions = {{icon = "a", prompt = "Select"}, {icon = "b", prompt = "Withdraw"}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}}
         },
+        -- Auction house browse buttons - B = Bid
+        {
+            pattern = "BrowseButton%d+",
+            actions = {{icon = "a", prompt = "Select"}, {icon = "b", prompt = "Bid"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}}
+        },
+        -- Auction house auctions buttons
+        {
+            pattern = "AuctionsButton%d+",
+            actions = {{icon = "a", prompt = "Select"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
+        },
         -- WorldMap buttons - B = Zoom Out
         {
             pattern = "WorldMap.*",
