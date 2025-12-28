@@ -78,7 +78,7 @@ function Keyboard:CreateFrame()
             screenWidth, screenHeight, uiScale, effectiveWidth, screenHeight / uiScale, frame:GetWidth(), frame:GetHeight(), keyboardHeight))
     end
     frame:SetFrameStrata("DIALOG")
-    frame:SetFrameLevel(50)  -- Lower than chat frame (100)
+    frame:SetFrameLevel(150)  -- Higher than chat frame to ensure keyboard is always visible
     frame:EnableMouse(true)
     
     -- Hook OnHide to ensure cleanup when frame is hidden (e.g., by Escape key)
@@ -103,7 +103,8 @@ function Keyboard:CreateFrame()
     
     frame:Hide()
     
-    -- Add to special frames for Escape to close (add once when created, like placement frame)
+    -- Add to UISpecialFrames for ESC handling, but we'll handle it specially in hooks
+    -- The keyboard frame will be in UISpecialFrames, but we'll prevent ESC from closing other frames
     if frame:GetName() then
         local frameName = frame:GetName()
         local alreadyAdded = false
@@ -118,8 +119,8 @@ function Keyboard:CreateFrame()
         end
     end
     
-    -- Don't add ChatFrame1 to UISpecialFrames - the chat module handles its own visibility
-    -- Only the keyboard frame should be in UISpecialFrames
+    -- Don't enable keyboard input on the frame - it blocks cursor navigation
+    -- ESC is handled via UISpecialFrames, but we'll hook CloseAllWindows to prevent closing other frames
     
     -- Background - translucent like chat frame
     local bg = frame:CreateTexture(nil, "BACKGROUND")
@@ -1254,6 +1255,9 @@ function Keyboard:Show(editBox)
         -- Show frame first to ensure it's laid out and has correct dimensions
         self.frame:Show()
         
+        -- Ensure keyboard input is enabled so ESC key is captured
+        self.frame:EnableKeyboard(true)
+        
         -- Ensure keysContainer is properly positioned (accounting for centered split layout)
         if self.frame.keysContainer then
             local frameW = self.frame:GetWidth()
@@ -1458,6 +1462,24 @@ end
 
 function Keyboard:Initialize()
     self:CreateFrame()
+    
+    -- Hook CloseAllWindows to prevent ESC from closing other frames when keyboard is visible
+    if not self.closeAllWindowsHooked then
+        local oldCloseAllWindows = CloseAllWindows
+        CloseAllWindows = function()
+            -- Check if keyboard is visible
+            if ConsoleExperience.keyboard and ConsoleExperience.keyboard.frame and ConsoleExperience.keyboard.frame:IsVisible() then
+                -- Only close keyboard, don't close other frames
+                ConsoleExperience.keyboard:Hide()
+            else
+                -- Normal ESC behavior - close all frames in UISpecialFrames
+                if oldCloseAllWindows then
+                    oldCloseAllWindows()
+                end
+            end
+        end
+        self.closeAllWindowsHooked = true
+    end
     
     -- Hook ChatFrameEditBox to show/hide keyboard
     if ChatFrameEditBox then

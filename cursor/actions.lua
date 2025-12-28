@@ -269,9 +269,19 @@ function CE_ClickCursor(mouseButton)
     
     -- Handle different element types
     if element:IsObjectType("EditBox") then
-        -- Focus the EditBox for text input
-        element:SetFocus()
-        CE_Debug("EditBox focused")
+        -- Check if virtual keyboard is enabled
+        local config = ConsoleExperience.config
+        local keyboardEnabled = config and config:Get("keyboardEnabled")
+        
+        if keyboardEnabled and ConsoleExperience.keyboard then
+            -- Show virtual keyboard for text input
+            ConsoleExperience.keyboard:Show(element)
+            CE_Debug("Virtual keyboard shown for EditBox")
+        else
+            -- Keyboard disabled - use regular focus
+            element:SetFocus()
+            CE_Debug("EditBox focused (keyboard disabled)")
+        end
     elseif element:IsObjectType("Slider") then
         -- For sliders, left/right click could adjust value
         if mouseButton == "LeftButton" then
