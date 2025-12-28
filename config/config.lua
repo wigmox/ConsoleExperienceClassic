@@ -911,6 +911,21 @@ function Config:CreateChatSection()
         if not checked and ConsoleExperience.keyboard and ConsoleExperience.keyboard:IsVisible() then
             ConsoleExperience.keyboard:Hide()
         end
+        -- If keyboard is disabled, ensure ChatFrameEditBox has proper focus and keyboard input
+        if not checked and ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
+            ChatFrameEditBox:EnableKeyboard(true)
+            -- Use a small delay to ensure focus is set
+            local focusFrame = CreateFrame("Frame")
+            focusFrame:SetScript("OnUpdate", function()
+                this.elapsed = (this.elapsed or 0) + arg1
+                if this.elapsed > 0.1 then
+                    this:SetScript("OnUpdate", nil)
+                    if ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
+                        ChatFrameEditBox:SetFocus()
+                    end
+                end
+            end)
+        end
     end)
     
     -- Refresh checkbox state when section is shown

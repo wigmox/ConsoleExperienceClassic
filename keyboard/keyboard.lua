@@ -140,21 +140,52 @@ function Keyboard:CreateFrame()
     frame:SetBackdropColor(0, 0, 0, 0.7)
     frame:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
     
-    -- Create keyboard keys container - fill the frame (accounting for backdrop insets)
-    local keysContainer = CreateFrame("Frame", "CEKeyboardKeysContainer", frame)
-    -- Account for backdrop insets - keys should be within the visible area
-    -- Position with 4px insets, then explicitly set size to ensure exact dimensions
-    keysContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
-    -- Calculate exact size: frame width - 8 (4px on each side)
+    -- Calculate frame dimensions
     local frameWidth = frame:GetWidth()
     local frameHeight = frame:GetHeight()
+    
+    -- Calculate widths: keyboard takes ~70% of content width, emote panel takes ~30%
+    local contentWidth = frameWidth - 8  -- Minus insets
+    local keyboardWidth = math.floor(contentWidth * 0.70)
+    local emoteWidth = math.floor(contentWidth * 0.30)
+    local separatorWidth = 4  -- Separator between keyboard and emotes
+    local totalContentWidth = keyboardWidth + separatorWidth + emoteWidth
+    local sidePadding = math.floor((contentWidth - totalContentWidth) / 2)  -- Equal padding on both sides
+    
+    -- Create keyboard keys container (centered left side)
+    local keysContainer = CreateFrame("Frame", "CEKeyboardKeysContainer", frame)
+    keysContainer:SetPoint("TOP", frame, "TOP", 0, -4)
+    keysContainer:SetPoint("BOTTOM", frame, "BOTTOM", 0, 4)
+    keysContainer:SetPoint("LEFT", frame, "LEFT", 4 + sidePadding, 0)
     if frameWidth > 0 and frameHeight > 0 then
-        keysContainer:SetWidth(frameWidth - 8)
+        keysContainer:SetWidth(keyboardWidth)
         keysContainer:SetHeight(frameHeight - 8)
     end
     frame.keysContainer = keysContainer
     
-    -- Create fake edit box at bottom of keyboard frame
+    -- Create separator line between keyboard and emotes
+    local separator = frame:CreateTexture(nil, "ARTWORK")
+    separator:SetWidth(separatorWidth)
+    separator:SetHeight(frameHeight - 8)
+    separator:SetPoint("TOP", frame, "TOP", 0, -4)
+    separator:SetPoint("BOTTOM", frame, "BOTTOM", 0, 4)
+    separator:SetPoint("LEFT", keysContainer, "RIGHT", 0, 0)
+    separator:SetTexture("Interface\\Tooltips\\UI-Tooltip-Border")
+    separator:SetVertexColor(0.6, 0.6, 0.6, 0.8)
+    frame.separator = separator
+    
+    -- Create emote panel container (centered right side)
+    local emoteContainer = CreateFrame("Frame", "CEKeyboardEmoteContainer", frame)
+    emoteContainer:SetPoint("TOP", frame, "TOP", 0, -4)
+    emoteContainer:SetPoint("BOTTOM", frame, "BOTTOM", 0, 4)
+    emoteContainer:SetPoint("RIGHT", frame, "RIGHT", -4 - sidePadding, 0)
+    if frameWidth > 0 and frameHeight > 0 then
+        emoteContainer:SetWidth(emoteWidth)
+        emoteContainer:SetHeight(frameHeight - 8)
+    end
+    frame.emoteContainer = emoteContainer
+    
+    -- Create fake edit box at bottom of keyboard frame (spans full width)
     local fakeEditBox = CreateFrame("EditBox", "CEKeyboardFakeEditBox", frame)
     fakeEditBox:SetWidth(frameWidth - 20)
     fakeEditBox:SetHeight(30)
@@ -199,6 +230,9 @@ function Keyboard:CreateFrame()
     
     -- Create keyboard keys
     self:CreateKeys(keysContainer)
+    
+    -- Create emote panel
+    self:CreateEmotePanel(emoteContainer)
     
     self.frame = frame
     
@@ -545,6 +579,169 @@ function Keyboard:CreateSpecialKey(parent, label, x, y, width, height)
 end
 
 -- ============================================================================
+-- Create Emote Panel
+-- ============================================================================
+
+-- Common emotes list (most frequently used)
+local COMMON_EMOTES = {
+    -- Social
+    {cmd = "wave", label = "Wave"},
+    {cmd = "hello", label = "Hello"},
+    {cmd = "bye", label = "Bye"},
+    {cmd = "bow", label = "Bow"},
+    {cmd = "salute", label = "Salute"},
+    {cmd = "cheer", label = "Cheer"},
+    {cmd = "applaud", label = "Applaud"},
+    {cmd = "thank", label = "Thank"},
+    -- Combat
+    {cmd = "charge", label = "Charge"},
+    {cmd = "flee", label = "Flee"},
+    {cmd = "cower", label = "Cower"},
+    {cmd = "ready", label = "Ready"},
+    -- Fun
+    {cmd = "dance", label = "Dance"},
+    {cmd = "laugh", label = "Laugh"},
+    {cmd = "joke", label = "Joke"},
+    {cmd = "roar", label = "Roar"},
+    -- Status
+    {cmd = "sit", label = "Sit"},
+    {cmd = "stand", label = "Stand"},
+    {cmd = "sleep", label = "Sleep"},
+    {cmd = "kneel", label = "Kneel"},
+    -- Reactions
+    {cmd = "point", label = "Point"},
+    {cmd = "shrug", label = "Shrug"},
+    {cmd = "agree", label = "Agree"},
+    {cmd = "disagree", label = "Disagree"},
+}
+
+function Keyboard:CreateEmotePanel(parent)
+    self.emoteButtons = {}
+    
+    if not parent then
+        return
+    end
+    
+    local containerWidth = parent:GetWidth() or 200
+    local containerHeight = parent:GetHeight() or 400
+    
+    -- Calculate grid layout: 4 columns, as many rows as needed
+    local numColumns = 4
+    local numRows = math.ceil(table.getn(COMMON_EMOTES) / numColumns)
+    
+    -- Calculate button size
+    local buttonSpacing = 4
+    local totalSpacing = (numColumns - 1) * buttonSpacing
+    local buttonWidth = math.floor((containerWidth - totalSpacing) / numColumns)
+    
+    local totalButtonHeight = (numRows * KEY_HEIGHT) + ((numRows - 1) * buttonSpacing)
+    local buttonHeight = KEY_HEIGHT
+    if totalButtonHeight > containerHeight - 40 then
+        -- Scale down if needed
+        local scale = (containerHeight - 40) / totalButtonHeight
+        buttonHeight = math.floor(KEY_HEIGHT * scale)
+    end
+    
+    -- Title label
+    local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", parent, "TOP", 0, -10)
+    title:SetText("Emotes")
+    title:SetTextColor(1, 1, 1, 1)
+    
+    -- Create emote buttons in a grid
+    local startY = -40  -- Start below title
+    local startX = buttonWidth / 2  -- Center of first button
+    
+    for i, emoteInfo in ipairs(COMMON_EMOTES) do
+        local row = math.floor((i - 1) / numColumns)
+        local col = mod((i - 1), numColumns)
+        
+        local x = startX + col * (buttonWidth + buttonSpacing)
+        local y = startY - row * (buttonHeight + buttonSpacing) - (buttonHeight / 2)
+        
+        local button = self:CreateEmoteButton(parent, emoteInfo.cmd, emoteInfo.label, x, y, buttonWidth, buttonHeight)
+        button.emoteRow = row + 1
+        button.emoteCol = col + 1
+        table.insert(self.emoteButtons, button)
+    end
+end
+
+function Keyboard:CreateEmoteButton(parent, emoteCmd, emoteLabel, x, y, width, height)
+    local button = CreateFrame("Button", "CEKeyboardEmote" .. emoteCmd, parent)
+    button:SetWidth(width)
+    button:SetHeight(height)
+    button:SetPoint("CENTER", parent, "TOPLEFT", x, y)
+    button:EnableMouse(true)
+    button:EnableKeyboard(false)
+    button:Show()
+    
+    -- Background
+    button:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        tile = false,
+        tileSize = 0,
+        edgeSize = 1,
+        insets = { left = 0, right = 0, top = 0, bottom = 0 }
+    })
+    button:SetBackdropColor(0.3, 0.3, 0.5, 0.9)  -- Slightly blue tint for emotes
+    button:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.8)
+    
+    -- Label
+    local label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    label:SetPoint("CENTER", button, "CENTER", 0, 0)
+    label:SetText(emoteLabel)
+    label:SetTextColor(1, 1, 1, 1)
+    button.label = label
+    
+    -- Highlight
+    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetAllPoints(button)
+    highlight:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+    highlight:SetBlendMode("ADD")
+    button:SetHighlightTexture(highlight)
+    
+    -- Store emote command
+    button.emoteCmd = emoteCmd
+    
+    -- Click handler
+    button:SetScript("OnClick", function()
+        Keyboard:ExecuteEmote(this.emoteCmd)
+    end)
+    
+    -- Make button clickable via cursor system
+    button.Click = function(self, mouseButton)
+        if mouseButton == "LeftButton" or not mouseButton then
+            Keyboard:ExecuteEmote(self.emoteCmd)
+        end
+    end
+    
+    return button
+end
+
+function Keyboard:ExecuteEmote(emoteCmd)
+    -- Execute the emote command
+    if emoteCmd and string.len(emoteCmd) > 0 then
+        -- In WoW Classic, emotes are executed via DoEmote API
+        -- DoEmote is available in Classic/Vanilla
+        if DoEmote then
+            DoEmote(emoteCmd)
+        else
+            -- Fallback: execute as slash command
+            local emoteCommand = "/" .. emoteCmd
+            if not self:ExecuteSlashCommand(emoteCommand) then
+                -- Try /e shortcut
+                local eCommand = "/e " .. emoteCmd
+                if not self:ExecuteSlashCommand(eCommand) then
+                    -- Last resort: send as emote chat message
+                    SendChatMessage(emoteCmd, "EMOTE")
+                end
+            end
+        end
+    end
+end
+
+-- ============================================================================
 -- Text Input Functions
 -- ============================================================================
 
@@ -765,17 +962,109 @@ function Keyboard:UpdateKeyLabels()
     end
 end
 
+-- ============================================================================
+-- Command Discovery and Helpers
+-- ============================================================================
+
+-- Get all available slash commands
+function Keyboard:GetAllCommands()
+    local commands = {}
+    
+    -- Search through all global SLASH_* variables
+    for k, v in pairs(_G) do
+        if string.find(k, "^SLASH_") then
+            -- Extract command name (e.g., SLASH_CMDNAME1 -> CMDNAME)
+            local cmdName = string.sub(k, 7)  -- Remove "SLASH_" prefix
+            -- Remove trailing number (e.g., "CMDNAME1" -> "CMDNAME")
+            local numPos = string.find(cmdName, "%d+$")
+            if numPos then
+                cmdName = string.sub(cmdName, 1, numPos - 1)
+            end
+            
+            -- Get the slash command string (e.g., "/command")
+            if type(v) == "string" and string.len(v) > 0 then
+                local cmdStr = string.lower(string.sub(v, 2))  -- Remove leading "/"
+                if not commands[cmdName] then
+                    commands[cmdName] = {}
+                end
+                table.insert(commands[cmdName], cmdStr)
+            end
+        end
+    end
+    
+    return commands
+end
+
+-- Find and execute a command from SlashCmdList
+function Keyboard:ExecuteSlashCommand(commandText)
+    if not commandText or string.len(commandText) == 0 then
+        return false
+    end
+    
+    -- Parse command: extract command name and arguments
+    local command = string.sub(commandText, 2)  -- Remove the "/"
+    local commandName = command
+    local commandArgs = ""
+    
+    -- Find space to separate command name from arguments
+    local spacePos = string.find(command, " ")
+    if spacePos then
+        commandName = string.sub(command, 1, spacePos - 1)
+        commandArgs = string.sub(command, spacePos + 1)
+    end
+    
+    -- Convert to lowercase for lookup
+    commandName = string.lower(commandName)
+    
+    -- Search through SlashCmdList to find matching command
+    for cmdName, cmdFunc in pairs(SlashCmdList) do
+        if type(cmdFunc) == "function" then
+            -- Check all SLASH_* variables for this command
+            local i = 1
+            while true do
+                local slashVar = "SLASH_" .. cmdName .. i
+                local cmdString = getglobal(slashVar)
+                if not cmdString then
+                    break
+                end
+                
+                -- Remove leading "/" and compare (case-insensitive)
+                local cmdStr = string.lower(string.sub(cmdString, 2))
+                if cmdStr == commandName then
+                    -- Found the command, execute it
+                    local success, err = pcall(function() cmdFunc(commandArgs) end)
+                    if not success and CE_Debug then
+                        CE_Debug("Error executing command " .. commandText .. ": " .. tostring(err))
+                    end
+                    return true
+                end
+                
+                i = i + 1
+            end
+        end
+    end
+    
+    return false
+end
+
 function Keyboard:Confirm()
     -- Send the message
     local textToSend = self.currentText or ""
     
-    if string.len(textToSend) > 0 then
-        local editBox = self.targetEditBox or ChatFrameEditBox
-        
-        if editBox == ChatFrameEditBox then
-            -- Check if it's a command (starts with /)
-            if string.sub(textToSend, 1, 1) == "/" then
-                -- Parse command: extract command name and arguments
+    if string.len(textToSend) == 0 then
+        return
+    end
+    
+    local editBox = self.targetEditBox or ChatFrameEditBox
+    
+    if editBox == ChatFrameEditBox then
+        -- Process command or chat message
+        if string.sub(textToSend, 1, 1) == "/" then
+            -- It's a command - try to execute it
+            local commandExecuted = self:ExecuteSlashCommand(textToSend)
+            
+            if not commandExecuted then
+                -- Command not found in SlashCmdList, try chat channels
                 local command = string.sub(textToSend, 2)  -- Remove the "/"
                 local commandName = command
                 local commandArgs = ""
@@ -790,122 +1079,86 @@ function Keyboard:Confirm()
                 -- Convert to lowercase for lookup
                 commandName = string.lower(commandName)
                 
-                -- Check for numeric channel commands first (/1, /2, /3, etc.)
+                -- Check for numeric channel commands (/1, /2, /3, etc.)
                 local channelNumber = tonumber(commandName)
-                local chatType = nil
-                local whisperTarget = nil
-                local commandHandled = false
-                
-                -- If it's a number, it's a channel command
                 if channelNumber then
-                    -- Numeric channel (e.g., /1, /2, /3)
+                    -- Numeric channel
                     if string.len(commandArgs) > 0 then
                         SendChatMessage(commandArgs, "CHANNEL", nil, channelNumber)
-                        commandHandled = true
                     end
-                -- Check for chat channel shortcuts (these aren't in SlashCmdList)
-                elseif commandName == "g" or commandName == "guild" then
-                    chatType = "GUILD"
-                elseif commandName == "p" or commandName == "party" then
-                    chatType = "PARTY"
-                elseif commandName == "r" or commandName == "raid" then
-                    chatType = "RAID"
-                elseif commandName == "rw" or commandName == "raidwarning" then
-                    chatType = "RAID_WARNING"
-                elseif commandName == "o" or commandName == "officer" then
-                    chatType = "GUILD_OFFICER"
-                elseif commandName == "s" or commandName == "say" then
-                    chatType = "SAY"
-                elseif commandName == "y" or commandName == "yell" then
-                    chatType = "YELL"
-                elseif commandName == "e" or commandName == "emote" or commandName == "me" then
-                    chatType = "EMOTE"
-                elseif commandName == "w" or commandName == "whisper" or commandName == "tell" or commandName == "t" then
-                    -- Whisper needs a target name
-                    chatType = "WHISPER"
-                    -- Extract target name from commandArgs (first word)
-                    local targetSpacePos = string.find(commandArgs, " ")
-                    if targetSpacePos then
-                        whisperTarget = string.sub(commandArgs, 1, targetSpacePos - 1)
-                        commandArgs = string.sub(commandArgs, targetSpacePos + 1)
-                    else
-                        -- No space found, entire args is the target
-                        whisperTarget = commandArgs
-                        commandArgs = ""
-                    end
-                end
-                
-                -- If it's a chat channel command, send via SendChatMessage
-                if chatType then
-                    commandHandled = true
-                    if chatType == "WHISPER" then
-                        if whisperTarget and string.len(whisperTarget) > 0 and string.len(commandArgs) > 0 then
-                            SendChatMessage(commandArgs, chatType, nil, whisperTarget)
+                else
+                    -- Check for chat channel shortcuts
+                    local chatType = nil
+                    local whisperTarget = nil
+                    
+                    if commandName == "g" or commandName == "guild" then
+                        chatType = "GUILD"
+                    elseif commandName == "p" or commandName == "party" then
+                        chatType = "PARTY"
+                    elseif commandName == "r" or commandName == "raid" then
+                        chatType = "RAID"
+                    elseif commandName == "rw" or commandName == "raidwarning" then
+                        chatType = "RAID_WARNING"
+                    elseif commandName == "o" or commandName == "officer" then
+                        chatType = "GUILD_OFFICER"
+                    elseif commandName == "s" or commandName == "say" then
+                        chatType = "SAY"
+                    elseif commandName == "y" or commandName == "yell" then
+                        chatType = "YELL"
+                    elseif commandName == "e" or commandName == "emote" or commandName == "me" then
+                        chatType = "EMOTE"
+                    elseif commandName == "w" or commandName == "whisper" or commandName == "tell" or commandName == "t" then
+                        chatType = "WHISPER"
+                        -- Extract target name from commandArgs (first word)
+                        local targetSpacePos = string.find(commandArgs, " ")
+                        if targetSpacePos then
+                            whisperTarget = string.sub(commandArgs, 1, targetSpacePos - 1)
+                            commandArgs = string.sub(commandArgs, targetSpacePos + 1)
                         else
-                            -- Invalid whisper format
-                            if ChatFrame1 then
-                                ChatFrame1:AddMessage("|cffff0000Usage: /w <name> <message>|r")
+                            whisperTarget = commandArgs
+                            commandArgs = ""
+                        end
+                    end
+                    
+                    if chatType then
+                        if chatType == "WHISPER" then
+                            if whisperTarget and string.len(whisperTarget) > 0 and string.len(commandArgs) > 0 then
+                                SendChatMessage(commandArgs, chatType, nil, whisperTarget)
+                            else
+                                if ChatFrame1 then
+                                    ChatFrame1:AddMessage("|cffff0000Usage: /w <name> <message>|r")
+                                end
+                            end
+                        else
+                            if string.len(commandArgs) > 0 then
+                                SendChatMessage(commandArgs, chatType)
                             end
                         end
                     else
-                        -- Regular chat channel
-                        if string.len(commandArgs) > 0 then
-                            SendChatMessage(commandArgs, chatType)
-                        end
-                        -- If no message, just switch to that channel (WoW will handle it)
-                    end
-                end
-                
-                -- Only check SlashCmdList if command hasn't been handled yet
-                if not commandHandled then
-                    -- Not a chat channel command, try to find it in SlashCmdList
-                    local commandFound = false
-                    
-                    -- Search through SlashCmdList to find matching command
-                    for cmdName, cmdFunc in pairs(SlashCmdList) do
-                        if type(cmdFunc) == "function" then
-                            -- Check all SLASH_* variables for this command (SLASH_CMDNAME1, SLASH_CMDNAME2, etc.)
-                            local i = 1
-                            while true do
-                                local slashVar = "SLASH_" .. cmdName .. i
-                                local cmdString = getglobal(slashVar)
-                                if not cmdString then
-                                    break
-                                end
-                                
-                                -- Remove leading "/" and compare (case-insensitive)
-                                local cmdStr = string.lower(string.sub(cmdString, 2))
-                                if cmdStr == commandName then
-                                    -- Found the command, execute it
-                                    cmdFunc(commandArgs)
-                                    commandFound = true
-                                    break
-                                end
-                                
-                                i = i + 1
-                            end
-                            
-                            if commandFound then
-                                break
-                            end
-                        end
-                    end
-                    
-                    -- If command not found, display error message
-                    if not commandFound then
+                        -- Unknown command
                         if ChatFrame1 then
                             ChatFrame1:AddMessage("|cffff0000Unknown command:|r " .. textToSend)
                         end
                     end
                 end
-            else
-                -- Regular chat message - use SendChatMessage
-                SendChatMessage(textToSend, "SAY")
             end
         else
-            -- For other edit boxes, try to set text safely
-            if editBox and editBox.SetText then
-                editBox:SetText(textToSend)
+            -- Regular chat message
+            SendChatMessage(textToSend, "SAY")
+        end
+    else
+        -- For other edit boxes, try to set text safely
+        if editBox and editBox.SetText then
+            editBox:SetText(textToSend)
+            -- Try to trigger EnterPressed if available
+            local onEnterPressed = editBox:GetScript("OnEnterPressed")
+            if onEnterPressed then
+                local success, err = pcall(function() 
+                    onEnterPressed(editBox, editBox:GetText())
+                end)
+                if not success and CE_Debug then
+                    CE_Debug("Error in edit box OnEnterPressed: " .. tostring(err))
+                end
             end
         end
     end
@@ -1001,18 +1254,46 @@ function Keyboard:Show(editBox)
         -- Show frame first to ensure it's laid out and has correct dimensions
         self.frame:Show()
         
-        -- Ensure keysContainer is properly positioned (accounting for backdrop insets)
+        -- Ensure keysContainer is properly positioned (accounting for centered split layout)
         if self.frame.keysContainer then
             local frameW = self.frame:GetWidth()
             local frameH = self.frame:GetHeight()
             
+            -- Calculate split: keyboard 70%, emotes 30%, centered
+            local contentWidth = frameW - 8  -- Minus insets
+            local keyboardWidth = math.floor(contentWidth * 0.70)
+            local emoteWidth = math.floor(contentWidth * 0.30)
+            local separatorWidth = 4
+            local totalContentWidth = keyboardWidth + separatorWidth + emoteWidth
+            local sidePadding = math.floor((contentWidth - totalContentWidth) / 2)  -- Equal padding on both sides
+            
             self.frame.keysContainer:ClearAllPoints()
-            -- Position with 4px insets, then explicitly set size to ensure exact dimensions
-            self.frame.keysContainer:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 4, -4)
-            -- Set exact size: frame - 8 (4px on each side)
+            self.frame.keysContainer:SetPoint("TOP", self.frame, "TOP", 0, -4)
+            self.frame.keysContainer:SetPoint("BOTTOM", self.frame, "BOTTOM", 0, 4)
+            self.frame.keysContainer:SetPoint("LEFT", self.frame, "LEFT", 4 + sidePadding, 0)
             if frameW > 0 and frameH > 0 then
-                self.frame.keysContainer:SetWidth(frameW - 8)
+                self.frame.keysContainer:SetWidth(keyboardWidth)
                 self.frame.keysContainer:SetHeight(frameH - 8)
+            end
+            
+            -- Update separator position
+            if self.frame.separator then
+                self.frame.separator:ClearAllPoints()
+                self.frame.separator:SetPoint("TOP", self.frame, "TOP", 0, -4)
+                self.frame.separator:SetPoint("BOTTOM", self.frame, "BOTTOM", 0, 4)
+                self.frame.separator:SetPoint("LEFT", self.frame.keysContainer, "RIGHT", 0, 0)
+            end
+            
+            -- Update emote container
+            if self.frame.emoteContainer then
+                self.frame.emoteContainer:ClearAllPoints()
+                self.frame.emoteContainer:SetPoint("TOP", self.frame, "TOP", 0, -4)
+                self.frame.emoteContainer:SetPoint("BOTTOM", self.frame, "BOTTOM", 0, 4)
+                self.frame.emoteContainer:SetPoint("RIGHT", self.frame, "RIGHT", -4 - sidePadding, 0)
+                if frameW > 0 and frameH > 0 then
+                    self.frame.emoteContainer:SetWidth(emoteWidth)
+                    self.frame.emoteContainer:SetHeight(frameH - 8)
+                end
             end
             
             -- Debug: verify container fills frame correctly
@@ -1045,6 +1326,20 @@ function Keyboard:Show(editBox)
                     
                     -- Recreate keys with current frame dimensions
                     self:CreateKeys(self.frame.keysContainer)
+                end
+                
+                -- Recreate emote panel with current frame dimensions
+                if self.emoteButtons and self.frame.emoteContainer then
+                    -- Clear existing emote buttons
+                    for _, button in ipairs(self.emoteButtons) do
+                        if button then
+                            button:Hide()
+                        end
+                    end
+                    self.emoteButtons = {}
+                    
+                    -- Recreate emote panel
+                    self:CreateEmotePanel(self.frame.emoteContainer)
                 end
                 
                 -- Hook keyboard frame into cursor system
@@ -1166,15 +1461,32 @@ function Keyboard:Initialize()
     
     -- Hook ChatFrameEditBox to show/hide keyboard
     if ChatFrameEditBox then
-        -- Hook OnShow to show keyboard
+        -- Hook OnShow to show keyboard (only if enabled)
         local oldOnShow = ChatFrameEditBox:GetScript("OnShow")
         ChatFrameEditBox:SetScript("OnShow", function()
             if oldOnShow then
                 oldOnShow()
             end
-            -- Show keyboard when chat edit box is shown
-            if ConsoleExperience.keyboard then
+            -- Show keyboard when chat edit box is shown (only if keyboard is enabled)
+            local config = ConsoleExperience.config
+            if ConsoleExperience.keyboard and config and config:Get("keyboardEnabled") then
                 ConsoleExperience.keyboard:Show(ChatFrameEditBox)
+            else
+                -- Keyboard is disabled - ensure ChatFrameEditBox has proper focus and keyboard input
+                if ChatFrameEditBox then
+                    ChatFrameEditBox:EnableKeyboard(true)
+                    -- Use a small delay to ensure focus is set after the edit box is fully shown
+                    local focusFrame = CreateFrame("Frame")
+                    focusFrame:SetScript("OnUpdate", function()
+                        this.elapsed = (this.elapsed or 0) + arg1
+                        if this.elapsed > 0.1 then
+                            this:SetScript("OnUpdate", nil)
+                            if ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
+                                ChatFrameEditBox:SetFocus()
+                            end
+                        end
+                    end)
+                end
             end
         end)
         
@@ -1212,10 +1524,69 @@ function Keyboard:Initialize()
     CE_Debug("Virtual keyboard frame loaded")
 end
 
+-- ============================================================================
+-- Debug: List all available commands
+-- ============================================================================
+
+function Keyboard:ListAllCommands()
+    local commands = self:GetAllCommands()
+    local commandList = {}
+    
+    -- Build a list of all unique command strings
+    local seen = {}
+    for cmdName, cmdStrings in pairs(commands) do
+        for _, cmdStr in ipairs(cmdStrings) do
+            if not seen[cmdStr] then
+                seen[cmdStr] = true
+                table.insert(commandList, "/" .. cmdStr)
+            end
+        end
+    end
+    
+    -- Sort alphabetically
+    table.sort(commandList)
+    
+    -- Display in chat
+    if ChatFrame1 then
+        ChatFrame1:AddMessage("|cff00ff00Available Slash Commands:|r")
+        local line = ""
+        for i, cmd in ipairs(commandList) do
+            if string.len(line) + string.len(cmd) + 2 > 200 then
+                ChatFrame1:AddMessage("|cffffffff" .. line .. "|r")
+                line = cmd
+            else
+                if string.len(line) > 0 then
+                    line = line .. ", " .. cmd
+                else
+                    line = cmd
+                end
+            end
+        end
+        if string.len(line) > 0 then
+            ChatFrame1:AddMessage("|cffffffff" .. line .. "|r")
+        end
+        ChatFrame1:AddMessage("|cff00ff00Total: " .. table.getn(commandList) .. " commands|r")
+    end
+    
+    return commandList
+end
+
+-- ============================================================================
+-- Slash Commands
+-- ============================================================================
+
 -- Slash command
 SLASH_CEKEYBOARD1 = "/cekeyboard"
 SlashCmdList["CEKEYBOARD"] = function()
     Keyboard:Toggle()
+end
+
+-- Debug command to list all available slash commands
+SLASH_CELISTCMDS1 = "/celistcmds"
+SLASH_CELISTCMDS2 = "/celistcommands"
+SLASH_CELISTCMDS3 = "/cecmdlist"
+SlashCmdList["CELISTCMDS"] = function()
+    Keyboard:ListAllCommands()
 end
 
 -- Module loaded silently
