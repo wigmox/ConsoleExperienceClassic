@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.3.0...v0.4.0) (2025-12-29)
+
+
+### Features
+
+* add translations ([151e0bf](https://github.com/pepordev/ConsoleExperienceClassic/commit/151e0bf0385b68a33793330891d6e7a09baf7e6e))
+
+
+### Bug Fixes
+
+* correct keyboard ([81e4d17](https://github.com/pepordev/ConsoleExperienceClassic/commit/81e4d1741f7c3c742648933157d3799be03f5074))
+* correct placement actions ([b4eb044](https://github.com/pepordev/ConsoleExperienceClassic/commit/b4eb044c1b9d4e7e7957f49bfd6d241ed0b39ee2))
+* fix spells tooltip ([38e0c43](https://github.com/pepordev/ConsoleExperienceClassic/commit/38e0c43d8e8ef9e8b35aa77ca2a03aab7115cf18))
+
 ## [0.3.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.2.1...v0.3.0) (2025-12-28)
 
 
