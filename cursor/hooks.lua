@@ -329,21 +329,16 @@ function Hooks:OnFrameShow(frame)
     -- Find first visible button and move cursor to it
     local firstButton = Cursor:FindFirstVisibleButton(frame)
     
+    -- Set up cursor navigation bindings first (before moving to button)
+    if ConsoleExperience.cursor.keybindings then
+        ConsoleExperience.cursor.keybindings:SetupCursorBindings()
+    end
+    
     if firstButton then
         CE_Debug("Found button: " .. (firstButton:GetName() or "unnamed"))
         Cursor:MoveCursorToButton(firstButton)
-        
-        -- Set up cursor navigation bindings
-        if ConsoleExperience.cursor.keybindings then
-            ConsoleExperience.cursor.keybindings:SetupCursorBindings()
-        end
     else
         CE_Debug("No buttons found in " .. frameName)
-        
-        -- Still set up cursor bindings so user can navigate if buttons appear later
-        if ConsoleExperience.cursor.keybindings then
-            ConsoleExperience.cursor.keybindings:SetupCursorBindings()
-        end
     end
 end
 

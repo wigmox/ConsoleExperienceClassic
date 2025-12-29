@@ -590,6 +590,12 @@ function Config:CreateInterfaceSection()
             Config:UpdateCrosshair()
         end)
     xEditBox:SetPoint("LEFT", xLabel, "RIGHT", 10, 0)
+    -- Update crosshair in real-time as user types
+    xEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 0
+        Config:Set("crosshairX", num)
+        Config:UpdateCrosshair()
+    end)
     
     -- Crosshair Y Position
     local yLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -604,6 +610,12 @@ function Config:CreateInterfaceSection()
             Config:UpdateCrosshair()
         end)
     yEditBox:SetPoint("LEFT", yLabel, "RIGHT", 10, 0)
+    -- Update crosshair in real-time as user types
+    yEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 0
+        Config:Set("crosshairY", num)
+        Config:UpdateCrosshair()
+    end)
     
     -- Crosshair Size
     local sizeLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -620,6 +632,14 @@ function Config:CreateInterfaceSection()
             Config:UpdateCrosshair()
         end)
     sizeEditBox:SetPoint("LEFT", sizeLabel, "RIGHT", 10, 0)
+    -- Update crosshair in real-time as user types
+    sizeEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 24
+        if num < 4 then num = 4 end
+        if num > 100 then num = 100 end
+        Config:Set("crosshairSize", num)
+        Config:UpdateCrosshair()
+    end)
     
     -- Help text
     local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -805,6 +825,14 @@ function Config:CreateBarsSection()
             Config:UpdateActionBarLayout()
         end)
     sizeEditBox:SetPoint("LEFT", sizeLabel, "RIGHT", 10, 0)
+    -- Update action bars in real-time as user types
+    sizeEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 40
+        if num < 20 then num = 20 end
+        if num > 80 then num = 80 end
+        Config:Set("barButtonSize", num)
+        Config:UpdateActionBarLayout()
+    end)
     
     -- Padding
     local paddingLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -821,6 +849,14 @@ function Config:CreateBarsSection()
             Config:UpdateActionBarLayout()
         end)
     paddingEditBox:SetPoint("LEFT", paddingLabel, "RIGHT", 10, 0)
+    -- Update action bars in real-time as user types
+    paddingEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 40
+        if num < 0 then num = 0 end
+        if num > 100 then num = 100 end
+        Config:Set("barPadding", num)
+        Config:UpdateActionBarLayout()
+    end)
     
     -- X Offset
     local xLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -835,6 +871,12 @@ function Config:CreateBarsSection()
             Config:UpdateActionBarLayout()
         end)
     xEditBox:SetPoint("LEFT", xLabel, "RIGHT", 10, 0)
+    -- Update action bars in real-time as user types
+    xEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 0
+        Config:Set("barXOffset", num)
+        Config:UpdateActionBarLayout()
+    end)
     
     -- Y Offset
     local yLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -849,6 +891,12 @@ function Config:CreateBarsSection()
             Config:UpdateActionBarLayout()
         end)
     yEditBox:SetPoint("LEFT", yLabel, "RIGHT", 10, 0)
+    -- Update action bars in real-time as user types
+    yEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 70
+        Config:Set("barYOffset", num)
+        Config:UpdateActionBarLayout()
+    end)
     
     -- Star Padding (between left and right sides)
     local starPaddingLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -865,6 +913,14 @@ function Config:CreateBarsSection()
             Config:UpdateActionBarLayout()
         end)
     starPaddingEditBox:SetPoint("LEFT", starPaddingLabel, "RIGHT", 10, 0)
+    -- Update action bars in real-time as user types
+    starPaddingEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 200
+        if num < 50 then num = 50 end
+        if num > 1000 then num = 1000 end
+        Config:Set("barStarPadding", num)
+        Config:UpdateActionBarLayout()
+    end)
     
     -- Scale
     local scaleLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -881,6 +937,14 @@ function Config:CreateBarsSection()
             Config:UpdateActionBarLayout()
         end)
     scaleEditBox:SetPoint("LEFT", scaleLabel, "RIGHT", 10, 0)
+    -- Update action bars in real-time as user types
+    scaleEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 1.0
+        if num < 0.5 then num = 0.5 end
+        if num > 2.0 then num = 2.0 end
+        Config:Set("barScale", num)
+        Config:UpdateActionBarLayout()
+    end)
     
     -- Help text
     local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")

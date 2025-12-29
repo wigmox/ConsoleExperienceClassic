@@ -338,6 +338,24 @@ function Tooltip:Initialize()
             actions = {{icon = "a", prompt = "Toggle"}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
+        -- Keyboard keys
+        {
+            pattern = "CEKeyboardKey.*",
+            actions = {{icon = "a", prompt = "Type"}, {icon = "x", prompt = "Send"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}}
+        },
+        -- Keyboard special keys (Shift, Space, Backspace, etc.)
+        {
+            pattern = "CEKeyboardSpecialKey.*",
+            actions = {{icon = "a", prompt = "Press"}, {icon = "x", prompt = "Send"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}}
+        },
+        -- Keyboard emote buttons
+        {
+            pattern = "CEKeyboardEmote.*",
+            actions = {{icon = "a", prompt = "Emote"}, {icon = "x", prompt = "Send"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}}
+        },
     }
     
     -- Special actions for element types (not pattern based)
@@ -367,24 +385,57 @@ function Tooltip:GetActions(buttonName, elementType)
 end
 
 function Tooltip:GetBindings(buttonName)
-    local bindings = nil
+    local bindings = {}
+    local isKeyboardButton = false
     
+    -- Always include base navigation bindings (these never change)
+    local CursorKeys = ConsoleExperience.cursor.keybindings
+    if CursorKeys then
+        table.insert(bindings, {key = CursorKeys.CURSOR_CONTROLS.up, action = "CE_CURSOR_MOVE_UP"})
+        table.insert(bindings, {key = CursorKeys.CURSOR_CONTROLS.down, action = "CE_CURSOR_MOVE_DOWN"})
+        table.insert(bindings, {key = CursorKeys.CURSOR_CONTROLS.left, action = "CE_CURSOR_MOVE_LEFT"})
+        table.insert(bindings, {key = CursorKeys.CURSOR_CONTROLS.right, action = "CE_CURSOR_MOVE_RIGHT"})
+    end
+    
+    -- Get context-specific bindings for this button
+    local contextBindings = nil
     if buttonName then
         for _, config in ipairs(self.frameActions) do
             if string.find(buttonName, config.pattern) then
-                bindings = config.bindings
+                contextBindings = config.bindings
+                -- Check if this is a keyboard button (already has key "2" binding)
+                if string.find(buttonName, "CEKeyboard") then
+                    isKeyboardButton = true
+                end
                 break
             end
         end
     end
     
-    -- Default binding if no pattern matched
-    if not bindings then
-        bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
+    -- Add context-specific bindings (these override base bindings for same keys)
+    if contextBindings then
+        for _, binding in ipairs(contextBindings) do
+            -- Replace existing binding if key already exists, otherwise add
+            local found = false
+            for i, existingBinding in ipairs(bindings) do
+                if existingBinding.key == binding.key then
+                    bindings[i] = binding
+                    found = true
+                    break
+                end
+            end
+            if not found then
+                table.insert(bindings, binding)
+            end
+        end
+    else
+        -- Default binding if no pattern matched
+        table.insert(bindings, {key = "1", action = "CE_CURSOR_CLICK_LEFT"})
     end
     
     -- If keyboard is visible, add X = Send binding (key "2" = CE_CURSOR_BIND)
-    if ConsoleExperience.keyboard and ConsoleExperience.keyboard.frame and ConsoleExperience.keyboard.frame:IsVisible() then
+    -- But skip this for keyboard buttons themselves (they already have it in frameActions)
+    if not isKeyboardButton and ConsoleExperience.keyboard and ConsoleExperience.keyboard.frame and ConsoleExperience.keyboard.frame:IsVisible() then
         -- Check if X binding already exists
         local hasXBinding = false
         for _, binding in ipairs(bindings) do
@@ -395,6 +446,20 @@ function Tooltip:GetBindings(buttonName)
         end
         if not hasXBinding then
             table.insert(bindings, {key = "2", action = "CE_CURSOR_BIND"})
+        end
+    end
+    
+    -- Default cancel binding if not set
+    local hasCancelBinding = false
+    if CursorKeys then
+        for _, binding in ipairs(bindings) do
+            if binding.key == CursorKeys.CURSOR_CONTROLS.cancel then
+                hasCancelBinding = true
+                break
+            end
+        end
+        if not hasCancelBinding then
+            table.insert(bindings, {key = CursorKeys.CURSOR_CONTROLS.cancel, action = "CE_CURSOR_CLOSE"})
         end
     end
     

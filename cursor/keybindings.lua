@@ -39,43 +39,37 @@ function CursorKeys:SetupCursorBindings()
     -- Save original bindings
     self:SaveOriginalBindings()
     
-    -- Set cursor movement bindings
-    SetBinding(self.CURSOR_CONTROLS.up, "CE_CURSOR_MOVE_UP")
-    SetBinding(self.CURSOR_CONTROLS.down, "CE_CURSOR_MOVE_DOWN")
-    SetBinding(self.CURSOR_CONTROLS.left, "CE_CURSOR_MOVE_LEFT")
-    SetBinding(self.CURSOR_CONTROLS.right, "CE_CURSOR_MOVE_RIGHT")
-    
-    -- Set action bindings
-    SetBinding(self.CURSOR_CONTROLS.confirm, "CE_CURSOR_CLICK_LEFT")
-    SetBinding(self.CURSOR_CONTROLS.cancel, "CE_CURSOR_CLOSE")
-    
-    -- Debug: show all cursor bindings
-    CE_Debug("Cursor bindings configured:")
-    CE_Debug("  UP (key " .. self.CURSOR_CONTROLS.up .. "): CE_CURSOR_MOVE_UP")
-    CE_Debug("  DOWN (key " .. self.CURSOR_CONTROLS.down .. "): CE_CURSOR_MOVE_DOWN")
-    CE_Debug("  LEFT (key " .. self.CURSOR_CONTROLS.left .. "): CE_CURSOR_MOVE_LEFT")
-    CE_Debug("  RIGHT (key " .. self.CURSOR_CONTROLS.right .. "): CE_CURSOR_MOVE_RIGHT")
-    CE_Debug("  CONFIRM (key " .. self.CURSOR_CONTROLS.confirm .. "): CE_CURSOR_CLICK_LEFT")
-    CE_Debug("  CANCEL (key " .. self.CURSOR_CONTROLS.cancel .. "): CE_CURSOR_CLOSE")
-    
-    SaveBindings(1)
-    
+    -- Mark cursor mode as active
     self.cursorModeActive = true
+    
+    -- Apply base navigation bindings immediately so navigation works even before moving to a button
+    -- These are the default bindings that always apply
+    local Tooltip = ConsoleExperience.cursor.tooltip
+    if Tooltip and Tooltip.GetBindings then
+        -- Get default bindings (no button name = default)
+        local bindings = Tooltip:GetBindings(nil)
+        if bindings then
+            self:ApplyContextBindings(bindings)
+        end
+    end
     
     CE_Debug("Cursor bindings activated!")
 end
 
 function CursorKeys:SaveOriginalBindings()
-    -- Save current bindings for the keys we're going to override
+    -- Save current bindings for ALL keys that might be overridden by context bindings
+    -- This includes navigation keys (5, 6, 7, 8) and action keys (1, 2, 3, 4)
     self.originalBindings = {}
     
     local keysToSave = {
-        self.CURSOR_CONTROLS.up,
-        self.CURSOR_CONTROLS.down,
-        self.CURSOR_CONTROLS.left,
-        self.CURSOR_CONTROLS.right,
-        self.CURSOR_CONTROLS.confirm,
-        self.CURSOR_CONTROLS.cancel,
+        self.CURSOR_CONTROLS.up,      -- 7
+        self.CURSOR_CONTROLS.down,    -- 5
+        self.CURSOR_CONTROLS.left,    -- 6
+        self.CURSOR_CONTROLS.right,   -- 8
+        self.CURSOR_CONTROLS.confirm, -- 1
+        self.CURSOR_CONTROLS.cancel,  -- 4
+        "2",  -- X button (used for bind/send actions)
+        "3",  -- Y button (used for delete/drop actions)
     }
     
     CE_Debug("Saving original bindings before cursor override:")
@@ -99,13 +93,16 @@ function CursorKeys:RestoreOriginalBindings()
     end
     
     -- Restore ALL original bindings exactly as they were saved
+    -- This includes all keys that might have been overridden by context bindings
     local keysToRestore = {
-        self.CURSOR_CONTROLS.up,
-        self.CURSOR_CONTROLS.down,
-        self.CURSOR_CONTROLS.left,
-        self.CURSOR_CONTROLS.right,
-        self.CURSOR_CONTROLS.confirm,
-        self.CURSOR_CONTROLS.cancel,
+        self.CURSOR_CONTROLS.up,      -- 7
+        self.CURSOR_CONTROLS.down,    -- 5
+        self.CURSOR_CONTROLS.left,    -- 6
+        self.CURSOR_CONTROLS.right,   -- 8
+        self.CURSOR_CONTROLS.confirm, -- 1
+        self.CURSOR_CONTROLS.cancel,  -- 4
+        "2",  -- X button
+        "3",  -- Y button
     }
     
     for _, key in ipairs(keysToRestore) do
@@ -142,11 +139,18 @@ function CursorKeys:ApplyContextBindings(bindings)
     -- Track if B button has a specific binding
     local hasBBinding = false
     
+    -- Log all bindings being applied
+    CE_Debug("Applying context bindings:")
+    for _, binding in ipairs(bindings) do
+        if binding.key and binding.action then
+            CE_Debug("  Key " .. binding.key .. " = " .. binding.action)
+        end
+    end
+    
     -- Apply all context bindings
     for _, binding in ipairs(bindings) do
         if binding.key and binding.action then
             SetBinding(binding.key, binding.action)
-            CE_Debug("Applied context binding: key " .. binding.key .. " = " .. binding.action)
             
             if binding.key == self.CURSOR_CONTROLS.cancel then
                 hasBBinding = true
@@ -157,6 +161,7 @@ function CursorKeys:ApplyContextBindings(bindings)
     -- If no B binding defined, default to close frame
     if not hasBBinding then
         SetBinding(self.CURSOR_CONTROLS.cancel, "CE_CURSOR_CLOSE")
+        CE_Debug("  Key " .. self.CURSOR_CONTROLS.cancel .. " = CE_CURSOR_CLOSE (default)")
     end
     
     -- Note: Don't SaveBindings here - too frequent, will cause lag

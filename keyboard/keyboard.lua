@@ -1431,6 +1431,7 @@ function Keyboard:Hide()
         Cursor.navigationState.activeFrames[self.frame] = nil
         
         -- Process frame hide to handle cursor cleanup
+        -- This will automatically refresh bindings when cursor moves to another button
         local Hooks = ConsoleExperience.cursor.hooks
         if Hooks and Hooks.ProcessFrameHide then
             Hooks:ProcessFrameHide(self.frame)
