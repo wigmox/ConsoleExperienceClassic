@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.5.1...v0.5.2) (2026-01-01)
+
+
+### Bug Fixes
+
+* correct inventory actions ([0a7b34b](https://github.com/pepordev/ConsoleExperienceClassic/commit/0a7b34bedd565a8bf0e2432031f63528e3275bf4))
+
 ## [0.5.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.5.0...v0.5.1) (2025-12-29)
 
 
