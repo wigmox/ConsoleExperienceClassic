@@ -17,7 +17,7 @@ Config.DEFAULTS = {
     -- Interface settings
     crosshairEnabled = true,
     crosshairX = 0,
-    crosshairY = 0,
+    crosshairY = 50,
     crosshairSize = 24,
     -- Action Bar settings
     barButtonSize = 60,
