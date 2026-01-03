@@ -15,13 +15,13 @@ local MACRO_PREFIX = "CE_"
 -- Default macros to create
 -- Each macro has: name, icon, body, actionSlot (optional - which action bar slot to assign)
 Macros.DEFAULT_MACROS = {
-    -- Interact with nearest target - assigned to LB button (slot 10)
+    -- Interact with nearest target - assigned to RT+LB buttons (slot 30)
     {
         name = "CE_Interact",
         icon = 83,  -- Crosshair/target icon
         body = "/run if InteractNearest then InteractNearest(1) else DEFAULT_CHAT_FRAME:AddMessage(\"Interact.dll is not properly loaded, falling back to TargetNearestEnemy()\", 1, 0, 0); TargetNearestEnemy() end",
         description = "Interact with nearest target",
-        actionSlot = 10  -- LB button (key 0)
+        actionSlot = 30  -- RT+LB buttons (Ctrl+key 0)
     },
 }
 
