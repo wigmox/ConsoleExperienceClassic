@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.6.0...v0.6.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* correct action bars statuses ([54e8177](https://github.com/pepordev/ConsoleExperienceClassic/commit/54e8177705642a4cf57a0673e0d2946cffef70fc))
+
 ## [0.6.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.5.3...v0.6.0) (2026-01-07)
 
 
