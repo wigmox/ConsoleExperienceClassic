@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.7.0...v0.8.0) (2026-01-07)
+
+
+### Features
+
+* add multiple controller setup ([23780c7](https://github.com/pepordev/ConsoleExperienceClassic/commit/23780c723f9b0b30009b4e6e335cc7e00f4c978a))
+* update images for PS/Xbox controllers, added support for modern and classic look ([ca24ff1](https://github.com/pepordev/ConsoleExperienceClassic/commit/ca24ff1185f181441ef41c5a683c348360a96235))
+
 ## [0.7.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.6.1...v0.7.0) (2026-01-07)
 
 
