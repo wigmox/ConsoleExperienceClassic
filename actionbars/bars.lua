@@ -27,9 +27,19 @@ local ActionBars = ConsoleExperience.actionbars
 ActionBars.NUM_BUTTONS = 10
 ActionBars.NUM_PAGES = 4
 ActionBars.TOOLTIP_UPDATE_TIME = 0.2
-ActionBars.RANGE_CHECK_TIME = 0.1
+ActionBars.RANGE_CHECK_TIME = 0.2  -- Check range every 200ms (like pfUI)
 ActionBars.FLASH_TIME = 0.4
 ActionBars.MODIFIER_CHECK_TIME = 0.05  -- Check modifiers every 50ms
+
+-- Color configurations for button states (matching pfUI defaults)
+ActionBars.RANGE_COLOR = {1.0, 0.1, 0.1, 1.0}  -- Red for out of range
+ActionBars.OOM_COLOR = {0.5, 0.5, 1.0, 1.0}    -- Blue for out of mana
+ActionBars.NA_COLOR = {0.4, 0.4, 0.4, 1.0}     -- Gray for not usable
+ActionBars.NORMAL_COLOR = {1.0, 1.0, 1.0, 1.0} -- White for normal
+
+-- Event caching system (like pfUI)
+ActionBars.eventCache = {}
+ActionBars.updateCache = {}
 
 -- Action slot offsets for each page (each page uses 10 consecutive action slots)
 -- WoW 1.12 has 120 action slots total (12 action bar pages of 10 buttons each)
@@ -153,7 +163,35 @@ function ActionBars:CheckModifiers()
     local newPage = self:GetCurrentModifierPage()
     
     if newPage ~= self.currentPage then
+        -- Clear all active states from previous page before switching
+        -- This prevents buttons from showing glow/flash from actions on the old page
+        for i = 1, self.NUM_BUTTONS do
+            local button = getglobal("ConsoleActionButton"..i)
+            if button then
+                -- Stop flashing (red overlay) - reset state completely
+                button.flashing = 0
+                button.flashtime = 0
+                local flash = getglobal(button:GetName().."Flash")
+                if flash then
+                    flash:Hide()
+                end
+                
+                -- Force hide active glow/border when switching pages
+                if button.activeFrame then
+                    button.activeFrame.glow:Hide()
+                    if button.activeFrame.border then
+                        button.activeFrame.border:Hide()
+                    end
+                end
+                
+                -- Reset checked state
+                button:SetChecked(0)
+            end
+        end
+        
         self.currentPage = newPage
+        -- Force full update of all buttons when page changes
+        -- This ensures icons, cooldowns, states, etc. are all refreshed
         self:UpdateAllButtons()
         -- Debug message (optional)
         -- DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[CE]|r Switched to page " .. newPage)
@@ -238,6 +276,38 @@ function ActionBars:ButtonOnLoad(button)
     button.rangeTimer = nil
     button.updateTooltip = nil
     
+    -- Vertex state tracking (like pfUI: 0=normal, 1=out of range, 2=oom, 3=not usable)
+    button.vertexstate = 0
+    button.outofrange = nil
+    
+    -- Create active state glow frame (for casting indicator)
+    local activeFrameName = button:GetName().."Active"
+    local activeFrame = getglobal(activeFrameName)
+    if not activeFrame then
+        activeFrame = CreateFrame("Frame", activeFrameName, button)
+        activeFrame:SetAllPoints(button)
+        activeFrame:SetFrameLevel(button:GetFrameLevel() + 1)
+        
+        -- Create colored border overlay (like pfUI's active indicator)
+        local border = activeFrame:CreateTexture(nil, "OVERLAY")
+        border:SetAllPoints(button)
+        border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+        border:SetBlendMode("ADD")
+        border:Hide()
+        activeFrame.border = border
+        
+        -- Create glow overlay using CheckButtonHilight texture
+        local glow = activeFrame:CreateTexture(nil, "OVERLAY")
+        glow:SetAllPoints(button)
+        glow:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+        glow:SetBlendMode("ADD")
+        glow:SetAlpha(0.6)
+        glow:Hide()
+        activeFrame.glow = glow
+        
+        button.activeFrame = activeFrame
+    end
+    
     -- Create cooldown frame if it doesn't exist
     local cooldownName = button:GetName().."Cooldown"
     local cooldown = getglobal(cooldownName)
@@ -316,15 +386,25 @@ function ActionBars:UpdateButton(button)
     elseif texture then
         icon:SetTexture(texture)
         icon:Show()
-        button.rangeTimer = -1
         button:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
         button.isSpecialBinding = nil
+        
+        -- Reset range state when updating button
+        button.outofrange = nil
+        button.vertexstate = 0
         
         self:UpdateButtonState(button)
         self:UpdateButtonUsable(button)
         self:UpdateButtonCooldown(button)
         self:UpdateButtonCount(button)
         self:UpdateButtonFlash(button)
+        
+        -- Initialize range timer for range checking (only if action has range)
+        if HasAction(actionID) and ActionHasRange(actionID) then
+            button.rangeTimer = self.RANGE_CHECK_TIME
+        else
+            button.rangeTimer = nil
+        end
     else
         icon:Hide()
         cooldown:Hide()
@@ -368,33 +448,74 @@ end
 
 function ActionBars:UpdateButtonState(button)
     local actionID = self:GetActionID(button)
-    if IsCurrentAction(actionID) then
+    local active = IsCurrentAction(actionID) or IsAutoRepeatAction(actionID)
+    
+    if active then
         button:SetChecked(1)
+        
+        -- Show active glow/border (casting indicator)
+        if button.activeFrame then
+            button.activeFrame.glow:Show()
+            if button.activeFrame.border then
+                -- Get class color for border (like pfUI)
+                local _, class = UnitClass("player")
+                local color = RAID_CLASS_COLORS[class]
+                if color then
+                    button.activeFrame.border:SetVertexColor(color.r, color.g, color.b, 1.0)
+                else
+                    button.activeFrame.border:SetVertexColor(1.0, 1.0, 0.5, 1.0) -- Default yellow
+                end
+                button.activeFrame.border:Show()
+            end
+        end
     else
         button:SetChecked(0)
+        
+        -- Hide active glow/border
+        if button.activeFrame then
+            button.activeFrame.glow:Hide()
+            if button.activeFrame.border then
+                button.activeFrame.border:Hide()
+            end
+        end
     end
 end
 
 function ActionBars:UpdateButtonUsable(button)
     local actionID = self:GetActionID(button)
     local icon = getglobal(button:GetName().."Icon")
-    local normalTexture = getglobal(button:GetName().."NormalTexture")
-    local isUsable, notEnoughMana = IsUsableAction(actionID)
+    if not icon then return end
     
-    if isUsable then
-        icon:SetVertexColor(1.0, 1.0, 1.0)
-        if normalTexture then
-            normalTexture:SetVertexColor(1.0, 1.0, 1.0)
+    local usable, oom = IsUsableAction(actionID)
+    local newVertexState = 0
+    
+    -- Check range first (if out of range, show red)
+    if button.outofrange then
+        newVertexState = 1
+        if button.vertexstate ~= 1 then
+            icon:SetVertexColor(self.RANGE_COLOR[1], self.RANGE_COLOR[2], self.RANGE_COLOR[3], self.RANGE_COLOR[4])
+            button.vertexstate = 1
         end
-    elseif notEnoughMana then
-        icon:SetVertexColor(0.5, 0.5, 1.0)
-        if normalTexture then
-            normalTexture:SetVertexColor(0.5, 0.5, 1.0)
+    -- Check out of mana
+    elseif oom then
+        newVertexState = 2
+        if button.vertexstate ~= 2 then
+            icon:SetVertexColor(self.OOM_COLOR[1], self.OOM_COLOR[2], self.OOM_COLOR[3], self.OOM_COLOR[4])
+            button.vertexstate = 2
         end
+    -- Check not usable
+    elseif not usable then
+        newVertexState = 3
+        if button.vertexstate ~= 3 then
+            icon:SetVertexColor(self.NA_COLOR[1], self.NA_COLOR[2], self.NA_COLOR[3], self.NA_COLOR[4])
+            button.vertexstate = 3
+        end
+    -- Normal state
     else
-        icon:SetVertexColor(0.4, 0.4, 0.4)
-        if normalTexture then
-            normalTexture:SetVertexColor(1.0, 1.0, 1.0)
+        newVertexState = 0
+        if button.vertexstate ~= 0 then
+            icon:SetVertexColor(self.NORMAL_COLOR[1], self.NORMAL_COLOR[2], self.NORMAL_COLOR[3], self.NORMAL_COLOR[4])
+            button.vertexstate = 0
         end
     end
 end
@@ -489,7 +610,11 @@ function ActionBars:ButtonOnEvent(button, event)
         if not hasSpecialBinding then
             self:UpdateButtonState(button)
         end
-    elseif event == "ACTIONBAR_UPDATE_USABLE" or event == "UPDATE_INVENTORY_ALERTS" or event == "ACTIONBAR_UPDATE_COOLDOWN" then
+    elseif event == "ACTIONBAR_UPDATE_USABLE" then
+        if not hasSpecialBinding then
+            self:UpdateButtonUsable(button)
+        end
+    elseif event == "ACTIONBAR_UPDATE_COOLDOWN" or event == "UPDATE_INVENTORY_ALERTS" then
         if not hasSpecialBinding then
             self:UpdateButtonCooldown(button)
         end
@@ -497,6 +622,7 @@ function ActionBars:ButtonOnEvent(button, event)
         self:UpdateButton(button)
         if not hasSpecialBinding then
             self:UpdateButtonState(button)
+            self:UpdateButtonUsable(button)
         end
     elseif event == "UNIT_INVENTORY_CHANGED" then
         if arg1 == "player" then
@@ -556,18 +682,42 @@ function ActionBars:ButtonOnUpdate(button, elapsed)
         end
     end
     
-    -- Handle range checking
+    -- Handle range checking (like pfUI)
     if button.rangeTimer then
         button.rangeTimer = button.rangeTimer - elapsed
         if button.rangeTimer <= 0 then
+            -- Check if action has range and is out of range
+            if HasAction(actionID) and ActionHasRange(actionID) then
+                local inRange = IsActionInRange(actionID)
+                if inRange == 0 then -- Out of range
+                    if not button.outofrange then
+                        button.outofrange = true
+                        self:UpdateButtonUsable(button)
+                    end
+                else -- In range or nil (no target)
+                    if button.outofrange then
+                        button.outofrange = nil
+                        self:UpdateButtonUsable(button)
+                    end
+                end
+            else
+                -- Action doesn't have range, clear out of range state
+                if button.outofrange then
+                    button.outofrange = nil
+                    self:UpdateButtonUsable(button)
+                end
+            end
+            
+            -- Update hotkey color (legacy support)
             local hotkey = getglobal(button:GetName().."HotKey")
             if hotkey then
-                if IsActionInRange(actionID) == 0 then
+                if button.outofrange then
                     hotkey:SetVertexColor(1.0, 0.1, 0.1)
                 else
                     hotkey:SetVertexColor(0.6, 0.6, 0.6)
                 end
             end
+            
             button.rangeTimer = self.RANGE_CHECK_TIME
         end
     end
