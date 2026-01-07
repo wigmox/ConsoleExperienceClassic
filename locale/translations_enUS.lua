@@ -27,6 +27,7 @@ ConsoleExperience_translation["enUS"] = {
     ["Crosshair Color"] = "Crosshair Color",
     ["Cross"] = "Cross",
     ["Dot"] = "Dot",
+    ["Controller Type"] = "Controller Type",
     ["X/Y offset from screen center. Use negative values to move left/down. Size: 4-100 pixels. Type: Cross shows lines, Dot shows only center dot."] = "X/Y offset from screen center. Use negative values to move left/down. Size: 4-100 pixels. Type: Cross shows lines, Dot shows only center dot.",
     
     -- XP/Rep Bars

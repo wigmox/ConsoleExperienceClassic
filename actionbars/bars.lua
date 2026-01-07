@@ -54,20 +54,41 @@ ActionBars.PAGE_OFFSETS = {
 -- Current active page
 ActionBars.currentPage = 1
 
+-- Function to get controller icon path based on controller type
+function ActionBars:GetControllerIconPath(iconName)
+    local controllerType = "xbox"  -- Default
+    if ConsoleExperience.config and ConsoleExperience.config.Get then
+        controllerType = ConsoleExperience.config:Get("controllerType") or "xbox"
+    elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.controllerType then
+        controllerType = ConsoleExperienceDB.config.controllerType
+    end
+    
+    -- D-pad icons are shared, controller-specific icons are in controllers/<type>/
+    local dPadIcons = {down = true, left = true, right = true, up = true}
+    if dPadIcons[iconName] then
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\img\\" .. iconName
+    else
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\img\\controllers\\" .. controllerType .. "\\" .. iconName
+    end
+end
+
 -- Controller button icon mapping (Button ID matches keyboard key)
 -- Button 1-9 = keys 1-9, Button 10 = key 0
-ActionBars.BUTTON_ICONS = {
-    [1] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\a",      -- Key 1
-    [2] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\x",      -- Key 2
-    [3] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\y",      -- Key 3
-    [4] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\b",      -- Key 4
-    [5] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\down",   -- Key 5
-    [6] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\left",   -- Key 6
-    [7] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\up",     -- Key 7
-    [8] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\right",  -- Key 8
-    [9] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\rb",     -- Key 9
-    [10] = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\lb",    -- Key 0
-}
+-- Icons are loaded dynamically based on controller type
+function ActionBars:GetButtonIcons()
+    return {
+        [1] = self:GetControllerIconPath("a"),      -- Key 1
+        [2] = self:GetControllerIconPath("x"),      -- Key 2
+        [3] = self:GetControllerIconPath("y"),      -- Key 3
+        [4] = self:GetControllerIconPath("b"),      -- Key 4
+        [5] = self:GetControllerIconPath("down"),   -- Key 5
+        [6] = self:GetControllerIconPath("left"),   -- Key 6
+        [7] = self:GetControllerIconPath("up"),     -- Key 7
+        [8] = self:GetControllerIconPath("right"),  -- Key 8
+        [9] = self:GetControllerIconPath("rb"),     -- Key 9
+        [10] = self:GetControllerIconPath("lb"),    -- Key 0
+    }
+end
 
 -- ============================================================================
 -- Module Initialization
@@ -320,8 +341,11 @@ function ActionBars:ButtonOnLoad(button)
     
     -- Set controller icon
     local controllerIcon = getglobal(button:GetName().."ControllerIcon")
-    if controllerIcon and self.BUTTON_ICONS[id] then
-        controllerIcon:SetTexture(self.BUTTON_ICONS[id])
+    if controllerIcon then
+        local buttonIcons = self:GetButtonIcons()
+        if buttonIcons[id] then
+            controllerIcon:SetTexture(buttonIcons[id])
+        end
     end
     
     -- Register for drag and click
@@ -350,6 +374,15 @@ function ActionBars:UpdateButton(button)
     local icon = getglobal(button:GetName().."Icon")
     local cooldown = getglobal(button:GetName().."Cooldown")
     local texture = GetActionTexture(actionID)
+    
+    -- Update controller icon based on current controller type
+    local controllerIcon = getglobal(button:GetName().."ControllerIcon")
+    if controllerIcon then
+        local buttonIcons = self:GetButtonIcons()
+        if buttonIcons[buttonID] then
+            controllerIcon:SetTexture(buttonIcons[buttonID])
+        end
+    end
     
     -- Check for special bindings (like JUMP for button A)
     -- Only show special binding icon if the config option is enabled

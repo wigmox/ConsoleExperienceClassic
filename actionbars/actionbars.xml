@@ -64,13 +64,13 @@
                 </FontString>
             </Layer>
             <Layer level="OVERLAY">
-                <!-- Controller button icon overlay at top right corner -->
+                <!-- Controller button icon overlay at top center -->
                 <Texture name="$parentControllerIcon" file="Interface\AddOns\ConsoleExperienceClassic\img\a">
                     <Size>
                         <AbsDimension x="16" y="16"/>
                     </Size>
                     <Anchors>
-                        <Anchor point="TOPRIGHT">
+                        <Anchor point="TOP">
                             <Offset>
                                 <AbsDimension x="0" y="0"/>
                             </Offset>

@@ -17,8 +17,23 @@ local BUTTON_SPACING = 8
 local FRAME_PADDING = 25
 local ICON_SIZE = 14
 
--- Icon path
-local iconPath = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\"
+-- Function to get icon path based on controller type
+local function GetIconPath(iconName)
+    local controllerType = "xbox"  -- Default
+    if ConsoleExperience.config and ConsoleExperience.config.Get then
+        controllerType = ConsoleExperience.config:Get("controllerType") or "xbox"
+    elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.controllerType then
+        controllerType = ConsoleExperienceDB.config.controllerType
+    end
+    
+    -- D-pad icons are shared, controller-specific icons are in controllers/<type>/
+    local dPadIcons = {down = true, left = true, right = true, up = true}
+    if dPadIcons[iconName] then
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\img\\" .. iconName
+    else
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\img\\controllers\\" .. controllerType .. "\\" .. iconName
+    end
+end
 
 -- Button layout info (matches action bar layout)
 -- Format: { id, icon, name }
@@ -135,7 +150,7 @@ function Placement:CreateFrame()
             headerIcon:SetWidth(ICON_SIZE + 2)
             headerIcon:SetHeight(ICON_SIZE + 2)
             headerIcon:SetTexCoord(0, 1, 0, 1)  -- Ensure proper texture coordinates
-            headerIcon:SetTexture(iconPath .. btnInfo.icon)
+            headerIcon:SetTexture(GetIconPath(btnInfo.icon))
             headerIcon:SetPoint("TOP", frame, "TOPLEFT", xOffset, -42)
             
             -- Header icon stays visible even if first button is hidden (other A buttons are still visible)
@@ -181,6 +196,8 @@ function Placement:CreateFrame()
         -- Position horizontally: FRAME_PADDING + labelColumnWidth/2 (center of label column)
         labelContainer:SetPoint("CENTER", frame, "TOPLEFT", FRAME_PADDING + (labelColumnWidth / 2), rowCenterY)
         
+        -- Store modifier icons for later refresh
+        labelContainer.modIcons = {}
         local xPos = 0
         if pageInfo and pageInfo.icons and table.getn(pageInfo.icons) > 0 then
             for i = 1, table.getn(pageInfo.icons) do
@@ -189,8 +206,9 @@ function Placement:CreateFrame()
                 modIcon:SetWidth(ICON_SIZE)
                 modIcon:SetHeight(ICON_SIZE)
                 modIcon:SetTexCoord(0, 1, 0, 1)  -- Ensure proper texture coordinates
-                modIcon:SetTexture(iconPath .. iconName)
+                modIcon:SetTexture(GetIconPath(iconName))
                 modIcon:SetPoint("RIGHT", labelContainer, "RIGHT", -xPos, 0)
+                labelContainer.modIcons[i] = modIcon
                 xPos = xPos + ICON_SIZE + 2
             end
         end
@@ -261,6 +279,10 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
     iconContainer:SetFrameLevel(button:GetFrameLevel() + 2)
     button.iconContainer = iconContainer
     
+    -- Store icons for later refresh
+    button.iconContainer.modIcons = {}
+    button.iconContainer.mainIcon = nil
+    
     -- Add modifier icons first (LT, RT) - positioned from left
     local xPos = 0
     if pageInfo and pageInfo.icons then
@@ -270,8 +292,9 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
             modIcon:SetWidth(ICON_SIZE)
             modIcon:SetHeight(ICON_SIZE)
             modIcon:SetTexCoord(0, 1, 0, 1)  -- Ensure proper texture coordinates
-            modIcon:SetTexture(iconPath .. modIconName)
+            modIcon:SetTexture(GetIconPath(modIconName))
             modIcon:SetPoint("LEFT", iconContainer, "LEFT", xPos, 0)
+            button.iconContainer.modIcons[i] = modIcon
             xPos = xPos + ICON_SIZE + 2  -- 2px spacing between icons
         end
     end
@@ -282,8 +305,9 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
         mainIcon:SetWidth(ICON_SIZE)
         mainIcon:SetHeight(ICON_SIZE)
         mainIcon:SetTexCoord(0, 1, 0, 1)  -- Ensure proper texture coordinates
-        mainIcon:SetTexture(iconPath .. btnInfo.icon)
+        mainIcon:SetTexture(GetIconPath(btnInfo.icon))
         mainIcon:SetPoint("LEFT", iconContainer, "LEFT", xPos, 0)
+        button.iconContainer.mainIcon = mainIcon
     end
     
     -- Store action slot
@@ -412,6 +436,66 @@ function Placement:UpdateAllButtons()
     
     for actionSlot, button in pairs(self.buttons) do
         self:UpdateButton(button)
+    end
+end
+
+function Placement:RefreshIcons()
+    if not self.frame then return end
+    
+    -- Update header icons (stored in frame.headerIcons table)
+    if self.frame.headerIcons then
+        for btn = 1, NUM_BUTTONS do
+            local headerIcon = self.frame.headerIcons[btn]
+            if headerIcon then
+                local btnInfo = self.BUTTON_INFO[btn]
+                if btnInfo then
+                    headerIcon:SetTexture(GetIconPath(btnInfo.icon))
+                end
+            end
+        end
+    end
+    
+    -- Update page modifier icons in labels
+    for page = 1, NUM_PAGES do
+        local labelContainer = getglobal("CEPlacementRowLabel" .. page)
+        if labelContainer and labelContainer.modIcons then
+            local pageInfo = self.PAGE_MODIFIERS[page]
+            if pageInfo and pageInfo.icons then
+                for i = 1, table.getn(pageInfo.icons) do
+                    local iconName = pageInfo.icons[i]
+                    if labelContainer.modIcons[i] then
+                        labelContainer.modIcons[i]:SetTexture(GetIconPath(iconName))
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Update button icons
+    if self.buttons then
+        for actionSlot, button in pairs(self.buttons) do
+            if button.iconContainer then
+                local pageIndex = button.pageIndex
+                local pageInfo = self.PAGE_MODIFIERS[pageIndex]
+                
+                -- Update modifier icons
+                if pageInfo and pageInfo.icons and button.iconContainer.modIcons then
+                    for i = 1, table.getn(pageInfo.icons) do
+                        local modIconName = pageInfo.icons[i]
+                        if button.iconContainer.modIcons[i] then
+                            button.iconContainer.modIcons[i]:SetTexture(GetIconPath(modIconName))
+                        end
+                    end
+                end
+                
+                -- Update main button icon
+                local buttonIndex = button.buttonIndex
+                local btnInfo = self.BUTTON_INFO[buttonIndex]
+                if btnInfo and button.iconContainer.mainIcon then
+                    button.iconContainer.mainIcon:SetTexture(GetIconPath(btnInfo.icon))
+                end
+            end
+        end
     end
 end
 

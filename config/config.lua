@@ -24,6 +24,7 @@ Config.DEFAULTS = {
     crosshairColorG = 1.0,    -- Green component (0-1)
     crosshairColorB = 1.0,    -- Blue component (0-1)
     crosshairColorA = 0.8,    -- Alpha component (0-1)
+    controllerType = "xbox",  -- "xbox" or "ps"
     -- Action Bar settings
     barButtonSize = 60,
     barXOffset = 0,
@@ -884,9 +885,89 @@ function Config:CreateInterfaceSection()
     end)
     UpdateColorPreview()
     
+    -- Controller Type dropdown
+    local controllerTypeLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    controllerTypeLabel:SetPoint("TOPLEFT", colorLabel, "BOTTOMLEFT", 0, -30)
+    controllerTypeLabel:SetText(T("Controller Type") .. ":")
+    
+    local controllerTypeDropdown = CreateFrame("Frame", "CEConfigControllerTypeDropdown", section, "UIDropDownMenuTemplate")
+    controllerTypeDropdown:SetPoint("LEFT", controllerTypeLabel, "RIGHT", -15, -3)
+    
+    -- Ensure dropdown button is navigable with cursor
+    local controllerDropdownButton = getglobal("CEConfigControllerTypeDropdownButton")
+    if controllerDropdownButton then
+        controllerDropdownButton:Enable()
+        controllerDropdownButton:Show()
+    end
+    
+    -- Initialize function for dropdown
+    local function InitializeControllerTypeDropdown()
+        local selectedValue = UIDropDownMenu_GetSelectedValue(controllerTypeDropdown) or (Config:Get("controllerType") or "xbox")
+        local info
+        
+        info = {}
+        info.text = "Xbox"
+        info.value = "xbox"
+        info.func = function()
+            UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, "xbox")
+            UIDropDownMenu_SetText("Xbox", controllerTypeDropdown)
+            Config:Set("controllerType", "xbox")
+            -- Reload action bars to apply new controller icons
+            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+                ConsoleExperience.actionbars:UpdateAllButtons()
+            end
+            -- Refresh placement frame icons if it exists
+            if ConsoleExperience.placement and ConsoleExperience.placement.RefreshIcons then
+                ConsoleExperience.placement:RefreshIcons()
+            end
+        end
+        if info.value == selectedValue then
+            info.checked = 1
+        end
+        UIDropDownMenu_AddButton(info)
+        
+        info = {}
+        info.text = "PlayStation"
+        info.value = "ps"
+        info.func = function()
+            UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, "ps")
+            UIDropDownMenu_SetText("PlayStation", controllerTypeDropdown)
+            Config:Set("controllerType", "ps")
+            -- Reload action bars to apply new controller icons
+            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+                ConsoleExperience.actionbars:UpdateAllButtons()
+            end
+            -- Refresh placement frame icons if it exists
+            if ConsoleExperience.placement and ConsoleExperience.placement.RefreshIcons then
+                ConsoleExperience.placement:RefreshIcons()
+            end
+        end
+        if info.value == selectedValue then
+            info.checked = 1
+        end
+        UIDropDownMenu_AddButton(info)
+    end
+    
+    UIDropDownMenu_Initialize(controllerTypeDropdown, InitializeControllerTypeDropdown)
+    UIDropDownMenu_SetWidth(120, controllerTypeDropdown)
+    
+    local currentControllerType = Config:Get("controllerType") or "xbox"
+    UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, currentControllerType)
+    UIDropDownMenu_SetText(currentControllerType == "xbox" and "Xbox" or "PlayStation", controllerTypeDropdown)
+    
+    -- Ensure dropdown button is navigable (get it after initialization)
+    local delayFrame2 = CreateFrame("Frame")
+    delayFrame2:SetScript("OnUpdate", function()
+        delayFrame2:Hide()
+        if ConsoleExperience.cursor and ConsoleExperience.cursor.RefreshFrame then
+            ConsoleExperience.cursor:RefreshFrame()
+        end
+    end)
+    delayFrame2:Show()
+    
     -- Help text
     local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    helpText:SetPoint("TOPLEFT", colorLabel, "BOTTOMLEFT", 0, -10)
+    helpText:SetPoint("TOPLEFT", controllerTypeLabel, "BOTTOMLEFT", 0, -10)
     helpText:SetWidth(260)
     helpText:SetJustifyH("LEFT")
     helpText:SetText(T("X/Y offset from screen center. Use negative values to move left/down. Size: 4-100 pixels. Type: Cross shows lines, Dot shows only center dot."))
@@ -2060,7 +2141,7 @@ function Config:UpdateActionBarLayout()
             
             local controllerIcon = getglobal(button:GetName() .. "ControllerIcon")
             if controllerIcon then
-                local iconSize = math.max(12, buttonSize / 2)
+                local iconSize = math.max(12, buttonSize / 3)
                 controllerIcon:SetWidth(iconSize)
                 controllerIcon:SetHeight(iconSize)
             end
