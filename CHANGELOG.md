@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.6.1...v0.7.0) (2026-01-07)
+
+
+### Features
+
+* add xp/reputation bars ([74f3072](https://github.com/pepordev/ConsoleExperienceClassic/commit/74f3072a6f5cc21f6dbe60512618a07a15f5834c))
+
 ## [0.6.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.6.0...v0.6.1) (2026-01-07)
 
 
