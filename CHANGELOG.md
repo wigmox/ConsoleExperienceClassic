@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.5.3...v0.6.0) (2026-01-07)
+
+
+### Features
+
+* add support to select color and type for the crosshair ([2f5ca45](https://github.com/pepordev/ConsoleExperienceClassic/commit/2f5ca45eaf32ce170d023563b71f39ee40945f20))
+
 ## [0.5.3](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.5.2...v0.5.3) (2026-01-03)
 
 
