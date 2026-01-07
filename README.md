@@ -4,6 +4,14 @@ A comprehensive controller-style interface addon for World of Warcraft: Vanilla 
 
 > **⚠️ WARNING: This addon is in a really early alpha development stage. Expect bugs, incomplete features, and potential issues. Use at your own risk.**
 
+## Support & Donations
+
+If you enjoy using ConsoleExperience Classic and want to support its development, consider buying me a coffee:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/pepordev)
+
+Your support helps maintain and improve the addon!
+
 ## Overview
 
 ConsoleExperience Classic provides a complete controller-friendly interface for WoW Vanilla, featuring gamepad-style action bars, cursor navigation, radial menus, virtual keyboard, and extensive customization options. The addon enables players to enjoy World of Warcraft with a controller or keyboard-only navigation system, making it perfect for couch gaming or accessibility needs.
@@ -75,9 +83,10 @@ ConsoleExperience Classic provides a complete controller-friendly interface for 
 
 ### 🛠️ Configuration System
 - **In-Game Config Menu**: Access via `/ce` command
-- **Multiple Sections**: General, Interface, Keybindings, and Action Bars
+- **Multiple Sections**: General, Interface, Keybindings, Action Bars, Chat, and XP/Rep Bars
 - **Real-Time Updates**: Changes apply immediately without reload
 - **Debug Mode**: Optional debug output for troubleshooting
+- **XP/Rep Bar Settings**: Configure bar visibility, size, colors, text display, and timeout
 
 ### 📝 Macro Management
 - **Default Macros**: Pre-configured macros for common actions
@@ -85,9 +94,26 @@ ConsoleExperience Classic provides a complete controller-friendly interface for 
 - **Auto-Placement**: Macros automatically placed on action bars
 - **Reset Function**: Restore default macros with one click
 
+### 📊 Experience & Reputation Bars
+- **Custom XP/Rep Bars**: Experience and reputation bars similar to pfUI
+- **Positioning**: Bars appear below chat frame, automatically adjusting chat position
+- **Visual Design**: Border texture matching game UI, scalable text that fits inside bars
+- **Display Modes**: 
+  - XP bar: Shows player experience, pet experience, or reputation
+  - Reputation bar: Shows watched faction reputation
+  - Flexible modes: Auto-switch between XP and reputation based on level
+- **Rested Experience**: Visual rested XP overlay on XP bar (blue bar)
+- **Text Display**: Optional text overlay showing percentage and details
+- **Fade Behavior**: Bars fade out after configurable timeout (default 5 seconds)
+- **Always Visible Mode**: Option to keep bars always visible
+- **Full Customization**: Configurable width, height, colors, text visibility, and positioning
+
 ### 🎨 Customization Options
 - **Action Bar Layout**: Adjust size, padding, position, and scale
 - **Crosshair Display**: Optional crosshair for screen center reference
+  - **Crosshair Types**: Choose between cross (lines) or dot (center point only)
+  - **Color Picker**: Customize crosshair color with RGB and alpha controls
+  - **Position & Size**: Adjustable X/Y offset and size
 - **Tooltip System**: Enhanced tooltips with controller button icons
 - **Visual Feedback**: Highlighted elements and action prompts
 
@@ -244,14 +270,6 @@ The keyboard supports full QWERTY layout including numbers, letters, and common 
 - **Auto Targeting System**: Intelligent target selection and management for combat
 - **Healer Mode**: Specialized interface and targeting system for healing classes
 - **Ring Menus**: Additional ring menus to expand the bindings and capabilities.
-
-## Support & Donations
-
-If you enjoy using ConsoleExperience Classic and want to support its development, consider buying me a coffee:
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/pepordev)
-
-Your support helps maintain and improve the addon!
 
 ## Compatibility
 
