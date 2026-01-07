@@ -66,9 +66,9 @@ function ActionBars:GetControllerIconPath(iconName)
     -- D-pad icons are shared, controller-specific icons are in controllers/<type>/
     local dPadIcons = {down = true, left = true, right = true, up = true}
     if dPadIcons[iconName] then
-        return "Interface\\AddOns\\ConsoleExperienceClassic\\img\\" .. iconName
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. iconName
     else
-        return "Interface\\AddOns\\ConsoleExperienceClassic\\img\\controllers\\" .. controllerType .. "\\" .. iconName
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. controllerType .. "\\" .. iconName
     end
 end
 
@@ -405,12 +405,23 @@ function ActionBars:UpdateButton(button)
         end
     end
     
+    -- Get appearance setting
+    local appearance = "classic"
+    if ConsoleExperience.config and ConsoleExperience.config.Get then
+        appearance = ConsoleExperience.config:Get("barAppearance") or "classic"
+    elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.barAppearance then
+        appearance = ConsoleExperienceDB.config.barAppearance
+    end
+    
+    -- Determine normal texture based on appearance
+    local normalTexture = "Interface\\Buttons\\UI-Quickslot2"
+    local emptyTexture = "Interface\\Buttons\\UI-Quickslot"
+    
     -- If useAForJump is enabled for button 1, ALWAYS show jump icon (priority over action slot)
     if specialBinding then
         icon:SetTexture(specialBinding.icon)
         icon:Show()
         button.rangeTimer = nil
-        button:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
         button.isSpecialBinding = specialBinding
         cooldown:Hide()
         -- Stop any flashing/glow effects since this is a special binding, not an action
@@ -419,7 +430,6 @@ function ActionBars:UpdateButton(button)
     elseif texture then
         icon:SetTexture(texture)
         icon:Show()
-        button:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
         button.isSpecialBinding = nil
         
         -- Reset range state when updating button
@@ -443,8 +453,11 @@ function ActionBars:UpdateButton(button)
         cooldown:Hide()
         button.rangeTimer = nil
         button.isSpecialBinding = nil
-        button:SetNormalTexture("Interface\\Buttons\\UI-Quickslot")
     end
+    
+    -- Apply button appearance styling after updating button content
+    -- This handles normal texture, icon sizing/positioning, overlay, flash, etc.
+    self:ApplyButtonAppearance(button)
     
     -- Always keep button visible so we can drop actions onto it
     button:Show()
@@ -475,6 +488,218 @@ function ActionBars:UpdateButton(button)
             macroName:SetText(button.isSpecialBinding.name)
         else
             macroName:SetText(GetActionText(actionID))
+        end
+    end
+end
+
+function ActionBars:ApplyButtonAppearance(button)
+    -- Apply button appearance styling (modern/classic) based on config
+    -- This function handles all visual styling, not just layout/positioning
+    local appearance = "classic"
+    if ConsoleExperience.config and ConsoleExperience.config.Get then
+        appearance = ConsoleExperience.config:Get("barAppearance") or "classic"
+    elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.barAppearance then
+        appearance = ConsoleExperienceDB.config.barAppearance
+    end
+    
+    local buttonSize = button:GetWidth()
+    if buttonSize == 0 then
+        buttonSize = button:GetHeight()
+    end
+    if buttonSize == 0 then
+        buttonSize = 40  -- Default fallback
+    end
+    
+    local icon = getglobal(button:GetName() .. "Icon")
+    local bg = getglobal(button:GetName() .. "Background")
+    local normalTex = getglobal(button:GetName() .. "NormalTexture")
+    local flash = getglobal(button:GetName() .. "Flash")
+    local overlayName = button:GetName() .. "Overlay"
+    local overlay = getglobal(overlayName)
+    local controllerIcon = getglobal(button:GetName() .. "ControllerIcon")
+    
+    if appearance == "modern" then
+        -- Modern: Create/show circular overlay texture (like Bartender2_Circled)
+        local circularTexture = "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\actionbars\\serenity"
+        
+        -- Create overlay texture if it doesn't exist
+        if not overlay then
+            overlay = button:CreateTexture(overlayName, "ARTWORK")
+        end
+        
+        -- Configure overlay
+        local overlaySize = buttonSize * 1.075  -- ~43px for 40px button
+        overlay:SetTexture(circularTexture)
+        overlay:SetWidth(overlaySize)
+        overlay:SetHeight(overlaySize)
+        overlay:ClearAllPoints()
+        overlay:SetPoint("TOPLEFT", button, "TOPLEFT", -3, 3)
+        overlay:SetVertexColor(1.0, 1.0, 1.0, 1.0)
+        overlay:Show()
+        
+        -- Hide square background
+        if bg then
+            bg:Hide()
+        end
+        
+        -- Minimize normal texture
+        if normalTex then
+            normalTex:SetTexture(nil)
+            normalTex:SetWidth(1)
+            normalTex:SetHeight(1)
+            normalTex:ClearAllPoints()
+            normalTex:SetPoint("TOPLEFT", button, "TOPLEFT", -4, 4)
+            button:SetNormalTexture(normalTex)
+        end
+        
+        -- Update HighlightTexture
+        local highlightTex = button:GetHighlightTexture()
+        if highlightTex then
+            highlightTex:SetVertexColor(75/255, 216/255, 241/255)
+            highlightTex:SetTexture(circularTexture)
+            highlightTex:SetWidth(overlaySize)
+            highlightTex:SetHeight(overlaySize)
+            highlightTex:ClearAllPoints()
+            highlightTex:SetBlendMode("BLEND")
+            highlightTex:SetPoint("TOPLEFT", button, "TOPLEFT", -3, 3)
+            button:SetHighlightTexture(highlightTex)
+        end
+        
+        -- Update PushedTexture
+        local pushedTex = button:GetPushedTexture()
+        if pushedTex then
+            pushedTex:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+            pushedTex:SetWidth(overlaySize * 0.88)
+            pushedTex:SetHeight(overlaySize * 0.86)
+            pushedTex:ClearAllPoints()
+            if icon then
+                pushedTex:SetPoint("CENTER", icon, "CENTER", 0, -1)
+            end
+            pushedTex:SetDrawLayer("HIGHLIGHT")
+            pushedTex:SetBlendMode("ADD")
+            button:SetPushedTexture(pushedTex)
+        end
+        
+        -- Update CheckedTexture
+        local checkedTex = button:GetCheckedTexture()
+        if checkedTex then
+            checkedTex:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+            checkedTex:SetWidth(overlaySize * 0.88)
+            checkedTex:SetHeight(overlaySize * 0.86)
+            checkedTex:ClearAllPoints()
+            if icon then
+                checkedTex:SetPoint("CENTER", icon, "CENTER", 0, -1)
+            end
+            checkedTex:SetDrawLayer("OVERLAY")
+            button:SetCheckedTexture(checkedTex)
+        end
+        
+        -- Icon size and position for modern
+        if icon then
+            icon:SetWidth(buttonSize * 0.65)
+            icon:SetHeight(buttonSize * 0.65)
+            icon:ClearAllPoints()
+            -- Move icon slightly to the left (negative X offset)
+            icon:SetPoint("CENTER", button, "CENTER", -buttonSize * 0.02, 0)
+            icon:SetTexCoord(0, 1, 0, 1)
+        end
+        
+        -- Flash texture (red overlay when attacking)
+        if flash then
+            flash:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\textures\\actionbars\\overlayred")
+            local flashSize = buttonSize * 0.75
+            flash:SetWidth(flashSize)
+            flash:SetHeight(flashSize)
+            flash:ClearAllPoints()
+            flash:SetPoint("TOPLEFT", button, "TOPLEFT", buttonSize * 0.075, -buttonSize * 0.075)
+            flash:SetTexCoord(0, 1, 0, 1)
+        end
+        
+        -- ControllerIcon
+        if controllerIcon then
+            local iconSize = math.max(12, buttonSize / 3)
+            controllerIcon:SetWidth(iconSize)
+            controllerIcon:SetHeight(iconSize)
+            controllerIcon:Show()
+        end
+    else
+        -- Classic: Hide overlay, restore square textures
+        if overlay then
+            overlay:Hide()
+        end
+        
+        -- Restore square background
+        if bg then
+            bg:SetTexture("Interface\\Buttons\\UI-Quickslot")
+            bg:SetWidth(buttonSize * 1.6)
+            bg:SetHeight(buttonSize * 1.6)
+            bg:SetVertexColor(1, 1, 1, 1)
+            bg:Show()
+        end
+        
+        -- Restore normal texture
+        if normalTex then
+            normalTex:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+            normalTex:SetWidth(buttonSize * 1.6)
+            normalTex:SetHeight(buttonSize * 1.6)
+            normalTex:SetVertexColor(1, 1, 1, 1)
+            normalTex:ClearAllPoints()
+            normalTex:SetPoint("CENTER", button, "CENTER", 0, 0)
+            normalTex:Show()
+        end
+        button:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
+        
+        -- Restore HighlightTexture
+        local highlightTex = button:GetHighlightTexture()
+        if highlightTex then
+            highlightTex:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+            highlightTex:SetBlendMode("ADD")
+            highlightTex:SetAllPoints(button)
+        end
+        
+        -- Restore PushedTexture
+        local pushedTex = button:GetPushedTexture()
+        if pushedTex then
+            pushedTex:SetTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+            pushedTex:SetAllPoints(button)
+            pushedTex:SetDrawLayer("ARTWORK")
+            pushedTex:SetBlendMode("BLEND")
+        end
+        
+        -- Restore CheckedTexture
+        local checkedTex = button:GetCheckedTexture()
+        if checkedTex then
+            checkedTex:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+            checkedTex:SetAllPoints(button)
+            checkedTex:SetDrawLayer("ARTWORK")
+            checkedTex:SetBlendMode("ADD")
+        end
+        
+        -- Icon size and position for classic
+        if icon then
+            icon:SetWidth(buttonSize - 4)
+            icon:SetHeight(buttonSize - 4)
+            icon:ClearAllPoints()
+            icon:SetPoint("CENTER", button, "CENTER", 0, 0)
+            icon:SetTexCoord(0, 1, 0, 1)
+        end
+        
+        -- Flash texture for classic
+        if flash then
+            flash:SetTexture("Interface\\Buttons\\UI-QuickslotRed")
+            flash:SetWidth(buttonSize - 4)
+            flash:SetHeight(buttonSize - 4)
+            flash:ClearAllPoints()
+            flash:SetPoint("CENTER", button, "CENTER", 0, 0)
+            flash:SetTexCoord(0, 1, 0, 1)
+        end
+        
+        -- ControllerIcon
+        if controllerIcon then
+            local iconSize = math.max(12, buttonSize / 3)
+            controllerIcon:SetWidth(iconSize)
+            controllerIcon:SetHeight(iconSize)
+            controllerIcon:Show()
         end
     end
 end

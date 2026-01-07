@@ -13,7 +13,7 @@ local Tooltip = ConsoleExperience.cursor.tooltip
 local TooltipHookFrame = CreateFrame("Frame", nil, GameTooltip)
 
 -- Icon path
-local iconPath = "Interface\\AddOns\\ConsoleExperienceClassic\\img\\"
+local iconPath = "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\"
 
 -- Text padding to make room for icon (must have enough space for 16px icon)
 local textPadding = "        "

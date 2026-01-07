@@ -29,9 +29,9 @@ local function GetIconPath(iconName)
     -- D-pad icons are shared, controller-specific icons are in controllers/<type>/
     local dPadIcons = {down = true, left = true, right = true, up = true}
     if dPadIcons[iconName] then
-        return "Interface\\AddOns\\ConsoleExperienceClassic\\img\\" .. iconName
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. iconName
     else
-        return "Interface\\AddOns\\ConsoleExperienceClassic\\img\\controllers\\" .. controllerType .. "\\" .. iconName
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. controllerType .. "\\" .. iconName
     end
 end
 

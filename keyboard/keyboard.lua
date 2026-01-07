@@ -400,7 +400,7 @@ function Keyboard:CreateKeys(parent)
             ltTexture:SetWidth(24)
             ltTexture:SetHeight(24)
             ltTexture:SetPoint("TOPRIGHT", shiftKey, "TOPRIGHT", -2, -2)
-            ltTexture:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\img\\lt")
+            ltTexture:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\lt")
             ltTexture:SetAlpha(0.8)
             shiftKey.ltTexture = ltTexture
         elseif keyLabel == "SPACE" then
@@ -426,7 +426,7 @@ function Keyboard:CreateKeys(parent)
             xTexture:SetWidth(24)
             xTexture:SetHeight(24)
             xTexture:SetPoint("TOPRIGHT", enterKey, "TOPRIGHT", -2, -2)
-            xTexture:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\img\\x")
+            xTexture:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\x")
             xTexture:SetAlpha(0.8)
             enterKey.xTexture = xTexture
         end

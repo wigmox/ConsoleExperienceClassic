@@ -65,7 +65,7 @@
             </Layer>
             <Layer level="OVERLAY">
                 <!-- Controller button icon overlay at top center -->
-                <Texture name="$parentControllerIcon" file="Interface\AddOns\ConsoleExperienceClassic\img\a">
+                <Texture name="$parentControllerIcon" file="Interface\AddOns\ConsoleExperienceClassic\textures\controllers\xbox\a">
                     <Size>
                         <AbsDimension x="16" y="16"/>
                     </Size>

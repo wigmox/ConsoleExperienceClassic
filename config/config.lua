@@ -32,6 +32,7 @@ Config.DEFAULTS = {
     barPadding = 65,
     barStarPadding = 600,  -- Padding between left and right star centers
     barScale = 1.0,
+    barAppearance = "classic",  -- "classic" or "modern"
     -- Chat settings
     chatWidth = 400,
     chatHeight = 150,
@@ -1134,9 +1135,65 @@ function Config:CreateBarsSection()
     desc:SetJustifyH("LEFT")
     desc:SetText(T("Configure the gamepad-style action bar layout."))
     
+    -- Appearance dropdown
+    local appearanceLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    appearanceLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+    appearanceLabel:SetText(T("Appearance") .. ":")
+    
+    local appearanceDropdown = CreateFrame("Frame", "CEConfigBarAppearanceDropdown", section, "UIDropDownMenuTemplate")
+    appearanceDropdown:SetPoint("LEFT", appearanceLabel, "RIGHT", -15, -3)
+    
+    -- Ensure dropdown button is navigable with cursor
+    local appearanceDropdownButton = getglobal("CEConfigBarAppearanceDropdownButton")
+    if appearanceDropdownButton then
+        appearanceDropdownButton:Enable()
+        appearanceDropdownButton:Show()
+    end
+    
+    -- Initialize function for dropdown
+    local function InitializeAppearanceDropdown()
+        local selectedValue = UIDropDownMenu_GetSelectedValue(appearanceDropdown) or (Config:Get("barAppearance") or "classic")
+        local info
+        
+        info = {}
+        info.text = T("Classic")
+        info.value = "classic"
+        info.func = function()
+            UIDropDownMenu_SetSelectedValue(appearanceDropdown, "classic")
+            UIDropDownMenu_SetText(T("Classic"), appearanceDropdown)
+            Config:Set("barAppearance", "classic")
+            Config:UpdateActionBarLayout()
+        end
+        if info.value == selectedValue then
+            info.checked = 1
+        end
+        UIDropDownMenu_AddButton(info)
+        
+        info = {}
+        info.text = T("Modern")
+        info.value = "modern"
+        info.func = function()
+            UIDropDownMenu_SetSelectedValue(appearanceDropdown, "modern")
+            UIDropDownMenu_SetText(T("Modern"), appearanceDropdown)
+            Config:Set("barAppearance", "modern")
+            Config:UpdateActionBarLayout()
+        end
+        if info.value == selectedValue then
+            info.checked = 1
+        end
+        UIDropDownMenu_AddButton(info)
+    end
+    
+    UIDropDownMenu_Initialize(appearanceDropdown, InitializeAppearanceDropdown)
+    UIDropDownMenu_SetWidth(120, appearanceDropdown)
+    
+    local currentAppearance = Config:Get("barAppearance") or "classic"
+    UIDropDownMenu_SetSelectedValue(appearanceDropdown, currentAppearance)
+    UIDropDownMenu_SetText(currentAppearance == "classic" and T("Classic") or T("Modern"), appearanceDropdown)
+    
     -- Button Size
     local sizeLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sizeLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+    sizeLabel:SetPoint("TOPLEFT", appearanceLabel, "BOTTOMLEFT", 0, -20)
     sizeLabel:SetText(T("Button Size") .. ":")
     
     local sizeEditBox = self:CreateEditBox(section, 50, 
@@ -1290,6 +1347,7 @@ function Config:CreateBarsSection()
         Config:Set("barXOffset", Config.DEFAULTS.barXOffset)
         Config:Set("barYOffset", Config.DEFAULTS.barYOffset)
         Config:Set("barScale", Config.DEFAULTS.barScale)
+        Config:Set("barAppearance", Config.DEFAULTS.barAppearance)
         Config:UpdateActionBarLayout()
         -- Refresh edit boxes
         sizeEditBox:SetText(tostring(Config.DEFAULTS.barButtonSize))
@@ -1298,6 +1356,10 @@ function Config:CreateBarsSection()
         xEditBox:SetText(tostring(Config.DEFAULTS.barXOffset))
         yEditBox:SetText(tostring(Config.DEFAULTS.barYOffset))
         scaleEditBox:SetText(tostring(Config.DEFAULTS.barScale))
+        -- Refresh dropdown
+        local currentAppearance = Config.DEFAULTS.barAppearance or "classic"
+        UIDropDownMenu_SetSelectedValue(appearanceDropdown, currentAppearance)
+        UIDropDownMenu_SetText(currentAppearance == "classic" and T("Classic") or T("Modern"), appearanceDropdown)
         CE_Debug("Action bar layout reset to defaults")
     end)
     
@@ -2094,7 +2156,7 @@ function Config:UpdateActionBarLayout()
     
     for _, buttonInfo in ipairs(self.BUTTON_LAYOUT) do
         local button = getglobal("ConsoleActionButton" .. buttonInfo.id)
-        if button then
+        if button and button:IsVisible() ~= nil then  -- Ensure button exists and is valid
             -- Calculate star center X position
             local starCenterX
             if buttonInfo.star == "left" then
@@ -2117,8 +2179,18 @@ function Config:UpdateActionBarLayout()
             -- Update child elements to match new size
             local icon = getglobal(button:GetName() .. "Icon")
             if icon then
-                icon:SetWidth(buttonSize - 4)
-                icon:SetHeight(buttonSize - 4)
+                -- For modern appearance, icon size will be adjusted below
+                -- For classic, use full size minus padding
+                local appearance = self:Get("barAppearance") or "classic"
+                if appearance == "modern" then
+                    -- Modern: Larger icon to better fill the circular overlay
+                    -- Increase size slightly to eliminate gaps
+                    icon:SetWidth(buttonSize * 0.70)  -- 70% of button size
+                    icon:SetHeight(buttonSize * 0.70)  -- Square for better fit
+                else
+                    icon:SetWidth(buttonSize - 4)
+                    icon:SetHeight(buttonSize - 4)
+                end
             end
             
             local bg = getglobal(button:GetName() .. "Background")
@@ -2133,17 +2205,9 @@ function Config:UpdateActionBarLayout()
                 normalTex:SetHeight(buttonSize * 1.6)
             end
             
-            local flash = getglobal(button:GetName() .. "Flash")
-            if flash then
-                flash:SetWidth(buttonSize - 4)
-                flash:SetHeight(buttonSize - 4)
-            end
-            
-            local controllerIcon = getglobal(button:GetName() .. "ControllerIcon")
-            if controllerIcon then
-                local iconSize = math.max(12, buttonSize / 3)
-                controllerIcon:SetWidth(iconSize)
-                controllerIcon:SetHeight(iconSize)
+            -- Apply button appearance styling (delegated to actionbars module)
+            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.ApplyButtonAppearance then
+                ConsoleExperience.actionbars:ApplyButtonAppearance(button)
             end
             
             -- Update cooldown to match button size using scale
