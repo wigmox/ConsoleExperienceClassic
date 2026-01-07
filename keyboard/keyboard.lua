@@ -400,7 +400,14 @@ function Keyboard:CreateKeys(parent)
             ltTexture:SetWidth(24)
             ltTexture:SetHeight(24)
             ltTexture:SetPoint("TOPRIGHT", shiftKey, "TOPRIGHT", -2, -2)
-            ltTexture:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\lt")
+            -- Get controller type for icon path
+            local controllerType = "xbox"  -- Default
+            if ConsoleExperience.config and ConsoleExperience.config.Get then
+                controllerType = ConsoleExperience.config:Get("controllerType") or "xbox"
+            elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.controllerType then
+                controllerType = ConsoleExperienceDB.config.controllerType
+            end
+            ltTexture:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. controllerType .. "\\lt")
             ltTexture:SetAlpha(0.8)
             shiftKey.ltTexture = ltTexture
         elseif keyLabel == "SPACE" then
@@ -426,7 +433,14 @@ function Keyboard:CreateKeys(parent)
             xTexture:SetWidth(24)
             xTexture:SetHeight(24)
             xTexture:SetPoint("TOPRIGHT", enterKey, "TOPRIGHT", -2, -2)
-            xTexture:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\x")
+            -- Get controller type for icon path
+            local controllerType = "xbox"  -- Default
+            if ConsoleExperience.config and ConsoleExperience.config.Get then
+                controllerType = ConsoleExperience.config:Get("controllerType") or "xbox"
+            elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.controllerType then
+                controllerType = ConsoleExperienceDB.config.controllerType
+            end
+            xTexture:SetTexture("Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. controllerType .. "\\x")
             xTexture:SetAlpha(0.8)
             enterKey.xTexture = xTexture
         end

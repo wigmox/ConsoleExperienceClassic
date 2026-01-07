@@ -12,8 +12,23 @@ local Tooltip = ConsoleExperience.cursor.tooltip
 -- Create a child frame of GameTooltip to hook show/hide events
 local TooltipHookFrame = CreateFrame("Frame", nil, GameTooltip)
 
--- Icon path
-local iconPath = "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\"
+-- Function to get icon path based on controller type
+local function GetIconPath(iconName)
+    local controllerType = "xbox"  -- Default
+    if ConsoleExperience.config and ConsoleExperience.config.Get then
+        controllerType = ConsoleExperience.config:Get("controllerType") or "xbox"
+    elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.controllerType then
+        controllerType = ConsoleExperienceDB.config.controllerType
+    end
+    
+    -- D-pad icons are shared, controller-specific icons are in controllers/<type>/
+    local dPadIcons = {down = true, left = true, right = true, up = true}
+    if dPadIcons[iconName] then
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. iconName
+    else
+        return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. controllerType .. "\\" .. iconName
+    end
+end
 
 -- Text padding to make room for icon (must have enough space for 16px icon)
 local textPadding = "        "
@@ -22,38 +37,45 @@ local textPadding = "        "
 local aIcon = GameTooltip:CreateTexture(nil, "OVERLAY")
 aIcon:SetWidth(16)
 aIcon:SetHeight(16)
-aIcon:SetTexture(iconPath .. "a")
 aIcon:Hide()
 
 local bIcon = GameTooltip:CreateTexture(nil, "OVERLAY")
 bIcon:SetWidth(16)
 bIcon:SetHeight(16)
-bIcon:SetTexture(iconPath .. "b")
 bIcon:Hide()
 
 local xIcon = GameTooltip:CreateTexture(nil, "OVERLAY")
 xIcon:SetWidth(16)
 xIcon:SetHeight(16)
-xIcon:SetTexture(iconPath .. "x")
 xIcon:Hide()
 
 local yIcon = GameTooltip:CreateTexture(nil, "OVERLAY")
 yIcon:SetWidth(16)
 yIcon:SetHeight(16)
-yIcon:SetTexture(iconPath .. "y")
 yIcon:Hide()
 
 local lbIcon = GameTooltip:CreateTexture(nil, "OVERLAY")
 lbIcon:SetWidth(16)
 lbIcon:SetHeight(16)
-lbIcon:SetTexture(iconPath .. "lb")
 lbIcon:Hide()
 
 local rbIcon = GameTooltip:CreateTexture(nil, "OVERLAY")
 rbIcon:SetWidth(16)
 rbIcon:SetHeight(16)
-rbIcon:SetTexture(iconPath .. "rb")
 rbIcon:Hide()
+
+-- Function to update icon textures when controller type changes
+local function UpdateIconTextures()
+    aIcon:SetTexture(GetIconPath("a"))
+    bIcon:SetTexture(GetIconPath("b"))
+    xIcon:SetTexture(GetIconPath("x"))
+    yIcon:SetTexture(GetIconPath("y"))
+    lbIcon:SetTexture(GetIconPath("lb"))
+    rbIcon:SetTexture(GetIconPath("rb"))
+end
+
+-- Initialize textures on load
+UpdateIconTextures()
 
 -- Map icon names to textures
 local tooltipIcons = {
