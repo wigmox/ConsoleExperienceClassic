@@ -266,6 +266,12 @@ function Chat:ManagePositions(a1, a2, a3)
                 helper.state = 1
             elseif (not ChatFrameEditBox or not ChatFrameEditBox:IsVisible()) and helper.state ~= 0 then
                 -- Edit box is hidden - return to configured chat position and size (unfocused mode)
+                -- Restore strata and frame level to normal (was set to DIALOG/100 when focused)
+                if ChatFrame1 then
+                    ChatFrame1:SetFrameStrata("BACKGROUND")
+                    ChatFrame1:SetFrameLevel(1)
+                end
+                
                 -- Force update to ensure we restore the configured layout
                 self:UpdateChatLayout(true)
                 
