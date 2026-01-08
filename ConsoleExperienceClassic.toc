@@ -20,4 +20,5 @@ init\config.xml
 init\chat.xml
 init\keyboard.xml
 init\xpbar.xml
+init\castbar.xml
 Bindings.xml

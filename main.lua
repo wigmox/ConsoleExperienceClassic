@@ -78,6 +78,11 @@ ConsoleExperience:SetScript("OnEvent", function()
             ConsoleExperience.xpbar:Initialize()
         end
         
+        -- Initialize cast bar module
+        if ConsoleExperience.castbar and ConsoleExperience.castbar.Initialize then
+            ConsoleExperience.castbar:Initialize()
+        end
+        
         CE_Debug("ConsoleExperience loaded!")
         
     elseif event == "PLAYER_ENTERING_WORLD" then

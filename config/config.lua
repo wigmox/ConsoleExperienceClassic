@@ -58,6 +58,12 @@ Config.DEFAULTS = {
     repBarTextShow = true,
     repBarTextMouse = false,
     repBarTextOffsetY = 0,
+    -- Castbar settings
+    castbarEnabled = true,  -- Castbar enabled by default
+    castbarHeight = 20,     -- Default height
+    castbarColorR = 0.0,    -- Blue by default
+    castbarColorG = 0.5,
+    castbarColorB = 1.0,
     -- Keybinding settings
     useAForJump = true,  -- If true, A button (key 1) is bound to JUMP instead of CE_ACTION_1
     -- Locale settings
@@ -110,6 +116,11 @@ function Config:InitializeDB()
         ConsoleExperience.xpbar:UpdateAllBars()
     end
     
+    -- Apply castbar layout
+    if ConsoleExperience.castbar and ConsoleExperience.castbar.ReloadConfig then
+        ConsoleExperience.castbar:ReloadConfig()
+    end
+    
 end
 
 function Config:Get(key)
@@ -154,6 +165,7 @@ Config.SECTIONS = {
     { id = "bars", name = "Action Bars" },
     { id = "chat", name = "Chat" },
     { id = "xpbar", name = "XP/Rep Bars" },
+    { id = "castbar", name = "Cast Bar" },
 }
 
 -- ============================================================================
@@ -466,6 +478,9 @@ function Config:CreateContentSections()
     
     -- Create XP/Rep Bar section
     self:CreateXPBarSection()
+    
+    -- Create Cast Bar section
+    self:CreateCastBarSection()
     
     -- Update scroll child height based on content
     self:UpdateScrollChildHeight()
@@ -1779,6 +1794,144 @@ function Config:CreateXPBarSection()
     yOffset = yOffset - 25
     
     self.contentSections["xpbar"] = section
+end
+
+-- ============================================================================
+-- Cast Bar Section
+-- ============================================================================
+
+function Config:CreateCastBarSection()
+    local content = self.frame.content
+    local Locale = ConsoleExperience.locale
+    local T = Locale and Locale.T or function(key) return key end
+    
+    local section = CreateFrame("Frame", nil, content)
+    section:SetAllPoints(content)
+    section:Hide()
+    
+    -- Section title
+    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
+    title:SetText(T("Cast Bar Settings"))
+    
+    -- Section description
+    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
+    desc:SetWidth(280)
+    desc:SetJustifyH("LEFT")
+    desc:SetText(T("Configure the custom cast bar that appears above chat."))
+    
+    local yOffset = -50
+    
+    -- Castbar Enabled
+    local enabledCheck = CreateFrame("CheckButton", "CEConfigCastbarEnabled", section, "UICheckButtonTemplate")
+    enabledCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
+    enabledCheck:SetChecked(Config:Get("castbarEnabled"))
+    enabledCheck:SetScript("OnClick", function()
+        local checked = this:GetChecked() == 1
+        Config:Set("castbarEnabled", checked)
+        if ConsoleExperience.castbar and ConsoleExperience.castbar.ReloadConfig then
+            ConsoleExperience.castbar:ReloadConfig()
+        end
+    end)
+    local enabledLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    enabledLabel:SetPoint("LEFT", enabledCheck, "RIGHT", 5, 0)
+    enabledLabel:SetText(T("Enable Cast Bar"))
+    
+    yOffset = yOffset - 35
+    
+    -- Castbar Height
+    local heightLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    heightLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
+    heightLabel:SetText(T("Cast Bar Height") .. ":")
+    
+    local heightEditBox = self:CreateEditBox(section, 50,
+        function() return tostring(Config:Get("castbarHeight") or 20) end,
+        function(value)
+            local num = tonumber(value) or 20
+            if num < 20 then num = 20 end
+            if num > 100 then num = 100 end
+            Config:Set("castbarHeight", num)
+            if ConsoleExperience.castbar and ConsoleExperience.castbar.UpdatePosition then
+                ConsoleExperience.castbar:UpdatePosition()
+            end
+        end)
+    heightEditBox:SetPoint("LEFT", heightLabel, "RIGHT", 10, 0)
+    
+    yOffset = yOffset - 35
+    
+    -- Castbar Color
+    local colorLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    colorLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
+    colorLabel:SetText(T("Cast Bar Color") .. ":")
+    
+    -- Color preview button
+    local colorBtn = CreateFrame("Button", "CEConfigCastbarColorBtn", section)
+    colorBtn:SetWidth(40)
+    colorBtn:SetHeight(20)
+    colorBtn:SetPoint("LEFT", colorLabel, "RIGHT", 10, 0)
+    
+    -- Create color preview texture
+    local colorPreview = colorBtn:CreateTexture(nil, "BACKGROUND")
+    colorPreview:SetAllPoints()
+    
+    local function UpdateColorPreview()
+        local r = Config:Get("castbarColorR") or 0.0
+        local g = Config:Get("castbarColorG") or 0.5
+        local b = Config:Get("castbarColorB") or 1.0
+        colorPreview:SetTexture(r, g, b)
+    end
+    UpdateColorPreview()
+    
+    -- Border for color button
+    colorBtn:SetBackdrop({
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = 8,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 }
+    })
+    colorBtn:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+    
+    colorBtn:SetScript("OnClick", function()
+        local r = Config:Get("castbarColorR") or 0.0
+        local g = Config:Get("castbarColorG") or 0.5
+        local b = Config:Get("castbarColorB") or 1.0
+        
+        -- Ensure ColorPickerFrame appears above config frame
+        ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+        ColorPickerFrame:SetFrameLevel(2000)
+        
+        if ColorPickerOkayButton then
+            ColorPickerOkayButton:SetFrameStrata("FULLSCREEN_DIALOG")
+            ColorPickerOkayButton:SetFrameLevel(2001)
+        end
+        if ColorPickerCancelButton then
+            ColorPickerCancelButton:SetFrameStrata("FULLSCREEN_DIALOG")
+            ColorPickerCancelButton:SetFrameLevel(2001)
+        end
+        
+        ColorPickerFrame.func = function()
+            local newR, newG, newB = ColorPickerFrame:GetColorRGB()
+            Config:Set("castbarColorR", newR)
+            Config:Set("castbarColorG", newG)
+            Config:Set("castbarColorB", newB)
+            UpdateColorPreview()
+            if ConsoleExperience.castbar and ConsoleExperience.castbar.UpdateColor then
+                ConsoleExperience.castbar:UpdateColor()
+            end
+        end
+        
+        ColorPickerFrame:SetColorRGB(r, g, b)
+        ColorPickerFrame.hasOpacity = false
+        
+        local delayFrame = CreateFrame("Frame")
+        delayFrame:SetScript("OnUpdate", function()
+            delayFrame:Hide()
+            ColorPickerFrame:Show()
+        end)
+        delayFrame:Show()
+    end)
+    
+    self.contentSections["castbar"] = section
 end
 
 -- ============================================================================

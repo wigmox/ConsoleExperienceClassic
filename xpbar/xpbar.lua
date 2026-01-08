@@ -284,17 +284,23 @@ local function OnEvent()
         self.bar:SetMinMaxValues(0, xpmax)
         self.bar:SetValue(xp)
         
-        -- Set rested bar if available
+        -- Set rested bar and XP bar color based on rested status
         if ex and ex > 0 then
+            -- Has rested XP - show rested bar and use blue color
             if self.restedbar then
                 self.restedbar:Show()
                 self.restedbar:SetMinMaxValues(0, xpmax)
                 self.restedbar:SetValue(xp + ex)
             end
+            -- Blue color when rested
+            self.bar:SetStatusBarColor(0.0, 0.5, 1.0, 1.0)
         else
+            -- No rested XP - hide rested bar and use purple color
             if self.restedbar then
                 self.restedbar:Hide()
             end
+            -- Purple color when not rested
+            self.bar:SetStatusBarColor(0.6, 0.0, 0.8, 1.0)
         end
         
         -- Set text
@@ -518,8 +524,8 @@ function XPBar:CreateBar(barType)
     
     -- Set bar color based on bar type
     if barType == "XP" then
-        local cr, cg, cb, ca = GetStringColor(xp_color)
-        b.bar:SetStatusBarColor(cr, cg, cb, ca)
+        -- Default to purple (not rested) - will be updated dynamically based on rested status
+        b.bar:SetStatusBarColor(0.6, 0.0, 0.8, 1.0)
     else
         -- REP bar default color (green, matching WoW default UI)
         -- Will be overridden dynamically based on faction standing
