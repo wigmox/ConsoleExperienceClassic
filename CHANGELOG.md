@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.10.0...v0.11.0) (2026-01-08)
+
+
+### Features
+
+* add sidebars (touch screen) ([4d8f2e9](https://github.com/pepordev/ConsoleExperienceClassic/commit/4d8f2e9696e92522b3615861b3a4f9c3db4e9424))
+
 ## [0.10.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.9.0...v0.10.0) (2026-01-08)
 
 
