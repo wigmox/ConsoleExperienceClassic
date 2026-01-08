@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.9.0...v0.10.0) (2026-01-08)
+
+
+### Features
+
+* add auto rank spells for action bars ([471f9b7](https://github.com/pepordev/ConsoleExperienceClassic/commit/471f9b713080517272c67c647d2b73ad5aa2d2d8))
+
 ## [0.9.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.8.1...v0.9.0) (2026-01-08)
 
 
