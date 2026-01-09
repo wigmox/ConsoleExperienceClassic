@@ -60,6 +60,14 @@ Hooks.frames = {
     {frame = "ConsoleExperienceRadialMenu", name = "Radial Menu"},
     {frame = "ConsoleExperiencePlacementFrame", name = "Spell Placement"},
     {frame = "MacroFrame", name = "Macros"},
+    -- System Options Frames
+    {frame = "VideoOptionsFrame", name = "Video Options"},
+    {frame = "SoundOptionsFrame", name = "Sound Options"},
+    {frame = "UIOptionsFrame", name = "Interface Options"},
+    {frame = "OptionsFrame", name = "Options"},
+    {frame = "KeyBindingFrame", name = "Key Bindings"},
+    {frame = "HelpFrame", name = "Help"},
+    {frame = "CinematicFrame", name = "Cinematic"},
 }
 
 -- ============================================================================
@@ -89,6 +97,7 @@ function Hooks:Initialize()
         self.eventFrame:RegisterEvent("MAIL_SHOW")
         self.eventFrame:RegisterEvent("TRADE_SKILL_SHOW")
         self.eventFrame:RegisterEvent("TRAINER_SHOW")
+        self.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
         self.eventFrame:SetScript("OnEvent", function()
             Hooks:TryHookPendingFrames()
         end)
@@ -267,6 +276,46 @@ function Hooks:TryHookPendingFrames()
         if not Cursor.navigationState.activeFrames[classTrainerFrame] then
             CE_Debug("ClassTrainerFrame detected visible, initializing cursor")
             self:OnFrameShow(classTrainerFrame)
+        end
+    end
+    
+    -- Special handling for VideoOptionsFrame
+    local videoOptionsFrame = getglobal("VideoOptionsFrame")
+    if videoOptionsFrame and videoOptionsFrame:IsVisible() then
+        local Cursor = ConsoleExperience.cursor
+        if not Cursor.navigationState.activeFrames[videoOptionsFrame] then
+            CE_Debug("VideoOptionsFrame detected visible, initializing cursor")
+            self:OnFrameShow(videoOptionsFrame)
+        end
+    end
+    
+    -- Special handling for SoundOptionsFrame
+    local soundOptionsFrame = getglobal("SoundOptionsFrame")
+    if soundOptionsFrame and soundOptionsFrame:IsVisible() then
+        local Cursor = ConsoleExperience.cursor
+        if not Cursor.navigationState.activeFrames[soundOptionsFrame] then
+            CE_Debug("SoundOptionsFrame detected visible, initializing cursor")
+            self:OnFrameShow(soundOptionsFrame)
+        end
+    end
+    
+    -- Special handling for UIOptionsFrame
+    local uiOptionsFrame = getglobal("UIOptionsFrame")
+    if uiOptionsFrame and uiOptionsFrame:IsVisible() then
+        local Cursor = ConsoleExperience.cursor
+        if not Cursor.navigationState.activeFrames[uiOptionsFrame] then
+            CE_Debug("UIOptionsFrame detected visible, initializing cursor")
+            self:OnFrameShow(uiOptionsFrame)
+        end
+    end
+    
+    -- Special handling for KeyBindingFrame
+    local keyBindingFrame = getglobal("KeyBindingFrame")
+    if keyBindingFrame and keyBindingFrame:IsVisible() then
+        local Cursor = ConsoleExperience.cursor
+        if not Cursor.navigationState.activeFrames[keyBindingFrame] then
+            CE_Debug("KeyBindingFrame detected visible, initializing cursor")
+            self:OnFrameShow(keyBindingFrame)
         end
     end
 end
