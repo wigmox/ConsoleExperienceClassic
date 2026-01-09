@@ -98,8 +98,16 @@ function Hooks:Initialize()
         self.eventFrame:RegisterEvent("TRADE_SKILL_SHOW")
         self.eventFrame:RegisterEvent("TRAINER_SHOW")
         self.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        self.eventFrame:RegisterEvent("MERCHANT_SHOW")
+        self.eventFrame:RegisterEvent("AUCTION_HOUSE_SHOW")
+        self.eventFrame:RegisterEvent("BANKFRAME_OPENED")
         self.eventFrame:SetScript("OnEvent", function()
             Hooks:TryHookPendingFrames()
+            
+            -- Open all bags when interacting with merchants, auction house, or bank
+            if event == "MERCHANT_SHOW" or event == "AUCTION_HOUSE_SHOW" or event == "BANKFRAME_OPENED" then
+                Hooks:OnVendorInteraction()
+            end
         end)
     end
     
@@ -478,6 +486,28 @@ function Hooks:HasActiveFrames()
         end
     end
     return false
+end
+
+-- ============================================================================
+-- Vendor/Auction House Bag Opening
+-- ============================================================================
+
+-- Open all bags when interacting with merchants, auction house, or bank
+function Hooks:OnVendorInteraction()
+    -- Check if the feature is enabled in config
+    local Config = ConsoleExperience.config
+    if Config and Config.Get then
+        local enabled = Config:Get("openAllBagsAtVendor")
+        if enabled == false then
+            return
+        end
+    end
+    
+    -- Open all bags (OpenAllBags is a Blizzard API function)
+    if OpenAllBags then
+        OpenAllBags()
+        CE_Debug("Opened all bags for vendor interaction")
+    end
 end
 
 -- Module loaded silently

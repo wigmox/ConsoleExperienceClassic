@@ -74,6 +74,8 @@ Config.DEFAULTS = {
     useAForJump = true,  -- If true, A button (key 1) is bound to JUMP instead of CE_ACTION_1
     -- Locale settings
     language = nil,  -- nil = use game locale, otherwise "enUS", "deDE", etc.
+    -- Bag settings
+    openAllBagsAtVendor = true,  -- Open all bags when interacting with merchants/auction house
 }
 
 -- ============================================================================
@@ -478,9 +480,9 @@ function Config:CreateInterfaceSection()
     UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, currentControllerType)
     UIDropDownMenu_SetText(currentControllerType == "xbox" and "Xbox" or "PlayStation", controllerTypeDropdown)
     
-    -- Language dropdown (right side)
+    -- Language dropdown (center)
     local langLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    langLabel:SetPoint("TOPRIGHT", generalBox, "TOPRIGHT", -180, generalBox.contentTop)
+    langLabel:SetPoint("TOP", generalBox, "TOP", -80, generalBox.contentTop)
     langLabel:SetText(T("Language") .. ":")
     
     local langDropdown = CreateFrame("Frame", "CEConfigLanguageDropdown", generalBox, "UIDropDownMenuTemplate")
@@ -537,6 +539,29 @@ function Config:CreateInterfaceSection()
     UIDropDownMenu_SetSelectedValue(langDropdown, currentLang)
     local langName = Locale and Locale:GetLanguageName(currentLang) or currentLang
     UIDropDownMenu_SetText(langName, langDropdown)
+    
+    -- Open All Bags at Vendor checkbox (right side, same row)
+    local openBagsLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    openBagsLabel:SetPoint("TOP", controllerTypeLabel, "TOP", 0, 0)
+    openBagsLabel:SetPoint("RIGHT", generalBox, "RIGHT", -50, 0)
+    openBagsLabel:SetText(T("Open all bags at vendor"))
+    
+    local openBagsCheck = CreateFrame("CheckButton", self:GetNextElementName("Check"), generalBox, "UICheckButtonTemplate")
+    openBagsCheck:SetWidth(24)
+    openBagsCheck:SetHeight(24)
+    openBagsCheck:SetPoint("LEFT", openBagsLabel, "RIGHT", 5, 0)
+    openBagsCheck.label = T("Open all bags at vendor")
+    openBagsCheck.tooltipText = T("Automatically open all bags when interacting with merchants, auction house, or bank.")
+    openBagsCheck:SetChecked(Config:Get("openAllBagsAtVendor"))
+    openBagsCheck:SetScript("OnClick", function()
+        local checked = this:GetChecked() == 1
+        Config:Set("openAllBagsAtVendor", checked)
+        if checked then
+            CE_Debug("Open all bags at vendor ENABLED")
+        else
+            CE_Debug("Open all bags at vendor DISABLED")
+        end
+    end)
     
     -- Ensure dropdown buttons are navigable and have tooltips
     local generalDelayFrame = CreateFrame("Frame")
@@ -895,35 +920,9 @@ function Config:CreateInterfaceSection()
     local chatBox = self:CreateSectionBox(section, T("Chat"))
     chatBox:SetPoint("TOP", keybindingsBox, "BOTTOM", 0, -30)
     
-    -- Row 1: Virtual Keyboard toggle
-    local keyboardCheck = self:CreateCheckbox(chatBox, T("Enable Virtual Keyboard"), 
-        function() return Config:Get("keyboardEnabled") end,
-        function(checked)
-            Config:Set("keyboardEnabled", checked)
-            CE_Debug("Virtual keyboard " .. (checked and "enabled" or "disabled"))
-            if not checked and ConsoleExperience.keyboard and ConsoleExperience.keyboard:IsVisible() then
-                ConsoleExperience.keyboard:Hide()
-            end
-            if not checked and ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
-                ChatFrameEditBox:EnableKeyboard(true)
-                local focusFrame = CreateFrame("Frame")
-                focusFrame:SetScript("OnUpdate", function()
-                    this.elapsed = (this.elapsed or 0) + arg1
-                    if this.elapsed > 0.1 then
-                        this:SetScript("OnUpdate", nil)
-                        if ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
-                            ChatFrameEditBox:SetFocus()
-                        end
-                    end
-                end)
-            end
-        end,
-        T("When enabled, a virtual keyboard appears when typing in chat. Disable to use an external keyboard."))
-    keyboardCheck:SetPoint("TOPLEFT", chatBox, "TOPLEFT", chatBox.contentLeft, chatBox.contentTop)
-    
-    -- Row 2: Width, Height inputs and Reset button
+    -- Row 1: Width, Height inputs and Reset button
     local chatWidthLabel = chatBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    chatWidthLabel:SetPoint("TOPLEFT", keyboardCheck, "BOTTOMLEFT", 0, -15)
+    chatWidthLabel:SetPoint("TOPLEFT", chatBox, "TOPLEFT", chatBox.contentLeft, chatBox.contentTop)
     chatWidthLabel:SetText(T("Width") .. ":")
     
     local chatWidthEditBox = self:CreateEditBox(chatBox, 50, 
@@ -963,7 +962,7 @@ function Config:CreateInterfaceSection()
         T("Height of the chat frame in pixels. Range: 50-1000."))
     chatHeightEditBox:SetPoint("LEFT", chatHeightLabel, "RIGHT", 5, 0)
     
-    -- Reset Chat button (right side of row 2)
+    -- Reset Chat button (right side of row 1)
     local resetChatButton = CreateFrame("Button", "CEConfigResetChat", chatBox, "UIPanelButtonTemplate")
     resetChatButton:SetWidth(100)
     resetChatButton:SetHeight(24)
@@ -972,6 +971,32 @@ function Config:CreateInterfaceSection()
     resetChatButton:SetText(T("Reset"))
     resetChatButton.label = T("Reset Chat Settings")
     resetChatButton.tooltipText = T("Reset chat width, height, and keyboard settings to defaults.")
+    
+    -- Row 2: Virtual Keyboard toggle
+    local keyboardCheck = self:CreateCheckbox(chatBox, T("Enable Virtual Keyboard"), 
+        function() return Config:Get("keyboardEnabled") end,
+        function(checked)
+            Config:Set("keyboardEnabled", checked)
+            CE_Debug("Virtual keyboard " .. (checked and "enabled" or "disabled"))
+            if not checked and ConsoleExperience.keyboard and ConsoleExperience.keyboard:IsVisible() then
+                ConsoleExperience.keyboard:Hide()
+            end
+            if not checked and ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
+                ChatFrameEditBox:EnableKeyboard(true)
+                local focusFrame = CreateFrame("Frame")
+                focusFrame:SetScript("OnUpdate", function()
+                    this.elapsed = (this.elapsed or 0) + arg1
+                    if this.elapsed > 0.1 then
+                        this:SetScript("OnUpdate", nil)
+                        if ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
+                            ChatFrameEditBox:SetFocus()
+                        end
+                    end
+                end)
+            end
+        end,
+        T("When enabled, a virtual keyboard appears when typing in chat. Disable to use an external keyboard."))
+    keyboardCheck:SetPoint("TOPLEFT", chatWidthLabel, "BOTTOMLEFT", 0, -15)
     resetChatButton:SetScript("OnClick", function()
         Config:Set("chatWidth", Config.DEFAULTS.chatWidth)
         Config:Set("chatHeight", Config.DEFAULTS.chatHeight)
