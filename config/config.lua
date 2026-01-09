@@ -157,21 +157,16 @@ end
 -- Constants
 -- ============================================================================
 
-Config.FRAME_WIDTH = 520
-Config.FRAME_HEIGHT = 420
-Config.SIDEBAR_WIDTH = 120
-Config.BUTTON_HEIGHT = 25
-Config.PADDING = 10
+Config.FRAME_WIDTH = 900
+Config.FRAME_HEIGHT = 650
+Config.SIDEBAR_WIDTH = 150
+Config.BUTTON_HEIGHT = 28
+Config.PADDING = 15
 
 -- Section definitions
 Config.SECTIONS = {
-    { id = "general", name = "General" },
     { id = "interface", name = "Interface" },
-    { id = "keybindings", name = "Keybindings" },
-    { id = "bars", name = "Action Bars" },
-    { id = "chat", name = "Chat" },
-    { id = "xpbar", name = "XP/Rep Bars" },
-    { id = "castbar", name = "Cast Bar" },
+    { id = "bars", name = "Bars" },
 }
 
 -- ============================================================================
@@ -202,11 +197,11 @@ function Config:CreateMainFrame()
         insets = { left = 11, right = 12, top = 12, bottom = 11 }
     })
     
-    -- Title bar for dragging (leave space for close button)
+    -- Title bar for dragging (full width like UIOptionsFrame)
     local titleRegion = CreateFrame("Frame", nil, frame)
     titleRegion:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -5)
-    titleRegion:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -35, -5)  -- Leave room for close button
-    titleRegion:SetHeight(25)
+    titleRegion:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -5)
+    titleRegion:SetHeight(30)
     titleRegion:EnableMouse(true)
     titleRegion:SetScript("OnMouseDown", function()
         frame:StartMoving()
@@ -215,26 +210,28 @@ function Config:CreateMainFrame()
         frame:StopMovingOrSizing()
     end)
     
-    -- Title text
-    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOP", frame, "TOP", 0, -15)
+    -- Header texture (like DialogFrame - sits on top of the border)
+    local headerTexture = frame:CreateTexture(nil, "ARTWORK")
+    headerTexture:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
+    headerTexture:SetWidth(300)
+    headerTexture:SetHeight(64)
+    headerTexture:SetPoint("TOP", frame, "TOP", 0, 12)
+    frame.headerTexture = headerTexture
+    
+    -- Title text (positioned on the header texture like UIOptionsFrame)
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOP", headerTexture, "TOP", 0, -14)
     -- Title will be set after locale is initialized, store reference
     frame.titleText = title
     
-    -- Close button
-    local closeButton = CreateFrame("Button", "ConsoleExperienceConfigCloseButton", frame, "UIPanelCloseButton")
-    closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
-    closeButton:SetFrameLevel(frame:GetFrameLevel() + 10)
-    closeButton:SetScript("OnClick", function()
-        ConsoleExperience.config.frame:Hide()
-    end)
-    closeButton:Show()
+    -- Footer height for buttons
+    local footerHeight = 40
     
-    -- Sidebar frame
+    -- Sidebar frame (adjusted to leave room for footer)
     local sidebar = CreateFrame("Frame", nil, frame)
-    sidebar:SetPoint("TOPLEFT", frame, "TOPLEFT", self.PADDING + 5, -40)
+    sidebar:SetPoint("TOPLEFT", frame, "TOPLEFT", self.PADDING + 5, -45)
     sidebar:SetWidth(self.SIDEBAR_WIDTH)
-    sidebar:SetHeight(self.FRAME_HEIGHT - 60)
+    sidebar:SetHeight(self.FRAME_HEIGHT - 45 - footerHeight - self.PADDING)
     sidebar:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -246,10 +243,10 @@ function Config:CreateMainFrame()
     sidebar:SetBackdropColor(0.1, 0.1, 0.1, 0.8)
     frame.sidebar = sidebar
     
-    -- Content frame (outer container with backdrop)
+    -- Content frame (outer container with backdrop, leaves room for footer)
     local content = CreateFrame("Frame", nil, frame)
     content:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", self.PADDING, 0)
-    content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -self.PADDING - 5, self.PADDING + 5)
+    content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -self.PADDING - 5, footerHeight + self.PADDING)
     content:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -258,119 +255,53 @@ function Config:CreateMainFrame()
         edgeSize = 12,
         insets = { left = 3, right = 3, top = 3, bottom = 3 }
     })
-    content:SetBackdropColor(0.1, 0.1, 0.1, 0.8)
+    content:SetBackdropColor(0.05, 0.05, 0.05, 0.3)
     frame.content = content
     
-    -- Create scroll frame using native ScrollFrame type (like pfUI)
-    local scrollFrame = CreateFrame("ScrollFrame", nil, content)
-    scrollFrame:SetPoint("TOPLEFT", content, "TOPLEFT", 5, -5)
-    scrollFrame:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -20, 5)  -- Leave room for buttons
-    frame.scrollFrame = scrollFrame
-    
-    -- Create scroll child container
-    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetWidth(scrollFrame:GetWidth())
-    scrollChild:SetHeight(900)
-    scrollFrame:SetScrollChild(scrollChild)
-    frame.scrollChild = scrollChild
-    
-    -- Create scroll up button (like quest frames)
-    local scrollUpButton = CreateFrame("Button", nil, scrollFrame)
-    scrollUpButton:SetWidth(24)
-    scrollUpButton:SetHeight(24)
-    scrollUpButton:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, 0)
-    scrollUpButton:SetNormalTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Up")
-    scrollUpButton:SetPushedTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Down")
-    scrollUpButton:SetDisabledTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Disabled")
-    scrollUpButton:SetHighlightTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Highlight")
-    scrollUpButton:SetScript("OnClick", function()
-        local current = scrollFrame:GetVerticalScroll()
-        local new = current - 30
-        if new < 0 then new = 0 end
-        scrollFrame:SetVerticalScroll(new)
-        scrollFrame:UpdateScrollState()
+    -- Footer buttons (like UIOptionsFrame)
+    -- Close button (right side, like UIOptionsFrame Cancel button)
+    local closeButton = CreateFrame("Button", "ConsoleExperienceConfigCloseButton", frame, "GameMenuButtonTemplate")
+    closeButton:SetWidth(96)
+    closeButton:SetHeight(21)
+    closeButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -self.PADDING - 5, self.PADDING)
+    closeButton:SetText(CLOSE or "Close")
+    closeButton:SetScript("OnClick", function()
+        PlaySound("gsTitleOptionExit")
+        ConsoleExperience.config.frame:Hide()
     end)
-    frame.scrollUpButton = scrollUpButton
+    frame.closeButton = closeButton
     
-    -- Create scroll down button (like quest frames)
-    local scrollDownButton = CreateFrame("Button", nil, scrollFrame)
-    scrollDownButton:SetWidth(24)
-    scrollDownButton:SetHeight(24)
-    scrollDownButton:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 0, 0)
-    scrollDownButton:SetNormalTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up")
-    scrollDownButton:SetPushedTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Down")
-    scrollDownButton:SetDisabledTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Disabled")
-    scrollDownButton:SetHighlightTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Highlight")
-    scrollDownButton:SetScript("OnClick", function()
-        local current = scrollFrame:GetVerticalScroll()
-        local max = scrollFrame:GetVerticalScrollRange()
-        local new = current + 30
-        if new > max then new = max end
-        scrollFrame:SetVerticalScroll(new)
-        scrollFrame:UpdateScrollState()
-    end)
-    frame.scrollDownButton = scrollDownButton
+    -- Debug button (left side)
+    local debugButton = CreateFrame("Button", "ConsoleExperienceConfigDebugButton", frame, "GameMenuButtonTemplate")
+    debugButton:SetWidth(96)
+    debugButton:SetHeight(21)
+    debugButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", self.PADDING + 5, self.PADDING)
     
-    -- Update scroll state function
-    scrollFrame.UpdateScrollState = function()
-        local range = scrollFrame:GetVerticalScrollRange()
-        local current = scrollFrame:GetVerticalScroll()
-        
-        -- Enable/disable buttons based on scroll position
-        if current <= 0 then
-            scrollUpButton:Disable()
+    -- Update debug button text based on current state
+    local function UpdateDebugButtonText()
+        local debugEnabled = Config:Get("debugEnabled")
+        if debugEnabled then
+            debugButton:SetText("Debug: ON")
         else
-            scrollUpButton:Enable()
-        end
-        
-        if current >= range then
-            scrollDownButton:Disable()
-        else
-            scrollDownButton:Enable()
-        end
-        
-        -- Hide buttons if no scrolling needed
-        if range <= 0 then
-            scrollUpButton:Hide()
-            scrollDownButton:Hide()
-        else
-            scrollUpButton:Show()
-            scrollDownButton:Show()
+            debugButton:SetText("Debug: OFF")
         end
     end
+    UpdateDebugButtonText()
+    frame.UpdateDebugButtonText = UpdateDebugButtonText
     
-    -- Scroll function (like pfUI)
-    scrollFrame.Scroll = function(self, step)
-        local step = step or 0
-        local current = self:GetVerticalScroll()
-        local max = self:GetVerticalScrollRange()
-        local new = current - step
-        
-        if new >= max then
-            self:SetVerticalScroll(max)
-        elseif new <= 0 then
-            self:SetVerticalScroll(0)
+    debugButton:SetScript("OnClick", function()
+        PlaySound("igMainMenuOptionCheckBoxOn")
+        local debugEnabled = Config:Get("debugEnabled")
+        Config:Set("debugEnabled", not debugEnabled)
+        UpdateDebugButtonText()
+        if not debugEnabled then
+            CE_Debug("Debug output ENABLED")
         else
-            self:SetVerticalScroll(new)
+            CE_Debug("Debug output DISABLED")
         end
-        
-        self:UpdateScrollState()
-    end
-    
-    -- Mouse wheel scrolling
-    scrollFrame:EnableMouseWheel(true)
-    scrollFrame:SetScript("OnMouseWheel", function()
-        this:Scroll(arg1 * 10)
     end)
+    frame.debugButton = debugButton
     
-    -- Update scroll child on frame show
-    frame:SetScript("OnShow", function()
-        scrollChild:SetWidth(scrollFrame:GetWidth())
-        scrollFrame:UpdateScrollState()
-    end)
-    
-    -- Update content reference
-    frame.content = scrollChild
     
     -- Store reference
     self.frame = frame
@@ -392,7 +323,7 @@ function Config:CreateMainFrame()
     self:CreateContentSections()
     
     -- Show first section by default
-    self:ShowSection("general")
+    self:ShowSection("interface")
     
     -- Hook frame for cursor navigation
     if ConsoleExperience.hooks and ConsoleExperience.hooks.HookDynamicFrame then
@@ -467,90 +398,92 @@ end
 function Config:CreateContentSections()
     self.contentSections = {}
     
-    -- Create General section
-    self:CreateGeneralSection()
-    
     -- Create Interface section
     self:CreateInterfaceSection()
     
-    -- Create Keybindings section
-    self:CreateKeybindingsSection()
-    
     -- Create Bars section
     self:CreateBarsSection()
-    
-    -- Create Chat section
-    self:CreateChatSection()
-    
-    -- Create XP/Rep Bar section
-    self:CreateXPBarSection()
-    
-    -- Create Cast Bar section
-    self:CreateCastBarSection()
-    
-    -- Update scroll child height based on content
-    self:UpdateScrollChildHeight()
 end
 
-function Config:UpdateScrollChildHeight()
-    if not self.frame or not self.frame.scrollChild or not self.frame.scrollFrame then return end
-    
-    -- Calculate maximum height needed for all sections
-    -- Action Bars section is the tallest with all the controls
-    local maxHeight = 900  -- Enough height for all sections including Action Bars
-    
-    -- Ensure scroll child width matches scroll frame width to prevent overflow
-    self.frame.scrollChild:SetWidth(self.frame.scrollFrame:GetWidth())
-    
-    -- Set scroll child height to accommodate all content
-    self.frame.scrollChild:SetHeight(maxHeight)
-    
-    -- Update scroll state using ScrollFrame's UpdateScrollState method
-    if self.frame.scrollFrame.UpdateScrollState then
-        self.frame.scrollFrame:UpdateScrollState()
-    end
-end
-
-function Config:CreateGeneralSection()
+function Config:CreateInterfaceSection()
     local content = self.frame.content
     local Locale = ConsoleExperience.locale
     local T = Locale and Locale.T or function(key) return key end
     
+    -- Main section container (attached to content)
     local section = CreateFrame("Frame", nil, content)
-    section:SetAllPoints(content)
+    section:SetPoint("TOPLEFT", content, "TOPLEFT", 5, -5)
+    section:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -5, 5)
     section:Hide()
     
-    -- Title
-    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
-    title:SetText(T("General Settings"))
+    -- ==================== General Settings Box ====================
+    local generalBox = self:CreateSectionBox(section, T("General"))
+    generalBox:SetPoint("TOP", section, "TOP", 0, -25)
     
-    -- Description
-    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    desc:SetWidth(280)
-    desc:SetJustifyH("LEFT")
-    desc:SetText(T("Configure general addon settings."))
+    -- Controller Type dropdown (left side)
+    local controllerTypeLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    controllerTypeLabel:SetPoint("TOPLEFT", generalBox, "TOPLEFT", generalBox.contentLeft, generalBox.contentTop)
+    controllerTypeLabel:SetText(T("Controller Type") .. ":")
     
-    -- Debug checkbox (saved to DB)
-    local debugCheck = self:CreateCheckbox(section, T("Enable Debug Output"), 
-        function() return Config:Get("debugEnabled") end,
-        function(checked)
-            Config:Set("debugEnabled", checked)
-            if checked then
-                CE_Debug("Debug output ENABLED (saved)")
-            else
-                CE_Debug("Debug output DISABLED (saved)")
+    local controllerTypeDropdown = CreateFrame("Frame", "CEConfigControllerTypeDropdown", generalBox, "UIDropDownMenuTemplate")
+    controllerTypeDropdown:SetPoint("LEFT", controllerTypeLabel, "RIGHT", -15, -3)
+    
+    -- Initialize function for controller type dropdown
+    local function InitializeControllerTypeDropdown()
+        local selectedValue = UIDropDownMenu_GetSelectedValue(controllerTypeDropdown) or (Config:Get("controllerType") or "xbox")
+        local info
+        
+        info = {}
+        info.text = "Xbox"
+        info.value = "xbox"
+        info.func = function()
+            UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, "xbox")
+            UIDropDownMenu_SetText("Xbox", controllerTypeDropdown)
+            Config:Set("controllerType", "xbox")
+            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+                ConsoleExperience.actionbars:UpdateAllButtons()
             end
-        end)
-    debugCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+            if ConsoleExperience.placement and ConsoleExperience.placement.RefreshIcons then
+                ConsoleExperience.placement:RefreshIcons()
+            end
+        end
+        if info.value == selectedValue then
+            info.checked = 1
+        end
+        UIDropDownMenu_AddButton(info)
+        
+        info = {}
+        info.text = "PlayStation"
+        info.value = "ps"
+        info.func = function()
+            UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, "ps")
+            UIDropDownMenu_SetText("PlayStation", controllerTypeDropdown)
+            Config:Set("controllerType", "ps")
+            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+                ConsoleExperience.actionbars:UpdateAllButtons()
+            end
+            if ConsoleExperience.placement and ConsoleExperience.placement.RefreshIcons then
+                ConsoleExperience.placement:RefreshIcons()
+            end
+        end
+        if info.value == selectedValue then
+            info.checked = 1
+        end
+        UIDropDownMenu_AddButton(info)
+    end
     
-    -- Language selector dropdown
-    local langLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    langLabel:SetPoint("TOPLEFT", debugCheck, "BOTTOMLEFT", 0, -20)
+    UIDropDownMenu_Initialize(controllerTypeDropdown, InitializeControllerTypeDropdown)
+    UIDropDownMenu_SetWidth(120, controllerTypeDropdown)
+    local currentControllerType = Config:Get("controllerType") or "xbox"
+    UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, currentControllerType)
+    UIDropDownMenu_SetText(currentControllerType == "xbox" and "Xbox" or "PlayStation", controllerTypeDropdown)
+    
+    -- Language dropdown (right side)
+    local langLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    langLabel:SetPoint("TOPRIGHT", generalBox, "TOPRIGHT", -180, generalBox.contentTop)
     langLabel:SetText(T("Language") .. ":")
     
-    local langDropdown = CreateFrame("Frame", "CEConfigLanguageDropdown", section, "UIDropDownMenuTemplate")
+    local langDropdown = CreateFrame("Frame", "CEConfigLanguageDropdown", generalBox, "UIDropDownMenuTemplate")
     langDropdown:SetPoint("LEFT", langLabel, "RIGHT", -15, -3)
     
     -- Initialize function for language dropdown
@@ -561,10 +494,8 @@ function Config:CreateGeneralSection()
         end
         
         local available = Locale:GetAvailableLanguages()
-        CE_Debug("Language dropdown: Available languages count: " .. table.getn(available))
         
         if table.getn(available) == 0 then 
-            -- Fallback: add at least English if no languages found
             local info = {}
             info.text = "English"
             info.value = "enUS"
@@ -590,7 +521,6 @@ function Config:CreateGeneralSection()
                 UIDropDownMenu_SetSelectedValue(langDropdown, lang)
                 UIDropDownMenu_SetText(Locale:GetLanguageName(lang), langDropdown)
                 Locale:SetLanguage(lang)
-                -- Reload UI message
                 StaticPopup_Show("CE_RELOAD_UI")
             end
             if info.value == selectedValue then
@@ -600,10 +530,7 @@ function Config:CreateGeneralSection()
         end
     end
     
-    -- Store initialize function on the dropdown frame
     langDropdown.initialize = InitializeLanguageDropdown
-    
-    -- Initialize dropdown (this stores the function and sets initial state)
     UIDropDownMenu_Initialize(langDropdown, InitializeLanguageDropdown)
     UIDropDownMenu_SetWidth(120, langDropdown)
     local currentLang = Config:Get("language") or GetLocale() or "enUS"
@@ -611,63 +538,38 @@ function Config:CreateGeneralSection()
     local langName = Locale and Locale:GetLanguageName(currentLang) or currentLang
     UIDropDownMenu_SetText(langName, langDropdown)
     
-    -- Ensure dropdown button is navigable and properly set up (get it after initialization)
-    local langDelayFrame = CreateFrame("Frame")
-    langDelayFrame:SetScript("OnUpdate", function()
-        langDelayFrame:Hide()
-        local dropdownButton = getglobal("CEConfigLanguageDropdownButton")
-        if dropdownButton then
-            dropdownButton:Enable()
-            dropdownButton:Show()
-            
-            -- Ensure the button calls ToggleDropDownMenu correctly
-            local oldOnClick = dropdownButton:GetScript("OnClick")
-            if not oldOnClick then
-                dropdownButton:SetScript("OnClick", function()
-                    ToggleDropDownMenu(1, nil, langDropdown)
-                    PlaySound("igMainMenuOptionCheckBoxOn")
-                end)
-            end
-            
-            -- Refresh cursor navigation to detect the button
-            if ConsoleExperience.cursor and ConsoleExperience.cursor.RefreshFrame then
-                ConsoleExperience.cursor:RefreshFrame()
-            end
+    -- Ensure dropdown buttons are navigable and have tooltips
+    local generalDelayFrame = CreateFrame("Frame")
+    generalDelayFrame:SetScript("OnUpdate", function()
+        generalDelayFrame:Hide()
+        local ctrlBtn = getglobal("CEConfigControllerTypeDropdownButton")
+        if ctrlBtn then 
+            ctrlBtn:Enable()
+            ctrlBtn:Show()
+            ctrlBtn.label = T("Controller Type")
+            ctrlBtn.tooltipText = T("Select which controller button icons to display (Xbox or PlayStation style).")
+        end
+        local langBtn = getglobal("CEConfigLanguageDropdownButton")
+        if langBtn then 
+            langBtn:Enable()
+            langBtn:Show()
+            langBtn.label = T("Language")
+            langBtn.tooltipText = T("Select the language for the addon interface. Requires a UI reload to take effect.")
+        end
+        if ConsoleExperience.cursor and ConsoleExperience.cursor.RefreshFrame then
+            ConsoleExperience.cursor:RefreshFrame()
         end
     end)
-    langDelayFrame:Show()
+    generalDelayFrame:Show()
     
-    -- Version info
-    local version = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    version:SetPoint("BOTTOMLEFT", section, "BOTTOMLEFT", 15, 15)
-    version:SetText(T("Version") .. ": 1.0")
+    -- ==================== Crosshair Settings Box ====================
+    local crosshairBox = self:CreateSectionBox(section, T("Crosshair"))
+    crosshairBox:SetPoint("TOP", generalBox, "BOTTOM", 0, -30)
     
-    self.contentSections["general"] = section
-end
-
-function Config:CreateInterfaceSection()
-    local content = self.frame.content
-    local Locale = ConsoleExperience.locale
-    local T = Locale and Locale.T or function(key) return key end
+    -- ===== ROW 1: Enable, Type, Color (spread across width) =====
     
-    local section = CreateFrame("Frame", nil, content)
-    section:SetAllPoints(content)
-    section:Hide()
-    
-    -- Title
-    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
-    title:SetText(T("Interface Settings"))
-    
-    -- Description
-    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    desc:SetWidth(280)
-    desc:SetJustifyH("LEFT")
-    desc:SetText(T("Configure interface elements."))
-    
-    -- Enable Crosshair checkbox
-    local crosshairCheck = self:CreateCheckbox(section, T("Enable Crosshair"), 
+    -- Enable Crosshair checkbox (left)
+    local crosshairCheck = self:CreateCheckbox(crosshairBox, T("Enable"), 
         function() return Config:Get("crosshairEnabled") end,
         function(checked)
             Config:Set("crosshairEnabled", checked)
@@ -677,90 +579,18 @@ function Config:CreateInterfaceSection()
             else
                 CE_Debug("Crosshair DISABLED")
             end
-        end)
-    crosshairCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+        end,
+        T("Show a crosshair overlay in the center of the screen for easier targeting."))
+    crosshairCheck:SetPoint("TOPLEFT", crosshairBox, "TOPLEFT", crosshairBox.contentLeft, crosshairBox.contentTop)
     
-    -- Crosshair X Position
-    local xLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    xLabel:SetPoint("TOPLEFT", crosshairCheck, "BOTTOMLEFT", 0, -20)
-    xLabel:SetText(T("Crosshair X Offset") .. ":")
+    -- Type dropdown (center)
+    local typeLabel = crosshairBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    typeLabel:SetPoint("TOP", crosshairBox, "TOP", -80, crosshairBox.contentTop)
+    typeLabel:SetText(T("Type") .. ":")
     
-    local xEditBox = self:CreateEditBox(section, 60, 
-        function() return tostring(Config:Get("crosshairX")) end,
-        function(value)
-            local num = tonumber(value) or 0
-            Config:Set("crosshairX", num)
-            Config:UpdateCrosshair()
-        end)
-    xEditBox:SetPoint("LEFT", xLabel, "RIGHT", 10, 0)
-    -- Update crosshair in real-time as user types
-    xEditBox:SetScript("OnTextChanged", function()
-        local num = tonumber(this:GetText()) or 0
-        Config:Set("crosshairX", num)
-        Config:UpdateCrosshair()
-    end)
-    
-    -- Crosshair Y Position
-    local yLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    yLabel:SetPoint("TOPLEFT", xLabel, "BOTTOMLEFT", 0, -15)
-    yLabel:SetText(T("Crosshair Y Offset") .. ":")
-    
-    local yEditBox = self:CreateEditBox(section, 60, 
-        function() return tostring(Config:Get("crosshairY")) end,
-        function(value)
-            local num = tonumber(value) or 0
-            Config:Set("crosshairY", num)
-            Config:UpdateCrosshair()
-        end)
-    yEditBox:SetPoint("LEFT", yLabel, "RIGHT", 10, 0)
-    -- Update crosshair in real-time as user types
-    yEditBox:SetScript("OnTextChanged", function()
-        local num = tonumber(this:GetText()) or 0
-        Config:Set("crosshairY", num)
-        Config:UpdateCrosshair()
-    end)
-    
-    -- Crosshair Size
-    local sizeLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sizeLabel:SetPoint("TOPLEFT", yLabel, "BOTTOMLEFT", 0, -15)
-    sizeLabel:SetText(T("Crosshair Size") .. ":")
-    
-    local sizeEditBox = self:CreateEditBox(section, 60, 
-        function() return tostring(Config:Get("crosshairSize")) end,
-        function(value)
-            local num = tonumber(value) or 24
-            if num < 4 then num = 4 end
-            if num > 100 then num = 100 end
-            Config:Set("crosshairSize", num)
-            Config:UpdateCrosshair()
-        end)
-    sizeEditBox:SetPoint("LEFT", sizeLabel, "RIGHT", 10, 0)
-    -- Update crosshair in real-time as user types
-    sizeEditBox:SetScript("OnTextChanged", function()
-        local num = tonumber(this:GetText()) or 24
-        if num < 4 then num = 4 end
-        if num > 100 then num = 100 end
-        Config:Set("crosshairSize", num)
-        Config:UpdateCrosshair()
-    end)
-    
-    -- Crosshair Type dropdown
-    local typeLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    typeLabel:SetPoint("TOPLEFT", sizeLabel, "BOTTOMLEFT", 0, -20)
-    typeLabel:SetText(T("Crosshair Type") .. ":")
-    
-    local typeDropdown = CreateFrame("Frame", "CEConfigCrosshairTypeDropdown", section, "UIDropDownMenuTemplate")
+    local typeDropdown = CreateFrame("Frame", "CEConfigCrosshairTypeDropdown", crosshairBox, "UIDropDownMenuTemplate")
     typeDropdown:SetPoint("LEFT", typeLabel, "RIGHT", -15, -3)
     
-    -- Ensure dropdown button is navigable with cursor
-    local dropdownButton = getglobal("CEConfigCrosshairTypeDropdownButton")
-    if dropdownButton then
-        -- Make sure button is enabled and visible
-        dropdownButton:Enable()
-        dropdownButton:Show()
-    end
-    
-    -- Initialize function for dropdown
     local function InitializeTypeDropdown()
         local selectedValue = UIDropDownMenu_GetSelectedValue(typeDropdown) or (Config:Get("crosshairType") or "cross")
         local info
@@ -794,40 +624,24 @@ function Config:CreateInterfaceSection()
         UIDropDownMenu_AddButton(info)
     end
     
-    -- Initialize dropdown
     UIDropDownMenu_Initialize(typeDropdown, InitializeTypeDropdown)
-    UIDropDownMenu_SetWidth(120, typeDropdown)
+    UIDropDownMenu_SetWidth(90, typeDropdown)
     local currentType = Config:Get("crosshairType") or "cross"
     UIDropDownMenu_SetSelectedValue(typeDropdown, currentType)
     UIDropDownMenu_SetText(currentType == "cross" and T("Cross") or T("Dot"), typeDropdown)
     
-    -- Ensure dropdown button is navigable (get it after initialization)
-    local delayFrame = CreateFrame("Frame")
-    delayFrame:SetScript("OnUpdate", function()
-        delayFrame:Hide()
-        local dropdownButton = getglobal("CEConfigCrosshairTypeDropdownButton")
-        if dropdownButton then
-            dropdownButton:Enable()
-            dropdownButton:Show()
-            -- Refresh cursor navigation to detect the button
-            if ConsoleExperience.cursor and ConsoleExperience.cursor.RefreshFrame then
-                ConsoleExperience.cursor:RefreshFrame()
-            end
-        end
-    end)
-    delayFrame:Show()
+    -- Color button (right)
+    local colorLabel = crosshairBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    colorLabel:SetPoint("TOPRIGHT", crosshairBox, "TOPRIGHT", -100, crosshairBox.contentTop)
+    colorLabel:SetText(T("Color") .. ":")
     
-    -- Crosshair Color button
-    local colorLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colorLabel:SetPoint("TOPLEFT", typeLabel, "BOTTOMLEFT", 0, -20)
-    colorLabel:SetText(T("Crosshair Color") .. ":")
+    local colorButton = CreateFrame("Button", "CEConfigCrosshairColor", crosshairBox)
+    colorButton:SetWidth(60)
+    colorButton:SetHeight(20)
+    colorButton:SetPoint("LEFT", colorLabel, "RIGHT", 5, 0)
+    colorButton.label = T("Crosshair Color")
+    colorButton.tooltipText = T("Click to open the color picker and choose the crosshair color and opacity.")
     
-    local colorButton = CreateFrame("Button", "CEConfigCrosshairColor", section)
-    colorButton:SetWidth(80)
-    colorButton:SetHeight(22)
-    colorButton:SetPoint("LEFT", colorLabel, "RIGHT", 10, 0)
-    
-    -- Color button backdrop
     colorButton:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -837,7 +651,6 @@ function Config:CreateInterfaceSection()
         insets = { left = 2, right = 2, top = 2, bottom = 2 }
     })
     
-    -- Color preview texture
     local colorPreview = colorButton:CreateTexture(nil, "OVERLAY")
     colorPreview:SetPoint("TOPLEFT", colorButton, "TOPLEFT", 2, -2)
     colorPreview:SetPoint("BOTTOMRIGHT", colorButton, "BOTTOMRIGHT", -2, 2)
@@ -858,11 +671,8 @@ function Config:CreateInterfaceSection()
         local b = Config:Get("crosshairColorB") or 1.0
         local a = Config:Get("crosshairColorA") or 0.8
         
-        -- Ensure ColorPickerFrame appears above config frame
         ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
         ColorPickerFrame:SetFrameLevel(2000)
-        
-        -- Ensure child buttons are also on top
         if ColorPickerOkayButton then
             ColorPickerOkayButton:SetFrameStrata("FULLSCREEN_DIALOG")
             ColorPickerOkayButton:SetFrameLevel(2001)
@@ -872,11 +682,9 @@ function Config:CreateInterfaceSection()
             ColorPickerCancelButton:SetFrameLevel(2001)
         end
         
-        -- Show color picker
         ColorPickerFrame.func = function()
             local newR, newG, newB = ColorPickerFrame:GetColorRGB()
             local newA = 1 - OpacitySliderFrame:GetValue()
-            
             Config:Set("crosshairColorR", newR)
             Config:Set("crosshairColorG", newG)
             Config:Set("crosshairColorB", newB)
@@ -897,7 +705,6 @@ function Config:CreateInterfaceSection()
         ColorPickerFrame.hasOpacity = true
         ColorPickerFrame.opacity = 1 - a
         
-        -- Use a small delay to ensure frame levels are set before showing
         local delayFrame = CreateFrame("Frame")
         delayFrame:SetScript("OnUpdate", function()
             delayFrame:Hide()
@@ -907,119 +714,96 @@ function Config:CreateInterfaceSection()
     end)
     UpdateColorPreview()
     
-    -- Controller Type dropdown
-    local controllerTypeLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    controllerTypeLabel:SetPoint("TOPLEFT", colorLabel, "BOTTOMLEFT", 0, -30)
-    controllerTypeLabel:SetText(T("Controller Type") .. ":")
+    -- ===== ROW 2: Position controls (X, Y, Size) =====
     
-    local controllerTypeDropdown = CreateFrame("Frame", "CEConfigControllerTypeDropdown", section, "UIDropDownMenuTemplate")
-    controllerTypeDropdown:SetPoint("LEFT", controllerTypeLabel, "RIGHT", -15, -3)
+    local xLabel = crosshairBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    xLabel:SetPoint("TOPLEFT", crosshairCheck, "BOTTOMLEFT", 0, -15)
+    xLabel:SetText(T("X Offset") .. ":")
     
-    -- Ensure dropdown button is navigable with cursor
-    local controllerDropdownButton = getglobal("CEConfigControllerTypeDropdownButton")
-    if controllerDropdownButton then
-        controllerDropdownButton:Enable()
-        controllerDropdownButton:Show()
-    end
+    local xEditBox = self:CreateEditBox(crosshairBox, 50, 
+        function() return tostring(Config:Get("crosshairX")) end,
+        function(value)
+            local num = tonumber(value) or 0
+            Config:Set("crosshairX", num)
+            Config:UpdateCrosshair()
+        end,
+        T("X Offset"),
+        T("Horizontal offset from screen center. Negative values move left, positive values move right."))
+    xEditBox:SetPoint("LEFT", xLabel, "RIGHT", 5, 0)
+    xEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 0
+        Config:Set("crosshairX", num)
+        Config:UpdateCrosshair()
+    end)
     
-    -- Initialize function for dropdown
-    local function InitializeControllerTypeDropdown()
-        local selectedValue = UIDropDownMenu_GetSelectedValue(controllerTypeDropdown) or (Config:Get("controllerType") or "xbox")
-        local info
-        
-        info = {}
-        info.text = "Xbox"
-        info.value = "xbox"
-        info.func = function()
-            UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, "xbox")
-            UIDropDownMenu_SetText("Xbox", controllerTypeDropdown)
-            Config:Set("controllerType", "xbox")
-            -- Reload action bars to apply new controller icons
-            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
-                ConsoleExperience.actionbars:UpdateAllButtons()
-            end
-            -- Refresh placement frame icons if it exists
-            if ConsoleExperience.placement and ConsoleExperience.placement.RefreshIcons then
-                ConsoleExperience.placement:RefreshIcons()
-            end
+    local yLabel = crosshairBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    yLabel:SetPoint("LEFT", xEditBox, "RIGHT", 30, 0)
+    yLabel:SetText(T("Y Offset") .. ":")
+    
+    local yEditBox = self:CreateEditBox(crosshairBox, 50, 
+        function() return tostring(Config:Get("crosshairY")) end,
+        function(value)
+            local num = tonumber(value) or 0
+            Config:Set("crosshairY", num)
+            Config:UpdateCrosshair()
+        end,
+        T("Y Offset"),
+        T("Vertical offset from screen center. Negative values move down, positive values move up."))
+    yEditBox:SetPoint("LEFT", yLabel, "RIGHT", 5, 0)
+    yEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 0
+        Config:Set("crosshairY", num)
+        Config:UpdateCrosshair()
+    end)
+    
+    local sizeLabel = crosshairBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    sizeLabel:SetPoint("LEFT", yEditBox, "RIGHT", 30, 0)
+    sizeLabel:SetText(T("Size") .. ":")
+    
+    local sizeEditBox = self:CreateEditBox(crosshairBox, 50, 
+        function() return tostring(Config:Get("crosshairSize")) end,
+        function(value)
+            local num = tonumber(value) or 24
+            if num < 4 then num = 4 end
+            if num > 100 then num = 100 end
+            Config:Set("crosshairSize", num)
+            Config:UpdateCrosshair()
+        end,
+        T("Crosshair Size"),
+        T("Size of the crosshair in pixels. Range: 4-100 pixels."))
+    sizeEditBox:SetPoint("LEFT", sizeLabel, "RIGHT", 5, 0)
+    sizeEditBox:SetScript("OnTextChanged", function()
+        local num = tonumber(this:GetText()) or 24
+        if num < 4 then num = 4 end
+        if num > 100 then num = 100 end
+        Config:Set("crosshairSize", num)
+        Config:UpdateCrosshair()
+    end)
+    
+    
+    -- Ensure dropdown button is navigable and has tooltip
+    local crosshairDelayFrame = CreateFrame("Frame")
+    crosshairDelayFrame:SetScript("OnUpdate", function()
+        crosshairDelayFrame:Hide()
+        local dropdownButton = getglobal("CEConfigCrosshairTypeDropdownButton")
+        if dropdownButton then
+            dropdownButton:Enable()
+            dropdownButton:Show()
+            dropdownButton.label = T("Crosshair Type")
+            dropdownButton.tooltipText = T("Choose the crosshair style: Cross shows a traditional + shape, Dot shows a single circular dot.")
         end
-        if info.value == selectedValue then
-            info.checked = 1
-        end
-        UIDropDownMenu_AddButton(info)
-        
-        info = {}
-        info.text = "PlayStation"
-        info.value = "ps"
-        info.func = function()
-            UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, "ps")
-            UIDropDownMenu_SetText("PlayStation", controllerTypeDropdown)
-            Config:Set("controllerType", "ps")
-            -- Reload action bars to apply new controller icons
-            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
-                ConsoleExperience.actionbars:UpdateAllButtons()
-            end
-            -- Refresh placement frame icons if it exists
-            if ConsoleExperience.placement and ConsoleExperience.placement.RefreshIcons then
-                ConsoleExperience.placement:RefreshIcons()
-            end
-        end
-        if info.value == selectedValue then
-            info.checked = 1
-        end
-        UIDropDownMenu_AddButton(info)
-    end
-    
-    UIDropDownMenu_Initialize(controllerTypeDropdown, InitializeControllerTypeDropdown)
-    UIDropDownMenu_SetWidth(120, controllerTypeDropdown)
-    
-    local currentControllerType = Config:Get("controllerType") or "xbox"
-    UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, currentControllerType)
-    UIDropDownMenu_SetText(currentControllerType == "xbox" and "Xbox" or "PlayStation", controllerTypeDropdown)
-    
-    -- Ensure dropdown button is navigable (get it after initialization)
-    local delayFrame2 = CreateFrame("Frame")
-    delayFrame2:SetScript("OnUpdate", function()
-        delayFrame2:Hide()
         if ConsoleExperience.cursor and ConsoleExperience.cursor.RefreshFrame then
             ConsoleExperience.cursor:RefreshFrame()
         end
     end)
-    delayFrame2:Show()
+    crosshairDelayFrame:Show()
     
-    -- Help text
-    local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    helpText:SetPoint("TOPLEFT", controllerTypeLabel, "BOTTOMLEFT", 0, -10)
-    helpText:SetWidth(260)
-    helpText:SetJustifyH("LEFT")
-    helpText:SetText(T("X/Y offset from screen center. Use negative values to move left/down. Size: 4-100 pixels. Type: Cross shows lines, Dot shows only center dot."))
+    -- ==================== Keybindings Settings Box ====================
+    local keybindingsBox = self:CreateSectionBox(section, T("Keybindings"))
+    keybindingsBox:SetPoint("TOP", crosshairBox, "BOTTOM", 0, -30)
     
-    self.contentSections["interface"] = section
-end
-
-function Config:CreateKeybindingsSection()
-    local content = self.frame.content
-    local Locale = ConsoleExperience.locale
-    local T = Locale and Locale.T or function(key) return key end
-    
-    local section = CreateFrame("Frame", nil, content)
-    section:SetAllPoints(content)
-    section:Hide()
-    
-    -- Title
-    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
-    title:SetText(T("Keybinding Settings"))
-    
-    -- Description
-    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    desc:SetWidth(300)
-    desc:SetJustifyH("LEFT")
-    desc:SetText(T("Configure special keybindings for controller-style gameplay."))
-    
-    -- Use A for Jump checkbox
-    local jumpCheck = self:CreateCheckbox(section, T("Use A button for Jump"), 
+    -- Use A for Jump checkbox (top row)
+    local jumpCheck = self:CreateCheckbox(keybindingsBox, T("Use A button for Jump"), 
         function() return Config:Get("useAForJump") end,
         function(checked)
             Config:Set("useAForJump", checked)
@@ -1060,27 +844,18 @@ function Config:CreateKeybindingsSection()
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
                 ConsoleExperience.actionbars:UpdateAllButtons()
             end
-        end)
-    jumpCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+        end,
+        T("When enabled, pressing the A button (key 1) will jump. When disabled, it will use whatever action is in slot 1 of the action bar."))
+    jumpCheck:SetPoint("TOPLEFT", keybindingsBox, "TOPLEFT", keybindingsBox.contentLeft, keybindingsBox.contentTop)
     
-    -- Help text
-    local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    helpText:SetPoint("TOPLEFT", jumpCheck, "BOTTOMLEFT", 0, -10)
-    helpText:SetWidth(300)
-    helpText:SetJustifyH("LEFT")
-    helpText:SetText(T("When enabled, pressing the A button (key 1) will jump. When disabled, it will use whatever action is in slot 1 of the action bar."))
-    
-    -- Separator
-    local separator = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    separator:SetPoint("TOPLEFT", helpText, "BOTTOMLEFT", 0, -25)
-    separator:SetText(T("Reset Bindings"))
-    
-    -- Reset Default Bindings button
-    local resetBindingsButton = CreateFrame("Button", "CEConfigResetBindings", section, "UIPanelButtonTemplate")
+    -- Reset Default Bindings button (bottom left)
+    local resetBindingsButton = CreateFrame("Button", "CEConfigResetBindings", keybindingsBox, "UIPanelButtonTemplate")
     resetBindingsButton:SetWidth(160)
     resetBindingsButton:SetHeight(24)
-    resetBindingsButton:SetPoint("TOPLEFT", separator, "BOTTOMLEFT", 0, -10)
-    resetBindingsButton:SetText(T("Reset Default Bindings"))
+    resetBindingsButton:SetPoint("TOPLEFT", jumpCheck, "BOTTOMLEFT", 0, -15)
+    resetBindingsButton:SetText(T("Reset Bindings"))
+    resetBindingsButton.label = T("Reset Default Bindings")
+    resetBindingsButton.tooltipText = T("Resets all keybindings to default (1-0 keys) and places default macros (Target) on the action bar.")
     resetBindingsButton:SetScript("OnClick", function()
         -- Reset keybindings
         ConsoleExperienceKeybindings:ResetAllBindings()
@@ -1097,24 +872,15 @@ function Config:CreateKeybindingsSection()
         CE_Debug("Macros created: " .. macrosCreated .. ", placed on action bar: " .. macrosPlaced)
     end)
     
-    -- Reset help text
-    local resetHelp = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    resetHelp:SetPoint("TOPLEFT", resetBindingsButton, "BOTTOMLEFT", 0, -5)
-    resetHelp:SetWidth(300)
-    resetHelp:SetJustifyH("LEFT")
-    resetHelp:SetText(T("Resets all keybindings to default (1-0 keys) and places default macros (Target) on the action bar."))
-    
-    -- Separator for Placement Frame
-    local separator2 = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    separator2:SetPoint("TOPLEFT", resetHelp, "BOTTOMLEFT", 0, -25)
-    separator2:SetText(T("Spell Placement"))
-    
-    -- Show Placement Frame button
-    local showPlacementButton = CreateFrame("Button", "CEConfigShowPlacement", section, "UIPanelButtonTemplate")
+    -- Show Placement Frame button (bottom right, same row as reset button)
+    local showPlacementButton = CreateFrame("Button", "CEConfigShowPlacement", keybindingsBox, "UIPanelButtonTemplate")
     showPlacementButton:SetWidth(160)
     showPlacementButton:SetHeight(24)
-    showPlacementButton:SetPoint("TOPLEFT", separator2, "BOTTOMLEFT", 0, -10)
-    showPlacementButton:SetText(T("Show Placement Frame"))
+    showPlacementButton:SetPoint("TOP", resetBindingsButton, "TOP", 0, 0)
+    showPlacementButton:SetPoint("RIGHT", keybindingsBox, "RIGHT", keybindingsBox.contentRight, 0)
+    showPlacementButton:SetText(T("Spell Placement"))
+    showPlacementButton.label = T("Show Placement Frame")
+    showPlacementButton.tooltipText = T("Opens the spell placement frame where you can drag and drop spells, macros, and items onto action bar slots.")
     showPlacementButton:SetScript("OnClick", function()
         if ConsoleExperience.placement then
             -- Show placement frame and close config frame
@@ -1125,14 +891,101 @@ function Config:CreateKeybindingsSection()
         end
     end)
     
-    -- Placement help text
-    local placementHelp = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    placementHelp:SetPoint("TOPLEFT", showPlacementButton, "BOTTOMLEFT", 0, -5)
-    placementHelp:SetWidth(300)
-    placementHelp:SetJustifyH("LEFT")
-    placementHelp:SetText(T("Opens the spell placement frame where you can drag and drop spells, macros, and items onto action bar slots."))
+    -- ==================== Chat Settings Box ====================
+    local chatBox = self:CreateSectionBox(section, T("Chat"))
+    chatBox:SetPoint("TOP", keybindingsBox, "BOTTOM", 0, -30)
     
-    self.contentSections["keybindings"] = section
+    -- Row 1: Virtual Keyboard toggle
+    local keyboardCheck = self:CreateCheckbox(chatBox, T("Enable Virtual Keyboard"), 
+        function() return Config:Get("keyboardEnabled") end,
+        function(checked)
+            Config:Set("keyboardEnabled", checked)
+            CE_Debug("Virtual keyboard " .. (checked and "enabled" or "disabled"))
+            if not checked and ConsoleExperience.keyboard and ConsoleExperience.keyboard:IsVisible() then
+                ConsoleExperience.keyboard:Hide()
+            end
+            if not checked and ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
+                ChatFrameEditBox:EnableKeyboard(true)
+                local focusFrame = CreateFrame("Frame")
+                focusFrame:SetScript("OnUpdate", function()
+                    this.elapsed = (this.elapsed or 0) + arg1
+                    if this.elapsed > 0.1 then
+                        this:SetScript("OnUpdate", nil)
+                        if ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
+                            ChatFrameEditBox:SetFocus()
+                        end
+                    end
+                end)
+            end
+        end,
+        T("When enabled, a virtual keyboard appears when typing in chat. Disable to use an external keyboard."))
+    keyboardCheck:SetPoint("TOPLEFT", chatBox, "TOPLEFT", chatBox.contentLeft, chatBox.contentTop)
+    
+    -- Row 2: Width, Height inputs and Reset button
+    local chatWidthLabel = chatBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    chatWidthLabel:SetPoint("TOPLEFT", keyboardCheck, "BOTTOMLEFT", 0, -15)
+    chatWidthLabel:SetText(T("Width") .. ":")
+    
+    local chatWidthEditBox = self:CreateEditBox(chatBox, 50, 
+        function() return tostring(Config:Get("chatWidth")) end,
+        function(value)
+            local num = tonumber(value) or 400
+            if num < 100 then num = 100 end
+            if num > 2000 then num = 2000 end
+            Config:Set("chatWidth", num)
+            if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+                ConsoleExperience.chat:UpdateChatLayout()
+            end
+            if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
+                ConsoleExperience.xpbar:UpdateAllBars()
+            end
+        end,
+        T("Chat Width"),
+        T("Width of the chat frame in pixels. Range: 100-2000."))
+    chatWidthEditBox:SetPoint("LEFT", chatWidthLabel, "RIGHT", 5, 0)
+    
+    local chatHeightLabel = chatBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    chatHeightLabel:SetPoint("LEFT", chatWidthEditBox, "RIGHT", 30, 0)
+    chatHeightLabel:SetText(T("Height") .. ":")
+    
+    local chatHeightEditBox = self:CreateEditBox(chatBox, 50, 
+        function() return tostring(Config:Get("chatHeight")) end,
+        function(value)
+            local num = tonumber(value) or 200
+            if num < 50 then num = 50 end
+            if num > 1000 then num = 1000 end
+            Config:Set("chatHeight", num)
+            if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+                ConsoleExperience.chat:UpdateChatLayout()
+            end
+        end,
+        T("Chat Height"),
+        T("Height of the chat frame in pixels. Range: 50-1000."))
+    chatHeightEditBox:SetPoint("LEFT", chatHeightLabel, "RIGHT", 5, 0)
+    
+    -- Reset Chat button (right side of row 2)
+    local resetChatButton = CreateFrame("Button", "CEConfigResetChat", chatBox, "UIPanelButtonTemplate")
+    resetChatButton:SetWidth(100)
+    resetChatButton:SetHeight(24)
+    resetChatButton:SetPoint("TOP", chatWidthLabel, "TOP", 0, 2)
+    resetChatButton:SetPoint("RIGHT", chatBox, "RIGHT", chatBox.contentRight, 0)
+    resetChatButton:SetText(T("Reset"))
+    resetChatButton.label = T("Reset Chat Settings")
+    resetChatButton.tooltipText = T("Reset chat width, height, and keyboard settings to defaults.")
+    resetChatButton:SetScript("OnClick", function()
+        Config:Set("chatWidth", Config.DEFAULTS.chatWidth)
+        Config:Set("chatHeight", Config.DEFAULTS.chatHeight)
+        Config:Set("keyboardEnabled", Config.DEFAULTS.keyboardEnabled)
+        if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+            ConsoleExperience.chat:UpdateChatLayout()
+        end
+        chatWidthEditBox:SetText(tostring(Config.DEFAULTS.chatWidth))
+        chatHeightEditBox:SetText(tostring(Config.DEFAULTS.chatHeight))
+        keyboardCheck:SetChecked(Config.DEFAULTS.keyboardEnabled)
+        CE_Debug("Chat settings reset to defaults")
+    end)
+    
+    self.contentSections["interface"] = section
 end
 
 function Config:CreateBarsSection()
@@ -1141,37 +994,22 @@ function Config:CreateBarsSection()
     local T = Locale and Locale.T or function(key) return key end
     
     local section = CreateFrame("Frame", nil, content)
-    section:SetAllPoints(content)
+    section:SetPoint("TOPLEFT", content, "TOPLEFT", 5, -5)
+    section:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -5, 5)
     section:Hide()
     
-    -- Title
-    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
-    title:SetText(T("Action Bar Settings"))
+    -- ==================== General Action Bars Box ====================
+    local generalBox = self:CreateSectionBox(section, T("General Action Bars"))
+    generalBox:SetPoint("TOP", section, "TOP", 0, -25)
     
-    -- Description
-    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    desc:SetWidth(280)
-    desc:SetJustifyH("LEFT")
-    desc:SetText(T("Configure the gamepad-style action bar layout."))
-    
-    -- Appearance dropdown
-    local appearanceLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    appearanceLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+    -- Row 1: Appearance dropdown (left) and Auto-rank checkbox (right)
+    local appearanceLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    appearanceLabel:SetPoint("TOPLEFT", generalBox, "TOPLEFT", generalBox.contentLeft, generalBox.contentTop)
     appearanceLabel:SetText(T("Appearance") .. ":")
     
-    local appearanceDropdown = CreateFrame("Frame", "CEConfigBarAppearanceDropdown", section, "UIDropDownMenuTemplate")
+    local appearanceDropdown = CreateFrame("Frame", "CEConfigBarAppearanceDropdown", generalBox, "UIDropDownMenuTemplate")
     appearanceDropdown:SetPoint("LEFT", appearanceLabel, "RIGHT", -15, -3)
     
-    -- Ensure dropdown button is navigable with cursor
-    local appearanceDropdownButton = getglobal("CEConfigBarAppearanceDropdownButton")
-    if appearanceDropdownButton then
-        appearanceDropdownButton:Enable()
-        appearanceDropdownButton:Show()
-    end
-    
-    -- Initialize function for dropdown
     local function InitializeAppearanceDropdown()
         local selectedValue = UIDropDownMenu_GetSelectedValue(appearanceDropdown) or (Config:Get("barAppearance") or "classic")
         local info
@@ -1185,9 +1023,7 @@ function Config:CreateBarsSection()
             Config:Set("barAppearance", "classic")
             Config:UpdateActionBarLayout()
         end
-        if info.value == selectedValue then
-            info.checked = 1
-        end
+        if info.value == selectedValue then info.checked = 1 end
         UIDropDownMenu_AddButton(info)
         
         info = {}
@@ -1199,25 +1035,40 @@ function Config:CreateBarsSection()
             Config:Set("barAppearance", "modern")
             Config:UpdateActionBarLayout()
         end
-        if info.value == selectedValue then
-            info.checked = 1
-        end
+        if info.value == selectedValue then info.checked = 1 end
         UIDropDownMenu_AddButton(info)
     end
     
     UIDropDownMenu_Initialize(appearanceDropdown, InitializeAppearanceDropdown)
-    UIDropDownMenu_SetWidth(120, appearanceDropdown)
-    
+    UIDropDownMenu_SetWidth(100, appearanceDropdown)
     local currentAppearance = Config:Get("barAppearance") or "classic"
     UIDropDownMenu_SetSelectedValue(appearanceDropdown, currentAppearance)
     UIDropDownMenu_SetText(currentAppearance == "classic" and T("Classic") or T("Modern"), appearanceDropdown)
     
-    -- Button Size
-    local sizeLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sizeLabel:SetPoint("TOPLEFT", appearanceLabel, "BOTTOMLEFT", 0, -20)
-    sizeLabel:SetText(T("Button Size") .. ":")
+    -- Auto-rank label and checkbox (right side of row 1, label on left of toggle)
+    local autoRankLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    autoRankLabel:SetPoint("TOP", appearanceLabel, "TOP", 0, 0)
+    autoRankLabel:SetPoint("RIGHT", generalBox, "RIGHT", -50, 0)
+    autoRankLabel:SetText(T("Auto-update spell ranks"))
     
-    local sizeEditBox = self:CreateEditBox(section, 50, 
+    local autoRankCheck = CreateFrame("CheckButton", self:GetNextElementName("Check"), generalBox, "UICheckButtonTemplate")
+    autoRankCheck:SetWidth(24)
+    autoRankCheck:SetHeight(24)
+    autoRankCheck:SetPoint("LEFT", autoRankLabel, "RIGHT", 5, 0)
+    autoRankCheck.label = T("Auto-update spell ranks")
+    autoRankCheck.tooltipText = T("When enabled, spells on action bars will automatically be updated to the highest rank when you learn a new spell rank.")
+    autoRankCheck:SetChecked(Config:Get("autoRankEnabled"))
+    autoRankCheck:SetScript("OnClick", function()
+        local checked = this:GetChecked() == 1
+        Config:Set("autoRankEnabled", checked)
+    end)
+    
+    -- Row 2: Positioning options (Size, Pad, X, Y, Star, Scale) + Reset button
+    local sizeLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    sizeLabel:SetPoint("TOPLEFT", appearanceLabel, "BOTTOMLEFT", 0, -15)
+    sizeLabel:SetText(T("Size") .. ":")
+    
+    local sizeEditBox = self:CreateEditBox(generalBox, 35,
         function() return tostring(Config:Get("barButtonSize")) end,
         function(value)
             local num = tonumber(value) or 40
@@ -1225,87 +1076,87 @@ function Config:CreateBarsSection()
             if num > 80 then num = 80 end
             Config:Set("barButtonSize", num)
             Config:UpdateActionBarLayout()
-        end)
-    sizeEditBox:SetPoint("LEFT", sizeLabel, "RIGHT", 10, 0)
-    -- Update action bars in real-time as user types
+        end,
+        T("Button Size"),
+        T("Size of action bar buttons in pixels. Range: 20-80."))
+    sizeEditBox:SetPoint("LEFT", sizeLabel, "RIGHT", 5, 0)
     sizeEditBox:SetScript("OnTextChanged", function()
         local num = tonumber(this:GetText()) or 40
-        if num < 20 then num = 20 end
-        if num > 80 then num = 80 end
-        Config:Set("barButtonSize", num)
-        Config:UpdateActionBarLayout()
+        if num >= 20 and num <= 80 then
+            Config:Set("barButtonSize", num)
+            Config:UpdateActionBarLayout()
+        end
     end)
     
-    -- Padding
-    local paddingLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    paddingLabel:SetPoint("TOPLEFT", sizeLabel, "BOTTOMLEFT", 0, -15)
-    paddingLabel:SetText(T("Button Padding") .. ":")
+    local padLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    padLabel:SetPoint("LEFT", sizeEditBox, "RIGHT", 10, 0)
+    padLabel:SetText(T("Pad") .. ":")
     
-    local paddingEditBox = self:CreateEditBox(section, 50, 
+    local paddingEditBox = self:CreateEditBox(generalBox, 35,
         function() return tostring(Config:Get("barPadding")) end,
         function(value)
-            local num = tonumber(value) or 40
+            local num = tonumber(value) or 4
             if num < 0 then num = 0 end
             if num > 100 then num = 100 end
             Config:Set("barPadding", num)
             Config:UpdateActionBarLayout()
-        end)
-    paddingEditBox:SetPoint("LEFT", paddingLabel, "RIGHT", 10, 0)
-    -- Update action bars in real-time as user types
+        end,
+        T("Button Padding"),
+        T("Space between buttons in pixels. Range: 0-100."))
+    paddingEditBox:SetPoint("LEFT", padLabel, "RIGHT", 5, 0)
     paddingEditBox:SetScript("OnTextChanged", function()
-        local num = tonumber(this:GetText()) or 40
-        if num < 0 then num = 0 end
-        if num > 100 then num = 100 end
-        Config:Set("barPadding", num)
-        Config:UpdateActionBarLayout()
+        local num = tonumber(this:GetText()) or 4
+        if num >= 0 and num <= 100 then
+            Config:Set("barPadding", num)
+            Config:UpdateActionBarLayout()
+        end
     end)
     
-    -- X Offset
-    local xLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    xLabel:SetPoint("TOPLEFT", paddingLabel, "BOTTOMLEFT", 0, -15)
-    xLabel:SetText(T("X Offset") .. ":")
+    local xLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    xLabel:SetPoint("LEFT", paddingEditBox, "RIGHT", 10, 0)
+    xLabel:SetText("X:")
     
-    local xEditBox = self:CreateEditBox(section, 50, 
+    local xEditBox = self:CreateEditBox(generalBox, 35,
         function() return tostring(Config:Get("barXOffset")) end,
         function(value)
             local num = tonumber(value) or 0
             Config:Set("barXOffset", num)
             Config:UpdateActionBarLayout()
-        end)
-    xEditBox:SetPoint("LEFT", xLabel, "RIGHT", 10, 0)
-    -- Update action bars in real-time as user types
+        end,
+        T("X Offset"),
+        T("Horizontal offset from screen center."))
+    xEditBox:SetPoint("LEFT", xLabel, "RIGHT", 5, 0)
     xEditBox:SetScript("OnTextChanged", function()
         local num = tonumber(this:GetText()) or 0
         Config:Set("barXOffset", num)
         Config:UpdateActionBarLayout()
     end)
     
-    -- Y Offset
-    local yLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    yLabel:SetPoint("TOPLEFT", xLabel, "BOTTOMLEFT", 0, -15)
-    yLabel:SetText(T("Y Offset") .. ":")
+    local yLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    yLabel:SetPoint("LEFT", xEditBox, "RIGHT", 10, 0)
+    yLabel:SetText("Y:")
     
-    local yEditBox = self:CreateEditBox(section, 50, 
+    local yEditBox = self:CreateEditBox(generalBox, 35,
         function() return tostring(Config:Get("barYOffset")) end,
         function(value)
             local num = tonumber(value) or 70
             Config:Set("barYOffset", num)
             Config:UpdateActionBarLayout()
-        end)
-    yEditBox:SetPoint("LEFT", yLabel, "RIGHT", 10, 0)
-    -- Update action bars in real-time as user types
+        end,
+        T("Y Offset"),
+        T("Vertical offset from screen bottom."))
+    yEditBox:SetPoint("LEFT", yLabel, "RIGHT", 5, 0)
     yEditBox:SetScript("OnTextChanged", function()
         local num = tonumber(this:GetText()) or 70
         Config:Set("barYOffset", num)
         Config:UpdateActionBarLayout()
     end)
     
-    -- Star Padding (between left and right sides)
-    local starPaddingLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    starPaddingLabel:SetPoint("TOPLEFT", yLabel, "BOTTOMLEFT", 0, -15)
-    starPaddingLabel:SetText(T("Star Padding") .. ":")
+    local starLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    starLabel:SetPoint("LEFT", yEditBox, "RIGHT", 10, 0)
+    starLabel:SetText(T("Gap") .. ":")
     
-    local starPaddingEditBox = self:CreateEditBox(section, 50, 
+    local starPaddingEditBox = self:CreateEditBox(generalBox, 35,
         function() return tostring(Config:Get("barStarPadding")) end,
         function(value)
             local num = tonumber(value) or 200
@@ -1313,23 +1164,23 @@ function Config:CreateBarsSection()
             if num > 1000 then num = 1000 end
             Config:Set("barStarPadding", num)
             Config:UpdateActionBarLayout()
-        end)
-    starPaddingEditBox:SetPoint("LEFT", starPaddingLabel, "RIGHT", 10, 0)
-    -- Update action bars in real-time as user types
+        end,
+        T("Center Gap"),
+        T("Space between left and right button groups. Range: 50-1000."))
+    starPaddingEditBox:SetPoint("LEFT", starLabel, "RIGHT", 5, 0)
     starPaddingEditBox:SetScript("OnTextChanged", function()
         local num = tonumber(this:GetText()) or 200
-        if num < 50 then num = 50 end
-        if num > 1000 then num = 1000 end
-        Config:Set("barStarPadding", num)
-        Config:UpdateActionBarLayout()
+        if num >= 50 and num <= 1000 then
+            Config:Set("barStarPadding", num)
+            Config:UpdateActionBarLayout()
+        end
     end)
     
-    -- Scale
-    local scaleLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    scaleLabel:SetPoint("TOPLEFT", starPaddingLabel, "BOTTOMLEFT", 0, -15)
+    local scaleLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    scaleLabel:SetPoint("LEFT", starPaddingEditBox, "RIGHT", 10, 0)
     scaleLabel:SetText(T("Scale") .. ":")
     
-    local scaleEditBox = self:CreateEditBox(section, 50, 
+    local scaleEditBox = self:CreateEditBox(generalBox, 35,
         function() return tostring(Config:Get("barScale")) end,
         function(value)
             local num = tonumber(value) or 1.0
@@ -1337,30 +1188,26 @@ function Config:CreateBarsSection()
             if num > 2.0 then num = 2.0 end
             Config:Set("barScale", num)
             Config:UpdateActionBarLayout()
-        end)
-    scaleEditBox:SetPoint("LEFT", scaleLabel, "RIGHT", 10, 0)
-    -- Update action bars in real-time as user types
+        end,
+        T("Scale"),
+        T("Overall scale of action bars. Range: 0.5-2.0."))
+    scaleEditBox:SetPoint("LEFT", scaleLabel, "RIGHT", 5, 0)
     scaleEditBox:SetScript("OnTextChanged", function()
         local num = tonumber(this:GetText()) or 1.0
-        if num < 0.5 then num = 0.5 end
-        if num > 2.0 then num = 2.0 end
-        Config:Set("barScale", num)
-        Config:UpdateActionBarLayout()
+        if num >= 0.5 and num <= 2.0 then
+            Config:Set("barScale", num)
+            Config:UpdateActionBarLayout()
+        end
     end)
     
-    -- Help text
-    local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    helpText:SetPoint("TOPLEFT", scaleLabel, "BOTTOMLEFT", 0, -25)
-    helpText:SetWidth(260)
-    helpText:SetJustifyH("LEFT")
-    helpText:SetText(T("Size: 20-80, Padding: 0-100, Star Padding: 50-1000, Scale: 0.5-2.0. X/Y offset from bottom center."))
-    
-    -- Reset to defaults button
-    local resetButton = CreateFrame("Button", "CEConfigResetLayout", section, "UIPanelButtonTemplate")
-    resetButton:SetWidth(120)
+    -- Row 3: Reset button (left) and Update Spell Ranks button (right)
+    local resetButton = CreateFrame("Button", "CEConfigResetLayout", generalBox, "UIPanelButtonTemplate")
+    resetButton:SetWidth(100)
     resetButton:SetHeight(22)
-    resetButton:SetPoint("TOPLEFT", helpText, "BOTTOMLEFT", 0, -15)
-    resetButton:SetText(T("Reset Layout"))
+    resetButton:SetPoint("TOPLEFT", sizeLabel, "BOTTOMLEFT", 0, -15)
+    resetButton:SetText(T("Reset"))
+    resetButton.label = T("Reset Layout")
+    resetButton.tooltipText = T("Reset all action bar settings to defaults.")
     resetButton:SetScript("OnClick", function()
         Config:Set("barButtonSize", Config.DEFAULTS.barButtonSize)
         Config:Set("barPadding", Config.DEFAULTS.barPadding)
@@ -1370,88 +1217,73 @@ function Config:CreateBarsSection()
         Config:Set("barScale", Config.DEFAULTS.barScale)
         Config:Set("barAppearance", Config.DEFAULTS.barAppearance)
         Config:UpdateActionBarLayout()
-        -- Refresh edit boxes
         sizeEditBox:SetText(tostring(Config.DEFAULTS.barButtonSize))
         paddingEditBox:SetText(tostring(Config.DEFAULTS.barPadding))
         starPaddingEditBox:SetText(tostring(Config.DEFAULTS.barStarPadding))
         xEditBox:SetText(tostring(Config.DEFAULTS.barXOffset))
         yEditBox:SetText(tostring(Config.DEFAULTS.barYOffset))
         scaleEditBox:SetText(tostring(Config.DEFAULTS.barScale))
-        -- Refresh dropdown
-        local currentAppearance = Config.DEFAULTS.barAppearance or "classic"
-        UIDropDownMenu_SetSelectedValue(appearanceDropdown, currentAppearance)
-        UIDropDownMenu_SetText(currentAppearance == "classic" and T("Classic") or T("Modern"), appearanceDropdown)
+        local defAppearance = Config.DEFAULTS.barAppearance or "classic"
+        UIDropDownMenu_SetSelectedValue(appearanceDropdown, defAppearance)
+        UIDropDownMenu_SetText(defAppearance == "classic" and T("Classic") or T("Modern"), appearanceDropdown)
         CE_Debug("Action bar layout reset to defaults")
     end)
     
-    -- Auto Spell Rank section
-    local autoRankTitle = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    autoRankTitle:SetPoint("TOPLEFT", resetButton, "BOTTOMLEFT", 0, -25)
-    autoRankTitle:SetText(T("Auto Spell Rank"))
-    
-    -- Auto-rank checkbox
-    local autoRankCheck = CreateFrame("CheckButton", "CEConfigAutoRankEnabled", section, "UICheckButtonTemplate")
-    autoRankCheck:SetPoint("TOPLEFT", autoRankTitle, "BOTTOMLEFT", 0, -5)
-    autoRankCheck:SetChecked(Config:Get("autoRankEnabled"))
-    autoRankCheck:SetScript("OnClick", function()
-        local checked = this:GetChecked() == 1
-        Config:Set("autoRankEnabled", checked)
-    end)
-    local autoRankLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    autoRankLabel:SetPoint("LEFT", autoRankCheck, "RIGHT", 5, 0)
-    autoRankLabel:SetText(T("Auto-update spells to highest rank"))
-    
-    -- Auto-rank description
-    local autoRankDesc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    autoRankDesc:SetPoint("TOPLEFT", autoRankCheck, "BOTTOMLEFT", 0, -5)
-    autoRankDesc:SetWidth(260)
-    autoRankDesc:SetJustifyH("LEFT")
-    autoRankDesc:SetText(T("When enabled, spells on action bars will automatically be updated to the highest rank when you learn a new spell rank."))
-    
-    -- Manual update button
-    local updateRanksButton = CreateFrame("Button", "CEConfigUpdateRanks", section, "UIPanelButtonTemplate")
-    updateRanksButton:SetWidth(150)
+    local updateRanksButton = CreateFrame("Button", "CEConfigUpdateRanks", generalBox, "UIPanelButtonTemplate")
+    updateRanksButton:SetWidth(140)
     updateRanksButton:SetHeight(22)
-    updateRanksButton:SetPoint("TOPLEFT", autoRankDesc, "BOTTOMLEFT", 0, -10)
-    updateRanksButton:SetText(T("Update Ranks Now"))
+    updateRanksButton:SetPoint("TOP", resetButton, "TOP", 0, 0)
+    updateRanksButton:SetPoint("RIGHT", generalBox, "RIGHT", generalBox.contentRight, 0)
+    updateRanksButton:SetText(T("Update Spell Ranks"))
+    updateRanksButton.label = T("Update Spell Ranks")
+    updateRanksButton.tooltipText = T("Manually update all spells on action bars to their highest learned rank.")
     updateRanksButton:SetScript("OnClick", function()
         if ConsoleExperience.autorank and ConsoleExperience.autorank.ManualUpdate then
             ConsoleExperience.autorank:ManualUpdate()
         end
     end)
     
-    -- Side Action Bars section (for touch screen)
-    local sideBarTitle = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sideBarTitle:SetPoint("TOPLEFT", updateRanksButton, "BOTTOMLEFT", 0, -25)
-    sideBarTitle:SetText(T("Side Action Bars (Touch Screen)"))
-    
-    local sideBarDesc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    sideBarDesc:SetPoint("TOPLEFT", sideBarTitle, "BOTTOMLEFT", 0, -5)
-    sideBarDesc:SetWidth(260)
-    sideBarDesc:SetJustifyH("LEFT")
-    sideBarDesc:SetText(T("Vertical action bars on screen edges for touch input. No default keybindings."))
-    
-    -- Left Side Bar Enable
-    local leftBarCheck = CreateFrame("CheckButton", "CEConfigLeftSideBar", section, "UICheckButtonTemplate")
-    leftBarCheck:SetPoint("TOPLEFT", sideBarDesc, "BOTTOMLEFT", 0, -10)
-    leftBarCheck:SetChecked(Config:Get("sideBarLeftEnabled"))
-    leftBarCheck:SetScript("OnClick", function()
-        local checked = this:GetChecked() == 1
-        Config:Set("sideBarLeftEnabled", checked)
-        if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
-            ConsoleExperience.actionbars:UpdateSideBars()
+    -- Ensure dropdown button is navigable
+    local barsDelayFrame = CreateFrame("Frame")
+    barsDelayFrame:SetScript("OnUpdate", function()
+        barsDelayFrame:Hide()
+        local btn = getglobal("CEConfigBarAppearanceDropdownButton")
+        if btn then
+            btn:Enable()
+            btn:Show()
+            btn.label = T("Appearance")
+            btn.tooltipText = T("Choose the visual style of action bar buttons: Classic (traditional WoW look) or Modern (cleaner style).")
+        end
+        if ConsoleExperience.cursor and ConsoleExperience.cursor.RefreshFrame then
+            ConsoleExperience.cursor:RefreshFrame()
         end
     end)
-    local leftBarLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    leftBarLabel:SetPoint("LEFT", leftBarCheck, "RIGHT", 5, 0)
-    leftBarLabel:SetText(T("Enable Left Side Bar"))
+    barsDelayFrame:Show()
     
-    -- Left Side Bar Button Count
-    local leftCountLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    leftCountLabel:SetPoint("TOPLEFT", leftBarCheck, "BOTTOMLEFT", 0, -5)
-    leftCountLabel:SetText(T("Left Buttons (1-5)") .. ":")
+    -- ==================== Left Side Bar Box ====================
+    local leftSideBox = self:CreateSectionBox(section, T("Left Action Bar (Touch)"))
+    leftSideBox:ClearAllPoints()
+    leftSideBox:SetPoint("TOPLEFT", generalBox, "BOTTOMLEFT", 0, -30)
+    leftSideBox:SetPoint("RIGHT", section, "CENTER", -10, 0)
+    leftSideBox:SetHeight(70)
+    leftSideBox.heightCalculated = true  -- Don't auto-calculate
     
-    local leftCountEditBox = self:CreateEditBox(section, 40,
+    local leftBarCheck = self:CreateCheckbox(leftSideBox, T("Enable"),
+        function() return Config:Get("sideBarLeftEnabled") end,
+        function(checked)
+            Config:Set("sideBarLeftEnabled", checked)
+            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
+                ConsoleExperience.actionbars:UpdateSideBars()
+            end
+        end,
+        T("Enable vertical action bar on the left edge of the screen for touch input."))
+    leftBarCheck:SetPoint("TOPLEFT", leftSideBox, "TOPLEFT", leftSideBox.contentLeft, leftSideBox.contentTop)
+    
+    local leftCountLabel = leftSideBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    leftCountLabel:SetPoint("LEFT", leftBarCheck, "RIGHT", 60, 0)
+    leftCountLabel:SetText(T("Buttons") .. ":")
+    
+    local leftCountEditBox = self:CreateEditBox(leftSideBox, 30,
         function() return tostring(Config:Get("sideBarLeftButtons") or 3) end,
         function(value)
             local num = tonumber(value) or 3
@@ -1461,30 +1293,35 @@ function Config:CreateBarsSection()
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
                 ConsoleExperience.actionbars:UpdateSideBars()
             end
-        end)
-    leftCountEditBox:SetPoint("LEFT", leftCountLabel, "RIGHT", 10, 0)
+        end,
+        T("Left Bar Buttons"),
+        T("Number of buttons on the left side bar. Range: 1-5."))
+    leftCountEditBox:SetPoint("LEFT", leftCountLabel, "RIGHT", 5, 0)
     
-    -- Right Side Bar Enable
-    local rightBarCheck = CreateFrame("CheckButton", "CEConfigRightSideBar", section, "UICheckButtonTemplate")
-    rightBarCheck:SetPoint("TOPLEFT", leftCountLabel, "BOTTOMLEFT", 0, -10)
-    rightBarCheck:SetChecked(Config:Get("sideBarRightEnabled"))
-    rightBarCheck:SetScript("OnClick", function()
-        local checked = this:GetChecked() == 1
-        Config:Set("sideBarRightEnabled", checked)
-        if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
-            ConsoleExperience.actionbars:UpdateSideBars()
-        end
-    end)
-    local rightBarLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    rightBarLabel:SetPoint("LEFT", rightBarCheck, "RIGHT", 5, 0)
-    rightBarLabel:SetText(T("Enable Right Side Bar"))
+    -- ==================== Right Side Bar Box ====================
+    local rightSideBox = self:CreateSectionBox(section, T("Right Action Bar (Touch)"))
+    rightSideBox:ClearAllPoints()
+    rightSideBox:SetPoint("TOPRIGHT", generalBox, "BOTTOMRIGHT", 0, -30)
+    rightSideBox:SetPoint("LEFT", section, "CENTER", 10, 0)
+    rightSideBox:SetHeight(70)
+    rightSideBox.heightCalculated = true  -- Don't auto-calculate
     
-    -- Right Side Bar Button Count
-    local rightCountLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    rightCountLabel:SetPoint("TOPLEFT", rightBarCheck, "BOTTOMLEFT", 0, -5)
-    rightCountLabel:SetText(T("Right Buttons (1-5)") .. ":")
+    local rightBarCheck = self:CreateCheckbox(rightSideBox, T("Enable"),
+        function() return Config:Get("sideBarRightEnabled") end,
+        function(checked)
+            Config:Set("sideBarRightEnabled", checked)
+            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
+                ConsoleExperience.actionbars:UpdateSideBars()
+            end
+        end,
+        T("Enable vertical action bar on the right edge of the screen for touch input."))
+    rightBarCheck:SetPoint("TOPLEFT", rightSideBox, "TOPLEFT", rightSideBox.contentLeft, rightSideBox.contentTop)
     
-    local rightCountEditBox = self:CreateEditBox(section, 40,
+    local rightCountLabel = rightSideBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    rightCountLabel:SetPoint("LEFT", rightBarCheck, "RIGHT", 60, 0)
+    rightCountLabel:SetText(T("Buttons") .. ":")
+    
+    local rightCountEditBox = self:CreateEditBox(rightSideBox, 30,
         function() return tostring(Config:Get("sideBarRightButtons") or 3) end,
         function(value)
             local num = tonumber(value) or 3
@@ -1494,204 +1331,79 @@ function Config:CreateBarsSection()
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
                 ConsoleExperience.actionbars:UpdateSideBars()
             end
-        end)
-    rightCountEditBox:SetPoint("LEFT", rightCountLabel, "RIGHT", 10, 0)
+        end,
+        T("Right Bar Buttons"),
+        T("Number of buttons on the right side bar. Range: 1-5."))
+    rightCountEditBox:SetPoint("LEFT", rightCountLabel, "RIGHT", 5, 0)
     
-    self.contentSections["bars"] = section
-end
-
-function Config:CreateChatSection()
-    local content = self.frame.content
-    local Locale = ConsoleExperience.locale
-    local T = Locale and Locale.T or function(key) return key end
+    -- ==================== XP Bar Box ====================
+    local xpBox = self:CreateSectionBox(section, T("XP Bar"))
+    xpBox:ClearAllPoints()
+    xpBox:SetPoint("TOPLEFT", leftSideBox, "BOTTOMLEFT", 0, -30)
+    xpBox:SetPoint("RIGHT", section, "CENTER", -10, 0)
+    xpBox:SetHeight(95)
+    xpBox.heightCalculated = true  -- Don't auto-calculate
     
-    local section = CreateFrame("Frame", nil, content)
-    section:SetAllPoints(content)
-    section:Hide()
-    
-    -- Title
-    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
-    title:SetText(T("Chat Settings"))
-    
-    -- Description
-    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    desc:SetWidth(280)
-    desc:SetJustifyH("LEFT")
-    desc:SetText(T("Configure the chat frame position and size. The chat frame is centered at the bottom of the screen."))
-    
-    -- Chat Width
-    local chatWidthLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    chatWidthLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
-    chatWidthLabel:SetText(T("Chat Width") .. ":")
-    
-    local chatWidthEditBox = self:CreateEditBox(section, 50, 
-        function() return tostring(Config:Get("chatWidth")) end,
-        function(value)
-            local num = tonumber(value) or 400
-            if num < 100 then num = 100 end
-            if num > 2000 then num = 2000 end
-            Config:Set("chatWidth", num)
+    -- Row 1: Always Visible and Text checkboxes
+    local xpAlwaysCheck = self:CreateCheckbox(xpBox, T("Always Visible"),
+        function() return Config:Get("xpBarAlways") or false end,
+        function(checked)
+            Config:Set("xpBarAlways", checked)
+            if ConsoleExperience.xpbar and ConsoleExperience.xpbar.xpBar then
+                ConsoleExperience.xpbar.xpBar.always = checked
+                if checked then
+                    ConsoleExperience.xpbar.xpBar:SetAlpha(1)
+                    ConsoleExperience.xpbar.xpBar:Show()
+                end
+            end
             if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
                 ConsoleExperience.chat:UpdateChatLayout()
             end
-            -- Update XP/Rep bars if they use chat width
             if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
                 ConsoleExperience.xpbar:UpdateAllBars()
             end
-        end)
-    chatWidthEditBox:SetPoint("LEFT", chatWidthLabel, "RIGHT", 10, 0)
+        end,
+        T("When enabled, the XP bar is always visible instead of fading out."))
+    xpAlwaysCheck:SetPoint("TOPLEFT", xpBox, "TOPLEFT", xpBox.contentLeft, xpBox.contentTop)
     
-    -- Chat Height
-    local chatHeightLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    chatHeightLabel:SetPoint("TOPLEFT", chatWidthLabel, "BOTTOMLEFT", 0, -15)
-    chatHeightLabel:SetText(T("Chat Height") .. ":")
+    local xpTextLabel = xpBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    xpTextLabel:SetPoint("TOP", xpAlwaysCheck, "TOP", 0, 0)
+    xpTextLabel:SetPoint("RIGHT", xpBox, "RIGHT", -50, 0)
+    xpTextLabel:SetText(T("Text"))
     
-    local chatHeightEditBox = self:CreateEditBox(section, 50, 
-        function() return tostring(Config:Get("chatHeight")) end,
-        function(value)
-            local num = tonumber(value) or 200
-            if num < 50 then num = 50 end
-            if num > 1000 then num = 1000 end
-            Config:Set("chatHeight", num)
-            if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
-                ConsoleExperience.chat:UpdateChatLayout()
-            end
-        end)
-    chatHeightEditBox:SetPoint("LEFT", chatHeightLabel, "RIGHT", 10, 0)
-    
-    -- Keyboard Enabled checkbox
-    local keyboardCheck = CreateFrame("CheckButton", "CEConfigKeyboardEnabled", section, "UICheckButtonTemplate")
-    keyboardCheck:SetPoint("TOPLEFT", chatHeightLabel, "BOTTOMLEFT", 0, -15)
-    keyboardCheck:SetChecked(Config:Get("keyboardEnabled"))
-    keyboardCheck:SetScript("OnClick", function()
-        local checked = keyboardCheck:GetChecked() == 1
-        Config:Set("keyboardEnabled", checked)
-        CE_Debug("Virtual keyboard " .. (checked and "enabled" or "disabled"))
-        -- If keyboard is disabled and currently visible, hide it immediately
-        if not checked and ConsoleExperience.keyboard and ConsoleExperience.keyboard:IsVisible() then
-            ConsoleExperience.keyboard:Hide()
-        end
-        -- If keyboard is disabled, ensure ChatFrameEditBox has proper focus and keyboard input
-        if not checked and ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
-            ChatFrameEditBox:EnableKeyboard(true)
-            -- Use a small delay to ensure focus is set
-            local focusFrame = CreateFrame("Frame")
-            focusFrame:SetScript("OnUpdate", function()
-                this.elapsed = (this.elapsed or 0) + arg1
-                if this.elapsed > 0.1 then
-                    this:SetScript("OnUpdate", nil)
-                    if ChatFrameEditBox and ChatFrameEditBox:IsVisible() then
-                        ChatFrameEditBox:SetFocus()
-                    end
-                end
-            end)
-        end
-    end)
-    
-    -- Refresh checkbox state when section is shown
-    section:SetScript("OnShow", function()
-        keyboardCheck:SetChecked(Config:Get("keyboardEnabled"))
-    end)
-    
-    local keyboardLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    keyboardLabel:SetPoint("LEFT", keyboardCheck, "RIGHT", 5, 0)
-    keyboardLabel:SetText(T("Enable Virtual Keyboard"))
-    
-    -- Keyboard help text
-    local keyboardHelp = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    keyboardHelp:SetPoint("TOPLEFT", keyboardCheck, "BOTTOMLEFT", 0, -5)
-    keyboardHelp:SetWidth(260)
-    keyboardHelp:SetJustifyH("LEFT")
-    keyboardHelp:SetText(T("When enabled, a virtual keyboard appears when typing in chat. Disable to use an external keyboard."))
-    
-    -- Help text
-    local helpText = section:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    helpText:SetPoint("TOPLEFT", keyboardHelp, "BOTTOMLEFT", 0, -10)
-    helpText:SetWidth(260)
-    helpText:SetJustifyH("LEFT")
-    helpText:SetText(T("Width: 100-2000, Height: 50-1000. The chat frame is centered at the bottom of the screen."))
-    
-    -- Reset to defaults button
-    local resetButton = CreateFrame("Button", "CEConfigResetChat", section, "UIPanelButtonTemplate")
-    resetButton:SetWidth(120)
-    resetButton:SetHeight(22)
-    resetButton:SetPoint("TOPLEFT", helpText, "BOTTOMLEFT", 0, -15)
-    resetButton:SetText(T("Reset Chat"))
-    resetButton:SetScript("OnClick", function()
-        Config:Set("chatWidth", Config.DEFAULTS.chatWidth)
-        Config:Set("chatHeight", Config.DEFAULTS.chatHeight)
-        Config:Set("keyboardEnabled", Config.DEFAULTS.keyboardEnabled)
-        if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
-            ConsoleExperience.chat:UpdateChatLayout()
-        end
-        -- Refresh edit boxes and checkbox
-        chatWidthEditBox:SetText(tostring(Config.DEFAULTS.chatWidth))
-        chatHeightEditBox:SetText(tostring(Config.DEFAULTS.chatHeight))
-        keyboardCheck:SetChecked(Config.DEFAULTS.keyboardEnabled)
-        CE_Debug("Chat settings reset to defaults")
-    end)
-    
-    self.contentSections["chat"] = section
-end
-
-function Config:CreateXPBarSection()
-    local content = self.frame.content
-    local Locale = ConsoleExperience.locale
-    local T = Locale and Locale.T or function(key) return key end
-    
-    local section = CreateFrame("Frame", nil, content)
-    section:SetAllPoints(content)
-    section:Hide()
-    
-    -- Title
-    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
-    title:SetText(T("XP/Reputation Bars"))
-    
-    -- Description
-    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    desc:SetWidth(280)
-    desc:SetJustifyH("LEFT")
-    desc:SetText(T("Configure experience and reputation bars. Bars appear below chat and fade out after timeout."))
-    
-    local yOffset = -20
-    
-    -- XP Bar Always Visible
-    local xpAlwaysCheck = CreateFrame("CheckButton", "CEConfigXPBarAlways", section, "UICheckButtonTemplate")
-    xpAlwaysCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    xpAlwaysCheck:SetChecked(Config:Get("xpBarAlways") or false)
-    xpAlwaysCheck:SetScript("OnClick", function()
-        local checked = xpAlwaysCheck:GetChecked() == 1
-        Config:Set("xpBarAlways", checked)
+    local xpTextShowCheck = CreateFrame("CheckButton", self:GetNextElementName("Check"), xpBox, "UICheckButtonTemplate")
+    xpTextShowCheck:SetWidth(24)
+    xpTextShowCheck:SetHeight(24)
+    xpTextShowCheck:SetPoint("LEFT", xpTextLabel, "RIGHT", 5, 0)
+    xpTextShowCheck.label = T("XP Text")
+    xpTextShowCheck.tooltipText = T("Show XP text on the bar.")
+    local xpTextValue = Config:Get("xpBarTextShow")
+    xpTextShowCheck:SetChecked(xpTextValue == nil and true or xpTextValue)
+    xpTextShowCheck:SetScript("OnClick", function()
+        local checked = this:GetChecked() == 1
+        Config:Set("xpBarTextShow", checked)
         if ConsoleExperience.xpbar and ConsoleExperience.xpbar.xpBar then
-            ConsoleExperience.xpbar.xpBar.always = checked
-            if checked then
-                ConsoleExperience.xpbar.xpBar:SetAlpha(1)
-                ConsoleExperience.xpbar.xpBar:Show()
+            ConsoleExperience.xpbar:ReloadBarConfig(ConsoleExperience.xpbar.xpBar, "XP")
+            if ConsoleExperience.xpbar.xpBar.always then
+                event = "PLAYER_XP_UPDATE"
+                ConsoleExperience.xpbar.xpBar:GetScript("OnEvent")(ConsoleExperience.xpbar.xpBar)
+            end
+            if ConsoleExperience.xpbar.xpBar.bar and ConsoleExperience.xpbar.xpBar.bar.text then
+                if checked then
+                    ConsoleExperience.xpbar.xpBar.bar.text:Show()
+                else
+                    ConsoleExperience.xpbar.xpBar.bar.text:Hide()
+                end
             end
         end
-        if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
-            ConsoleExperience.chat:UpdateChatLayout()
-        end
-        if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
-            ConsoleExperience.xpbar:UpdateAllBars()
-        end
     end)
-    local xpAlwaysLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    xpAlwaysLabel:SetPoint("LEFT", xpAlwaysCheck, "RIGHT", 5, 0)
-    xpAlwaysLabel:SetText(T("XP Bar Always Visible"))
     
-    yOffset = yOffset - 25
+    -- Row 2: Width, Height, Timeout
+    local xpWidthLabel = xpBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    xpWidthLabel:SetPoint("TOPLEFT", xpAlwaysCheck, "BOTTOMLEFT", 0, -10)
+    xpWidthLabel:SetText(T("Width") .. ":")
     
-    -- XP Bar Width
-    local xpWidthLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    xpWidthLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    xpWidthLabel:SetText(T("XP Bar Width") .. " (0 = Chat Width):")
-    
-    local xpWidthEditBox = self:CreateEditBox(section, 50,
+    local xpWidthEditBox = self:CreateEditBox(xpBox, 40,
         function() 
             local val = Config:Get("xpBarWidth")
             return val and tostring(val) or "0"
@@ -1705,21 +1417,20 @@ function Config:CreateXPBarSection()
             if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
                 ConsoleExperience.xpbar:UpdateAllBars()
             end
-        end)
-    xpWidthEditBox:SetPoint("LEFT", xpWidthLabel, "RIGHT", 10, 0)
+        end,
+        T("XP Bar Width"),
+        T("Width of XP bar in pixels. Set to 0 to match chat width."))
+    xpWidthEditBox:SetPoint("LEFT", xpWidthLabel, "RIGHT", 5, 0)
     
-    yOffset = yOffset - 25
+    local xpHeightLabel = xpBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    xpHeightLabel:SetPoint("LEFT", xpWidthEditBox, "RIGHT", 10, 0)
+    xpHeightLabel:SetText(T("Height") .. ":")
     
-    -- XP Bar Height
-    local xpHeightLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    xpHeightLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    xpHeightLabel:SetText(T("XP Bar Height") .. ":")
-    
-    local xpHeightEditBox = self:CreateEditBox(section, 50,
+    local xpHeightEditBox = self:CreateEditBox(xpBox, 30,
         function() return tostring(Config:Get("xpBarHeight") or 20) end,
         function(value)
             local num = tonumber(value) or 20
-            if num < 20 then num = 20 end  -- Minimum height for border texture
+            if num < 20 then num = 20 end
             if num > 100 then num = 100 end
             Config:Set("xpBarHeight", num)
             if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
@@ -1728,17 +1439,16 @@ function Config:CreateXPBarSection()
             if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
                 ConsoleExperience.chat:UpdateChatLayout()
             end
-        end)
-    xpHeightEditBox:SetPoint("LEFT", xpHeightLabel, "RIGHT", 10, 0)
+        end,
+        T("XP Bar Height"),
+        T("Height of XP bar in pixels. Range: 20-100."))
+    xpHeightEditBox:SetPoint("LEFT", xpHeightLabel, "RIGHT", 5, 0)
     
-    yOffset = yOffset - 25
+    local xpTimeoutLabel = xpBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    xpTimeoutLabel:SetPoint("LEFT", xpHeightEditBox, "RIGHT", 10, 0)
+    xpTimeoutLabel:SetText(T("Timeout") .. ":")
     
-    -- XP Bar Timeout
-    local xpTimeoutLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    xpTimeoutLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    xpTimeoutLabel:SetText(T("XP Bar Timeout") .. " (seconds):")
-    
-    local xpTimeoutEditBox = self:CreateEditBox(section, 50,
+    local xpTimeoutEditBox = self:CreateEditBox(xpBox, 30,
         function() return tostring(Config:Get("xpBarTimeout") or 5.0) end,
         function(value)
             local num = tonumber(value) or 5.0
@@ -1748,76 +1458,80 @@ function Config:CreateXPBarSection()
             if ConsoleExperience.xpbar and ConsoleExperience.xpbar.xpBar then
                 ConsoleExperience.xpbar.xpBar.timeout = num
             end
-        end)
-    xpTimeoutEditBox:SetPoint("LEFT", xpTimeoutLabel, "RIGHT", 10, 0)
+        end,
+        T("XP Bar Timeout"),
+        T("Seconds before the bar fades out. Range: 0-60."))
+    xpTimeoutEditBox:SetPoint("LEFT", xpTimeoutLabel, "RIGHT", 5, 0)
     
-    yOffset = yOffset - 25
+    -- ==================== Rep Bar Box ====================
+    local repBox = self:CreateSectionBox(section, T("Rep Bar"))
+    repBox:ClearAllPoints()
+    repBox:SetPoint("TOPRIGHT", rightSideBox, "BOTTOMRIGHT", 0, -30)
+    repBox:SetPoint("LEFT", section, "CENTER", 10, 0)
+    repBox:SetHeight(95)
+    repBox.heightCalculated = true  -- Don't auto-calculate
     
-    -- XP Bar Text Show
-    local xpTextShowCheck = CreateFrame("CheckButton", "CEConfigXPBarTextShow", section, "UICheckButtonTemplate")
-    xpTextShowCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    local xpTextShowValue = Config:Get("xpBarTextShow")
-    xpTextShowCheck:SetChecked(xpTextShowValue == nil and true or xpTextShowValue)
-    xpTextShowCheck:SetScript("OnClick", function()
-        local checked = xpTextShowCheck:GetChecked() == 1
-        Config:Set("xpBarTextShow", checked)
-        if ConsoleExperience.xpbar and ConsoleExperience.xpbar.xpBar then
-            -- Reload config to update text_show
-            ConsoleExperience.xpbar:ReloadBarConfig(ConsoleExperience.xpbar.xpBar, "XP")
-            -- Trigger an update to populate text if bar is always visible
-            if ConsoleExperience.xpbar.xpBar.always then
-                event = "PLAYER_XP_UPDATE"
-                ConsoleExperience.xpbar.xpBar:GetScript("OnEvent")(ConsoleExperience.xpbar.xpBar)
-            end
-            -- Also update text visibility directly if text exists
-            if ConsoleExperience.xpbar.xpBar.bar and ConsoleExperience.xpbar.xpBar.bar.text then
+    -- Row 1: Always Visible and Text checkboxes
+    local repAlwaysCheck = self:CreateCheckbox(repBox, T("Always Visible"),
+        function() return Config:Get("repBarAlways") or false end,
+        function(checked)
+            Config:Set("repBarAlways", checked)
+            if ConsoleExperience.xpbar and ConsoleExperience.xpbar.repBar then
+                ConsoleExperience.xpbar.repBar.always = checked
                 if checked then
-                    ConsoleExperience.xpbar.xpBar.bar.text:Show()
+                    ConsoleExperience.xpbar.repBar:SetAlpha(1)
+                    ConsoleExperience.xpbar.repBar:Show()
+                end
+            end
+            if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
+                ConsoleExperience.chat:UpdateChatLayout()
+            end
+            if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
+                ConsoleExperience.xpbar:UpdateAllBars()
+            end
+        end,
+        T("When enabled, the Reputation bar is always visible instead of fading out."))
+    repAlwaysCheck:SetPoint("TOPLEFT", repBox, "TOPLEFT", repBox.contentLeft, repBox.contentTop)
+    
+    local repTextLabel = repBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    repTextLabel:SetPoint("TOP", repAlwaysCheck, "TOP", 0, 0)
+    repTextLabel:SetPoint("RIGHT", repBox, "RIGHT", -50, 0)
+    repTextLabel:SetText(T("Text"))
+    
+    local repTextShowCheck = CreateFrame("CheckButton", self:GetNextElementName("Check"), repBox, "UICheckButtonTemplate")
+    repTextShowCheck:SetWidth(24)
+    repTextShowCheck:SetHeight(24)
+    repTextShowCheck:SetPoint("LEFT", repTextLabel, "RIGHT", 5, 0)
+    repTextShowCheck.label = T("Rep Text")
+    repTextShowCheck.tooltipText = T("Show Reputation text on the bar.")
+    local repTextValue = Config:Get("repBarTextShow")
+    repTextShowCheck:SetChecked(repTextValue == nil and true or repTextValue)
+    repTextShowCheck:SetScript("OnClick", function()
+        local checked = this:GetChecked() == 1
+        Config:Set("repBarTextShow", checked)
+        if ConsoleExperience.xpbar and ConsoleExperience.xpbar.repBar then
+            ConsoleExperience.xpbar.repBar.text_show = checked
+            ConsoleExperience.xpbar:ReloadBarConfig(ConsoleExperience.xpbar.repBar, "REP")
+            if ConsoleExperience.xpbar.repBar.always then
+                event = "UPDATE_FACTION"
+                ConsoleExperience.xpbar.repBar:GetScript("OnEvent")(ConsoleExperience.xpbar.repBar)
+            end
+            if ConsoleExperience.xpbar.repBar.bar and ConsoleExperience.xpbar.repBar.bar.text then
+                if checked then
+                    ConsoleExperience.xpbar.repBar.bar.text:Show()
                 else
-                    ConsoleExperience.xpbar.xpBar.bar.text:Hide()
+                    ConsoleExperience.xpbar.repBar.bar.text:Hide()
                 end
             end
         end
     end)
-    local xpTextShowLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    xpTextShowLabel:SetPoint("LEFT", xpTextShowCheck, "RIGHT", 5, 0)
-    xpTextShowLabel:SetText(T("XP Bar Text Show"))
     
-    yOffset = yOffset - 25
+    -- Row 2: Width, Height, Timeout
+    local repWidthLabel = repBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    repWidthLabel:SetPoint("TOPLEFT", repAlwaysCheck, "BOTTOMLEFT", 0, -10)
+    repWidthLabel:SetText(T("Width") .. ":")
     
-    -- Rep Bar Always Visible
-    local repAlwaysCheck = CreateFrame("CheckButton", "CEConfigRepBarAlways", section, "UICheckButtonTemplate")
-    repAlwaysCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    repAlwaysCheck:SetChecked(Config:Get("repBarAlways") or false)
-    repAlwaysCheck:SetScript("OnClick", function()
-        local checked = repAlwaysCheck:GetChecked() == 1
-        Config:Set("repBarAlways", checked)
-        if ConsoleExperience.xpbar and ConsoleExperience.xpbar.repBar then
-            ConsoleExperience.xpbar.repBar.always = checked
-            if checked then
-                ConsoleExperience.xpbar.repBar:SetAlpha(1)
-                ConsoleExperience.xpbar.repBar:Show()
-            end
-        end
-        if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
-            ConsoleExperience.chat:UpdateChatLayout()
-        end
-        if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
-            ConsoleExperience.xpbar:UpdateAllBars()
-        end
-    end)
-    local repAlwaysLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    repAlwaysLabel:SetPoint("LEFT", repAlwaysCheck, "RIGHT", 5, 0)
-    repAlwaysLabel:SetText(T("Reputation Bar Always Visible"))
-    
-    yOffset = yOffset - 25
-    
-    -- Rep Bar Width
-    local repWidthLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    repWidthLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    repWidthLabel:SetText(T("Reputation Bar Width") .. " (0 = Chat Width):")
-    
-    local repWidthEditBox = self:CreateEditBox(section, 50,
+    local repWidthEditBox = self:CreateEditBox(repBox, 40,
         function() 
             local val = Config:Get("repBarWidth")
             return val and tostring(val) or "0"
@@ -1831,21 +1545,20 @@ function Config:CreateXPBarSection()
             if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
                 ConsoleExperience.xpbar:UpdateAllBars()
             end
-        end)
-    repWidthEditBox:SetPoint("LEFT", repWidthLabel, "RIGHT", 10, 0)
+        end,
+        T("Rep Bar Width"),
+        T("Width of Reputation bar in pixels. Set to 0 to match chat width."))
+    repWidthEditBox:SetPoint("LEFT", repWidthLabel, "RIGHT", 5, 0)
     
-    yOffset = yOffset - 25
+    local repHeightLabel = repBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    repHeightLabel:SetPoint("LEFT", repWidthEditBox, "RIGHT", 10, 0)
+    repHeightLabel:SetText(T("Height") .. ":")
     
-    -- Rep Bar Height
-    local repHeightLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    repHeightLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    repHeightLabel:SetText(T("Reputation Bar Height") .. ":")
-    
-    local repHeightEditBox = self:CreateEditBox(section, 50,
+    local repHeightEditBox = self:CreateEditBox(repBox, 30,
         function() return tostring(Config:Get("repBarHeight") or 20) end,
         function(value)
             local num = tonumber(value) or 20
-            if num < 20 then num = 20 end  -- Minimum height for border texture
+            if num < 20 then num = 20 end
             if num > 100 then num = 100 end
             Config:Set("repBarHeight", num)
             if ConsoleExperience.xpbar and ConsoleExperience.xpbar.UpdateAllBars then
@@ -1854,17 +1567,16 @@ function Config:CreateXPBarSection()
             if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
                 ConsoleExperience.chat:UpdateChatLayout()
             end
-        end)
-    repHeightEditBox:SetPoint("LEFT", repHeightLabel, "RIGHT", 10, 0)
+        end,
+        T("Rep Bar Height"),
+        T("Height of Reputation bar in pixels. Range: 20-100."))
+    repHeightEditBox:SetPoint("LEFT", repHeightLabel, "RIGHT", 5, 0)
     
-    yOffset = yOffset - 25
+    local repTimeoutLabel = repBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    repTimeoutLabel:SetPoint("LEFT", repHeightEditBox, "RIGHT", 10, 0)
+    repTimeoutLabel:SetText(T("Timeout") .. ":")
     
-    -- Rep Bar Timeout
-    local repTimeoutLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    repTimeoutLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    repTimeoutLabel:SetText(T("Reputation Bar Timeout") .. " (seconds):")
-    
-    local repTimeoutEditBox = self:CreateEditBox(section, 50,
+    local repTimeoutEditBox = self:CreateEditBox(repBox, 30,
         function() return tostring(Config:Get("repBarTimeout") or 5.0) end,
         function(value)
             local num = tonumber(value) or 5.0
@@ -1874,97 +1586,34 @@ function Config:CreateXPBarSection()
             if ConsoleExperience.xpbar and ConsoleExperience.xpbar.repBar then
                 ConsoleExperience.xpbar.repBar.timeout = num
             end
-        end)
-    repTimeoutEditBox:SetPoint("LEFT", repTimeoutLabel, "RIGHT", 10, 0)
+        end,
+        T("Rep Bar Timeout"),
+        T("Seconds before the bar fades out. Range: 0-60."))
+    repTimeoutEditBox:SetPoint("LEFT", repTimeoutLabel, "RIGHT", 5, 0)
     
-    yOffset = yOffset - 25
+    -- ==================== Cast Bar Box ====================
+    local castBox = self:CreateSectionBox(section, T("Cast Bar"))
+    castBox:ClearAllPoints()
+    castBox:SetPoint("TOPLEFT", xpBox, "BOTTOMLEFT", 0, -30)
+    castBox:SetPoint("RIGHT", section, "RIGHT", -5, 0)
     
-    -- Rep Bar Text Show
-    local repTextShowCheck = CreateFrame("CheckButton", "CEConfigRepBarTextShow", section, "UICheckButtonTemplate")
-    repTextShowCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    local repTextShowValue = Config:Get("repBarTextShow")
-    repTextShowCheck:SetChecked(repTextShowValue == nil and true or repTextShowValue)
-    repTextShowCheck:SetScript("OnClick", function()
-        local checked = repTextShowCheck:GetChecked() == 1
-        Config:Set("repBarTextShow", checked)
-        if ConsoleExperience.xpbar and ConsoleExperience.xpbar.repBar then
-            ConsoleExperience.xpbar.repBar.text_show = checked
-            -- Reload config to ensure text_show is updated
-            ConsoleExperience.xpbar:ReloadBarConfig(ConsoleExperience.xpbar.repBar, "REP")
-            -- Trigger an update to populate text if bar is always visible
-            if ConsoleExperience.xpbar.repBar.always then
-                event = "UPDATE_FACTION"
-                ConsoleExperience.xpbar.repBar:GetScript("OnEvent")(ConsoleExperience.xpbar.repBar)
+    -- Row 1: Enable checkbox, Height, Color button
+    local castEnabledCheck = self:CreateCheckbox(castBox, T("Enable"),
+        function() return Config:Get("castbarEnabled") end,
+        function(checked)
+            Config:Set("castbarEnabled", checked)
+            if ConsoleExperience.castbar and ConsoleExperience.castbar.ReloadConfig then
+                ConsoleExperience.castbar:ReloadConfig()
             end
-            -- Also update text visibility directly if text exists
-            if ConsoleExperience.xpbar.repBar.bar and ConsoleExperience.xpbar.repBar.bar.text then
-                if checked then
-                    ConsoleExperience.xpbar.repBar.bar.text:Show()
-                else
-                    ConsoleExperience.xpbar.repBar.bar.text:Hide()
-                end
-            end
-        end
-    end)
-    local repTextShowLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    repTextShowLabel:SetPoint("LEFT", repTextShowCheck, "RIGHT", 5, 0)
-    repTextShowLabel:SetText(T("Reputation Bar Text Show"))
+        end,
+        T("Enable the custom cast bar that appears above chat."))
+    castEnabledCheck:SetPoint("TOPLEFT", castBox, "TOPLEFT", castBox.contentLeft, castBox.contentTop)
     
-    yOffset = yOffset - 25
+    local castHeightLabel = castBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    castHeightLabel:SetPoint("LEFT", castEnabledCheck, "RIGHT", 60, 0)
+    castHeightLabel:SetText(T("Height") .. ":")
     
-    self.contentSections["xpbar"] = section
-end
-
--- ============================================================================
--- Cast Bar Section
--- ============================================================================
-
-function Config:CreateCastBarSection()
-    local content = self.frame.content
-    local Locale = ConsoleExperience.locale
-    local T = Locale and Locale.T or function(key) return key end
-    
-    local section = CreateFrame("Frame", nil, content)
-    section:SetAllPoints(content)
-    section:Hide()
-    
-    -- Section title
-    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", section, "TOPLEFT", 15, -15)
-    title:SetText(T("Cast Bar Settings"))
-    
-    -- Section description
-    local desc = section:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    desc:SetWidth(280)
-    desc:SetJustifyH("LEFT")
-    desc:SetText(T("Configure the custom cast bar that appears above chat."))
-    
-    local yOffset = -50
-    
-    -- Castbar Enabled
-    local enabledCheck = CreateFrame("CheckButton", "CEConfigCastbarEnabled", section, "UICheckButtonTemplate")
-    enabledCheck:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    enabledCheck:SetChecked(Config:Get("castbarEnabled"))
-    enabledCheck:SetScript("OnClick", function()
-        local checked = this:GetChecked() == 1
-        Config:Set("castbarEnabled", checked)
-        if ConsoleExperience.castbar and ConsoleExperience.castbar.ReloadConfig then
-            ConsoleExperience.castbar:ReloadConfig()
-        end
-    end)
-    local enabledLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    enabledLabel:SetPoint("LEFT", enabledCheck, "RIGHT", 5, 0)
-    enabledLabel:SetText(T("Enable Cast Bar"))
-    
-    yOffset = yOffset - 35
-    
-    -- Castbar Height
-    local heightLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    heightLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    heightLabel:SetText(T("Cast Bar Height") .. ":")
-    
-    local heightEditBox = self:CreateEditBox(section, 50,
+    local castHeightEditBox = self:CreateEditBox(castBox, 35,
         function() return tostring(Config:Get("castbarHeight") or 20) end,
         function(value)
             local num = tonumber(value) or 20
@@ -1974,48 +1623,45 @@ function Config:CreateCastBarSection()
             if ConsoleExperience.castbar and ConsoleExperience.castbar.UpdatePosition then
                 ConsoleExperience.castbar:UpdatePosition()
             end
-        end)
-    heightEditBox:SetPoint("LEFT", heightLabel, "RIGHT", 10, 0)
+        end,
+        T("Cast Bar Height"),
+        T("Height of cast bar in pixels. Range: 20-100."))
+    castHeightEditBox:SetPoint("LEFT", castHeightLabel, "RIGHT", 5, 0)
     
-    yOffset = yOffset - 35
+    local castColorLabel = castBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    castColorLabel:SetPoint("LEFT", castHeightEditBox, "RIGHT", 20, 0)
+    castColorLabel:SetText(T("Color") .. ":")
     
-    -- Castbar Color
-    local colorLabel = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colorLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, yOffset)
-    colorLabel:SetText(T("Cast Bar Color") .. ":")
+    local castColorBtn = CreateFrame("Button", self:GetNextElementName("ColorBtn"), castBox)
+    castColorBtn:SetWidth(40)
+    castColorBtn:SetHeight(20)
+    castColorBtn:SetPoint("LEFT", castColorLabel, "RIGHT", 5, 0)
+    castColorBtn.label = T("Cast Bar Color")
+    castColorBtn.tooltipText = T("Click to choose the cast bar fill color.")
     
-    -- Color preview button
-    local colorBtn = CreateFrame("Button", "CEConfigCastbarColorBtn", section)
-    colorBtn:SetWidth(40)
-    colorBtn:SetHeight(20)
-    colorBtn:SetPoint("LEFT", colorLabel, "RIGHT", 10, 0)
+    local castColorPreview = castColorBtn:CreateTexture(nil, "BACKGROUND")
+    castColorPreview:SetAllPoints()
     
-    -- Create color preview texture
-    local colorPreview = colorBtn:CreateTexture(nil, "BACKGROUND")
-    colorPreview:SetAllPoints()
-    
-    local function UpdateColorPreview()
+    local function UpdateCastColorPreview()
         local r = Config:Get("castbarColorR") or 0.0
         local g = Config:Get("castbarColorG") or 0.5
         local b = Config:Get("castbarColorB") or 1.0
-        colorPreview:SetTexture(r, g, b)
+        castColorPreview:SetTexture(r, g, b)
     end
-    UpdateColorPreview()
+    UpdateCastColorPreview()
     
-    -- Border for color button
-    colorBtn:SetBackdrop({
+    castColorBtn:SetBackdrop({
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         edgeSize = 8,
         insets = { left = 1, right = 1, top = 1, bottom = 1 }
     })
-    colorBtn:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+    castColorBtn:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
     
-    colorBtn:SetScript("OnClick", function()
+    castColorBtn:SetScript("OnClick", function()
         local r = Config:Get("castbarColorR") or 0.0
         local g = Config:Get("castbarColorG") or 0.5
         local b = Config:Get("castbarColorB") or 1.0
         
-        -- Ensure ColorPickerFrame appears above config frame
         ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
         ColorPickerFrame:SetFrameLevel(2000)
         
@@ -2033,7 +1679,7 @@ function Config:CreateCastBarSection()
             Config:Set("castbarColorR", newR)
             Config:Set("castbarColorG", newG)
             Config:Set("castbarColorB", newB)
-            UpdateColorPreview()
+            UpdateCastColorPreview()
             if ConsoleExperience.castbar and ConsoleExperience.castbar.UpdateColor then
                 ConsoleExperience.castbar:UpdateColor()
             end
@@ -2050,7 +1696,7 @@ function Config:CreateCastBarSection()
         delayFrame:Show()
     end)
     
-    self.contentSections["castbar"] = section
+    self.contentSections["bars"] = section
 end
 
 -- ============================================================================
@@ -2065,18 +1711,98 @@ function Config:GetNextElementName(prefix)
     return "CEConfig" .. prefix .. self.elementCounter
 end
 
-function Config:CreateCheckbox(parent, label, getFunc, setFunc)
+-- Create a section box with title (like UIOptionsFrame's OptionFrameBoxTemplate)
+-- If height is nil, call box:CalculateHeight() after adding all children
+function Config:CreateSectionBox(parent, title, height)
+    local name = self:GetNextElementName("Section")
+    local box = CreateFrame("Frame", name, parent)
+    box:SetHeight(height or 50)  -- Initial height, will be recalculated if needed
+    
+    -- Use anchor points for full width (5px padding on each side)
+    box:SetPoint("LEFT", parent, "LEFT", 5, 0)
+    box:SetPoint("RIGHT", parent, "RIGHT", -5, 0)
+    
+    -- Backdrop (like OptionFrameBoxTemplate)
+    box:SetBackdrop({
+        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 16,
+        insets = { left = 5, right = 5, top = 5, bottom = 5 }
+    })
+    box:SetBackdropBorderColor(0.4, 0.4, 0.4, 1.0)
+    box:SetBackdropColor(0.15, 0.15, 0.15, 0.5)
+    
+    -- Title (positioned ABOVE the box, not overlapping the border)
+    local titleText = parent:CreateFontString(name .. "Title", "OVERLAY", "GameFontNormal")
+    titleText:SetPoint("BOTTOMLEFT", box, "TOPLEFT", 5, 2)
+    titleText:SetText(title)
+    titleText:SetTextColor(1, 1, 1, 1)  -- White text
+    box.title = titleText
+    
+    -- Content inset (area inside the box for controls)
+    box.contentTop = -18  -- Y offset from box top for content (more padding)
+    box.contentLeft = 15  -- X offset from box left for content
+    box.contentRight = -15  -- X offset from box right for content
+    box.bottomPadding = 15  -- Padding at the bottom of the box
+    
+    -- Method to calculate height based on children (call after layout settles)
+    -- Only calculates once to prevent growing on repeated calls
+    box.CalculateHeight = function(self)
+        -- Only calculate once
+        if self.heightCalculated then return end
+        
+        local boxTop = self:GetTop()
+        if not boxTop then return end
+        
+        local lowestPoint = boxTop  -- Start at top
+        
+        -- Scan all child frames
+        local children = {self:GetChildren()}
+        for _, child in ipairs(children) do
+            local bottom = child:GetBottom()
+            if bottom and bottom < lowestPoint then
+                lowestPoint = bottom
+            end
+        end
+        
+        -- Also scan font strings (they're not frames)
+        local regions = {self:GetRegions()}
+        for _, region in ipairs(regions) do
+            if region.GetBottom then
+                local bottom = region:GetBottom()
+                if bottom and bottom < lowestPoint then
+                    lowestPoint = bottom
+                end
+            end
+        end
+        
+        -- Calculate needed height
+        local neededHeight = (boxTop - lowestPoint) + self.bottomPadding
+        if neededHeight < 40 then neededHeight = 40 end  -- Minimum height
+        
+        self:SetHeight(neededHeight)
+        self.heightCalculated = true
+    end
+    
+    return box
+end
+
+function Config:CreateCheckbox(parent, label, getFunc, setFunc, tooltipText)
     local name = self:GetNextElementName("Check")
     local check = CreateFrame("CheckButton", name, parent, "UICheckButtonTemplate")
     check:SetWidth(24)
     check:SetHeight(24)
     
-    local text = check:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local text = check:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     text:SetPoint("LEFT", check, "RIGHT", 5, 0)
     text:SetText(label)
     
     -- Store label for tooltip/debug
     check.label = label
+    -- Store tooltip help text
+    check.tooltipText = tooltipText
     
     -- Set initial state
     check:SetChecked(getFunc())
@@ -2090,7 +1816,7 @@ function Config:CreateCheckbox(parent, label, getFunc, setFunc)
     return check
 end
 
-function Config:CreateEditBox(parent, width, getFunc, setFunc)
+function Config:CreateEditBox(parent, width, getFunc, setFunc, label, tooltipText)
     local name = self:GetNextElementName("Edit")
     local editBox = CreateFrame("EditBox", name, parent)
     editBox:SetWidth(width)
@@ -2098,6 +1824,10 @@ function Config:CreateEditBox(parent, width, getFunc, setFunc)
     editBox:SetAutoFocus(false)
     editBox:SetFontObject(GameFontHighlight)
     editBox:SetJustifyH("CENTER")
+    
+    -- Store label and tooltip for cursor tooltip
+    editBox.label = label or "Text Input"
+    editBox.tooltipText = tooltipText
     
     -- Background
     editBox:SetBackdrop({
@@ -2150,8 +1880,22 @@ function Config:ShowSection(sectionId)
     -- Show selected section
     if self.contentSections[sectionId] then
         self.contentSections[sectionId]:Show()
-        -- Update scroll child height when showing section
-        self:UpdateScrollChildHeight()
+        
+        -- Recalculate box heights after layout settles
+        local calcFrame = CreateFrame("Frame")
+        calcFrame.section = self.contentSections[sectionId]
+        calcFrame:SetScript("OnUpdate", function()
+            this:Hide()
+            local section = this.section
+            -- Find all boxes in this section and recalculate their heights
+            local children = {section:GetChildren()}
+            for _, child in ipairs(children) do
+                if child.CalculateHeight then
+                    child:CalculateHeight()
+                end
+            end
+        end)
+        calcFrame:Show()
     end
     
     -- Highlight selected sidebar button

@@ -149,6 +149,12 @@ TooltipHookFrame:SetScript("OnShow", function()
         elementType = "checkbox"
     end
     
+    -- Add tooltip help text FIRST (above actions)
+    if button.tooltipText then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(button.tooltipText, 1, 1, 1, true)
+    end
+    
     local actions = Tooltip:GetActions(buttonName, elementType)
     
     -- If keyboard is visible, add X = Send action
@@ -604,12 +610,13 @@ function Tooltip:ShowButtonTooltip(button)
         -- Handle EditBox specially
         if elementType == "editbox" then
             GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+            local label = button.label or "Text Input"
             local currentText = button:GetText() or ""
+            GameTooltip:SetText(label)
             if currentText ~= "" then
-                GameTooltip:SetText("Current: " .. currentText)
-            else
-                GameTooltip:SetText("Text Input")
+                GameTooltip:AddLine("Current: " .. currentText, 0.7, 0.7, 0.7)
             end
+            -- tooltipText is added in OnShow handler (above actions)
             GameTooltip:Show()
             return
         end
@@ -617,9 +624,12 @@ function Tooltip:ShowButtonTooltip(button)
         -- Handle Slider specially
         if elementType == "slider" then
             GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+            local label = button.label or "Slider"
             local value = button:GetValue() or 0
             local min, max = button:GetMinMaxValues()
-            GameTooltip:SetText(string.format("Value: %.1f (%.1f - %.1f)", value, min, max))
+            GameTooltip:SetText(label)
+            GameTooltip:AddLine(string.format("Value: %.1f (%.1f - %.1f)", value, min, max), 0.7, 0.7, 0.7)
+            -- tooltipText is added in OnShow handler (above actions)
             GameTooltip:Show()
             return
         end
@@ -632,6 +642,17 @@ function Tooltip:ShowButtonTooltip(button)
             local checked = button:GetChecked() and "Enabled" or "Disabled"
             GameTooltip:SetText(label)
             GameTooltip:AddLine("Status: " .. checked, 0.7, 0.7, 0.7)
+            -- tooltipText is added in OnShow handler (above actions)
+            GameTooltip:Show()
+            return
+        end
+        
+        -- Check if button has custom tooltip text (config controls, dropdowns, etc.)
+        if button.tooltipText or button.label then
+            GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+            local label = button.label or (button.GetText and button:GetText()) or buttonName or "Option"
+            GameTooltip:SetText(label)
+            -- tooltipText is added in OnShow handler (above actions)
             GameTooltip:Show()
             return
         end

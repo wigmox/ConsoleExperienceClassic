@@ -181,7 +181,7 @@ function AutoRank:UpdateOutdatedSpells(silent)
                 
                 updatedCount = updatedCount + 1
                 
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[CE AutoRank]|r Updated " .. spellName .. " from Rank " .. currentRank .. " to Rank " .. highestRank .. " (slot " .. slot .. ")")
+                CE_Debug("Updated " .. spellName .. " from Rank " .. currentRank .. " to Rank " .. highestRank .. " (slot " .. slot .. ")")
             end
         end
     end
@@ -189,9 +189,9 @@ function AutoRank:UpdateOutdatedSpells(silent)
     CE_Debug("AutoRank: Scan complete. Scanned " .. scannedSpells .. " spells, updated " .. updatedCount)
     
     if updatedCount > 0 then
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[CE AutoRank]|r Updated " .. updatedCount .. " spell(s) to highest rank.")
+        CE_Debug("Updated " .. updatedCount .. " spell(s) to highest rank.")
     elseif not silent then
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[CE AutoRank]|r All spells are already at their highest ranks.")
+        CE_Debug("All spells are already at their highest ranks.")
     end
     
     return updatedCount
@@ -271,7 +271,7 @@ function AutoRank:Initialize()
     -- Register slash commands
     self:RegisterSlashCommand()
     
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[CE AutoRank]|r Module loaded. Auto-update: " .. (config:Get("autoRankEnabled") and "ON" or "OFF") .. ". Type /cerank for commands.")
+    CE_Debug("Module loaded. Auto-update: " .. (config:Get("autoRankEnabled") and "ON" or "OFF") .. ". Type /cerank for commands.")
     CE_Debug("AutoRank module initialized")
 end
 
@@ -279,13 +279,13 @@ end
 function AutoRank:ManualUpdate()
     local count = self:UpdateOutdatedSpells(false)
     if count == 0 then
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[CE AutoRank]|r All spells are already at their highest ranks.")
+        CE_Debug("All spells are already at their highest ranks.")
     end
 end
 
 -- Debug scan - shows what's on the action bars without updating
 function AutoRank:DebugScan()
-    DEFAULT_CHAT_FRAME:AddMessage("|cffff9900[CE AutoRank Debug]|r Scanning action bars...")
+    CE_Debug("Scanning action bars...")
     
     local spellCount = 0
     for slot = 1, 120 do
@@ -323,15 +323,15 @@ function AutoRank:DebugScan()
                         status = "|cff00ff00 OK|r"
                     end
                     
-                    DEFAULT_CHAT_FRAME:AddMessage("  Slot " .. slot .. ": " .. baseName .. " (Rank " .. currentRank .. ")" .. status)
+                    CE_Debug("  Slot " .. slot .. ": " .. baseName .. " (Rank " .. currentRank .. ")" .. status)
                 else
-                    DEFAULT_CHAT_FRAME:AddMessage("  Slot " .. slot .. ": " .. spellName .. " |cff888888(no rank)|r")
+                    CE_Debug("  Slot " .. slot .. ": " .. spellName .. " (no rank)")
                 end
             end
         end
     end
     
-    DEFAULT_CHAT_FRAME:AddMessage("|cffff9900[CE AutoRank Debug]|r Found " .. spellCount .. " ranked spells on action bars.")
+    CE_Debug("Found " .. spellCount .. " ranked spells on action bars.")
 end
 
 -- Register slash command
@@ -344,9 +344,9 @@ function AutoRank:RegisterSlashCommand()
         elseif msg == "update" then
             AutoRank:ManualUpdate()
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[CE AutoRank]|r Commands:")
-            DEFAULT_CHAT_FRAME:AddMessage("  /cerank debug - Show all spells on action bars")
-            DEFAULT_CHAT_FRAME:AddMessage("  /cerank update - Update outdated spells to highest rank")
+            CE_Debug("Commands:")
+            CE_Debug("  /cerank debug - Show all spells on action bars")
+            CE_Debug("  /cerank update - Update outdated spells to highest rank")
         end
     end
 end
