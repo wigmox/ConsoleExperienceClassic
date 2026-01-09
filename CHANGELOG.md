@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.11.0...v0.11.1) (2026-01-09)
+
+
+### Bug Fixes
+
+* added config frames to the cursor system ([b8cf683](https://github.com/pepordev/ConsoleExperienceClassic/commit/b8cf6830542d5898e72a6dcd83e9da43cbc5e7ff))
+* correct castbar calculations ([5c144f3](https://github.com/pepordev/ConsoleExperienceClassic/commit/5c144f343ed9ad0d840a402ac7a370fef03856c1))
+* correct keyboar layout ([0996c1e](https://github.com/pepordev/ConsoleExperienceClassic/commit/0996c1e549bcdc42d34d015e237a1e077e54ef94))
+* improve config menu ([4858a5d](https://github.com/pepordev/ConsoleExperienceClassic/commit/4858a5d9fdced0e81972ebee8934ca4aa037d38d))
+* notify users when keyboard is disabled ([8201ed2](https://github.com/pepordev/ConsoleExperienceClassic/commit/8201ed224c3dc8738fe2ce111c7f09c1999a3f88))
+* properly handle action buttons state ([1cf3548](https://github.com/pepordev/ConsoleExperienceClassic/commit/1cf354857527340947b379aad3bce2d532d413b4))
+
 ## [0.11.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.10.0...v0.11.0) (2026-01-08)
 
 
