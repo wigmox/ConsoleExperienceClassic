@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.12.0...v0.12.1) (2026-01-10)
+
+
+### Bug Fixes
+
+* correct macros actions and fix editboxes config ([088293c](https://github.com/pepordev/ConsoleExperienceClassic/commit/088293cb978ee89ea6e0de4885a1b1f2bf1114b8))
+
 ## [0.12.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.11.1...v0.12.0) (2026-01-09)
 
 
