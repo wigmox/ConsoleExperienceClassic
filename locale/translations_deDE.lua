@@ -48,18 +48,24 @@ ConsoleExperience_translation["deDE"] = {
     ["Reset Chat Settings"] = "Chat-Einstellungen zurücksetzen",
     ["Reset chat width, height, and keyboard settings to defaults."] = "Setzt Chat-Breite, Höhe und Tastatur-Einstellungen auf Standard zurück.",
     
-    -- Keybindings
+    -- Keybindings / Bindings
     ["Keybindings"] = "Tastenbelegungen",
     ["Keybinding Settings"] = "Tastenbelegungs-Einstellungen",
     ["Configure special keybindings for controller-style gameplay."] = "Konfiguriere spezielle Tastenbelegungen für Controller-Spielweise.",
-    ["Use A button for Jump"] = "A-Taste für Springen verwenden",
-    ["When enabled, pressing the A button (key 1) will jump. When disabled, it will use whatever action is in slot 1 of the action bar."] = "Wenn aktiviert, springt die A-Taste (Taste 1). Wenn deaktiviert, wird die Aktion in Slot 1 der Aktionsleiste verwendet.",
+    ["Bindings"] = "Belegungen",
+    ["System Bindings"] = "Systembelegungen",
+    ["Assign controller buttons to system actions instead of action bar slots."] = "Weise Controller-Tasten Systemaktionen statt Aktionsleisten-Slots zu.",
+    ["None (Action Bar)"] = "Keine (Aktionsleiste)",
+    ["No Modifier"] = "Kein Modifikator",
+    ["Actions"] = "Aktionen",
     ["Reset Bindings"] = "Belegungen zurücksetzen",
     ["Reset Default Bindings"] = "Standard-Belegungen zurücksetzen",
-    ["Resets all keybindings to default (1-0 keys) and places default macros (Target) on the action bar."] = "Setzt alle Tastenbelegungen auf Standard (Tasten 1-0) zurück und platziert Standard-Makros (Ziel) auf der Aktionsleiste.",
+    ["Resets all keybindings to default (1-0 keys)."] = "Setzt alle Tastenbelegungen auf Standard (Tasten 1-0) zurück.",
     ["Spell Placement"] = "Zauberplatzierung",
     ["Show Placement Frame"] = "Platzierungsrahmen anzeigen",
-    ["Opens the spell placement frame where you can drag and drop spells, macros, and items onto action bar slots."] = "Öffnet den Platzierungsrahmen, wo du Zauber, Makros und Gegenstände per Drag & Drop auf Aktionsleisten-Slots ziehen kannst.",
+    ["Opens the spell placement frame where you can drag and drop spells and items onto action bar slots."] = "Öffnet den Platzierungsrahmen, wo du Zauber und Gegenstände per Drag & Drop auf Aktionsleisten-Slots ziehen kannst.",
+    ["Open all bags at vendor"] = "Alle Taschen beim Händler öffnen",
+    ["Automatically open all bags when interacting with merchants, auction house, or bank."] = "Öffnet automatisch alle Taschen bei Händlern, Auktionshaus oder Bank.",
     
     -- Bars (Action Bars, XP/Rep, Cast Bar)
     ["Bars"] = "Leisten",

@@ -58,4 +58,7 @@
     
     <!-- Radial Menu -->
     <Binding name="CE_TOGGLE_RADIAL" header="CERADIAL">CE_ToggleRadialMenu()</Binding>
+    
+    <!-- Interact Binding -->
+    <Binding name="CE_INTERACT" header="CEINTERACT">CE_InteractNearest()</Binding>
 </Bindings>

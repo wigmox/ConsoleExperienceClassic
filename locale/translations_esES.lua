@@ -48,18 +48,24 @@ ConsoleExperience_translation["esES"] = {
     ["Reset Chat Settings"] = "Restablecer Config. Chat",
     ["Reset chat width, height, and keyboard settings to defaults."] = "Restablece el ancho, alto y configuración de teclado del chat a los valores por defecto.",
     
-    -- Keybindings
+    -- Keybindings / Bindings
     ["Keybindings"] = "Atajos de Teclado",
     ["Keybinding Settings"] = "Configuración de Atajos",
     ["Configure special keybindings for controller-style gameplay."] = "Configura atajos especiales para jugabilidad estilo controlador.",
-    ["Use A button for Jump"] = "Usar botón A para Saltar",
-    ["When enabled, pressing the A button (key 1) will jump. When disabled, it will use whatever action is in slot 1 of the action bar."] = "Cuando está activado, presionar el botón A (tecla 1) hará saltar. Cuando está desactivado, usará la acción que esté en la ranura 1 de la barra de acciones.",
+    ["Bindings"] = "Vinculaciones",
+    ["System Bindings"] = "Vinculaciones del Sistema",
+    ["Assign controller buttons to system actions instead of action bar slots."] = "Asigna botones del controlador a acciones del sistema en lugar de ranuras de barra de acciones.",
+    ["None (Action Bar)"] = "Ninguna (Barra de Acción)",
+    ["No Modifier"] = "Sin Modificador",
+    ["Actions"] = "Acciones",
     ["Reset Bindings"] = "Restablecer Atajos",
     ["Reset Default Bindings"] = "Restablecer Atajos por Defecto",
-    ["Resets all keybindings to default (1-0 keys) and places default macros (Target) on the action bar."] = "Restablece todos los atajos a los valores por defecto (teclas 1-0) y coloca las macros por defecto (Objetivo) en la barra de acciones.",
+    ["Resets all keybindings to default (1-0 keys)."] = "Restablece todos los atajos a los valores por defecto (teclas 1-0).",
     ["Spell Placement"] = "Colocación de Hechizos",
     ["Show Placement Frame"] = "Mostrar Marco de Colocación",
-    ["Opens the spell placement frame where you can drag and drop spells, macros, and items onto action bar slots."] = "Abre el marco de colocación donde puedes arrastrar y soltar hechizos, macros y objetos en las ranuras de la barra de acciones.",
+    ["Opens the spell placement frame where you can drag and drop spells and items onto action bar slots."] = "Abre el marco de colocación donde puedes arrastrar y soltar hechizos y objetos en las ranuras de la barra de acciones.",
+    ["Open all bags at vendor"] = "Abrir todas las bolsas en vendedor",
+    ["Automatically open all bags when interacting with merchants, auction house, or bank."] = "Abre automáticamente todas las bolsas al interactuar con comerciantes, casa de subastas o banco.",
     
     -- Bars (Action Bars, XP/Rep, Cast Bar)
     ["Bars"] = "Barras",

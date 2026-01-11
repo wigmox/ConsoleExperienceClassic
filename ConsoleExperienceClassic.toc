@@ -15,7 +15,6 @@ keybindings.lua
 init\actionbars.xml
 init\cursor.xml
 init\radial.xml
-init\macros.xml
 init\config.xml
 init\chat.xml
 init\keyboard.xml

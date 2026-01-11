@@ -73,8 +73,7 @@ Config.DEFAULTS = {
     castbarChannelColorR = 1.0,    -- Gold by default (for channeling)
     castbarChannelColorG = 0.75,
     castbarChannelColorB = 0.25,
-    -- Keybinding settings
-    useAForJump = true,  -- If true, A button (key 1) is bound to JUMP instead of CE_ACTION_1
+    -- Keybinding settings (proxied actions are now managed by config/proxied.lua)
     -- Locale settings
     language = nil,  -- nil = use game locale, otherwise "enUS", "deDE", etc.
     -- Bag settings
@@ -172,6 +171,7 @@ Config.PADDING = 15
 Config.SECTIONS = {
     { id = "interface", name = "Interface" },
     { id = "bars", name = "Bars" },
+    { id = "bindings", name = "Bindings" },
 }
 
 -- ============================================================================
@@ -408,6 +408,9 @@ function Config:CreateContentSections()
     
     -- Create Bars section
     self:CreateBarsSection()
+    
+    -- Create Bindings section
+    self:CreateBindingsSection()
 end
 
 function Config:CreateInterfaceSection()
@@ -451,6 +454,9 @@ function Config:CreateInterfaceSection()
             if ConsoleExperience.placement and ConsoleExperience.placement.RefreshIcons then
                 ConsoleExperience.placement:RefreshIcons()
             end
+            if Config.RefreshBindingIcons then
+                Config:RefreshBindingIcons()
+            end
         end
         if info.value == selectedValue then
             info.checked = 1
@@ -469,6 +475,9 @@ function Config:CreateInterfaceSection()
             end
             if ConsoleExperience.placement and ConsoleExperience.placement.RefreshIcons then
                 ConsoleExperience.placement:RefreshIcons()
+            end
+            if Config.RefreshBindingIcons then
+                Config:RefreshBindingIcons()
             end
         end
         if info.value == selectedValue then
@@ -826,102 +835,9 @@ function Config:CreateInterfaceSection()
     end)
     crosshairDelayFrame:Show()
     
-    -- ==================== Keybindings Settings Box ====================
-    local keybindingsBox = self:CreateSectionBox(section, T("Keybindings"))
-    keybindingsBox:SetPoint("TOP", crosshairBox, "BOTTOM", 0, -30)
-    
-    -- Use A for Jump checkbox (top row)
-    local jumpCheck = self:CreateCheckbox(keybindingsBox, T("Use A button for Jump"), 
-        function() return Config:Get("useAForJump") end,
-        function(checked)
-            Config:Set("useAForJump", checked)
-            
-            -- Determine the new binding for key 1
-            local key = "1"
-            local newBinding
-            if checked then
-                newBinding = "JUMP"
-                CE_Debug("A button now bound to JUMP")
-            else
-                newBinding = "CE_ACTION_1"
-                CE_Debug("A button now bound to Action Slot 1")
-            end
-            
-            -- Check if cursor mode is active
-            local cursorModeActive = false
-            if ConsoleExperience.cursor and ConsoleExperience.cursor.keybindings then
-                cursorModeActive = ConsoleExperience.cursor.keybindings.cursorModeActive
-            end
-            
-            if cursorModeActive then
-                -- Cursor mode is active - update the saved original binding
-                local cursorKeys = ConsoleExperience.cursor.keybindings
-                if not cursorKeys.originalBindings then
-                    cursorKeys.originalBindings = {}
-                end
-                cursorKeys.originalBindings[key] = newBinding
-                CE_Debug("Updated cursor original binding for key " .. key .. " to " .. newBinding)
-            else
-                -- Cursor mode not active, set binding directly
-                SetBinding(key, newBinding)
-                SaveBindings(1)
-                CE_Debug("Set binding directly: key " .. key .. " to " .. newBinding)
-            end
-            
-            -- Update action bar display
-            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
-                ConsoleExperience.actionbars:UpdateAllButtons()
-            end
-        end,
-        T("When enabled, pressing the A button (key 1) will jump. When disabled, it will use whatever action is in slot 1 of the action bar."))
-    jumpCheck:SetPoint("TOPLEFT", keybindingsBox, "TOPLEFT", keybindingsBox.contentLeft, keybindingsBox.contentTop)
-    
-    -- Reset Default Bindings button (bottom left)
-    local resetBindingsButton = CreateFrame("Button", "CEConfigResetBindings", keybindingsBox, "UIPanelButtonTemplate")
-    resetBindingsButton:SetWidth(160)
-    resetBindingsButton:SetHeight(24)
-    resetBindingsButton:SetPoint("TOPLEFT", jumpCheck, "BOTTOMLEFT", 0, -15)
-    resetBindingsButton:SetText(T("Reset Bindings"))
-    resetBindingsButton.label = T("Reset Default Bindings")
-    resetBindingsButton.tooltipText = T("Resets all keybindings to default (1-0 keys) and places default macros (Target) on the action bar.")
-    resetBindingsButton:SetScript("OnClick", function()
-        -- Reset keybindings
-        ConsoleExperienceKeybindings:ResetAllBindings()
-        
-        -- Reset macros and place them on action bar
-        local macrosCreated, macrosPlaced = ConsoleExperience.macros:ResetMacrosToDefaults()
-        
-        -- Update action bar display
-        if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
-            ConsoleExperience.actionbars:UpdateAllButtons()
-        end
-        
-        CE_Debug("Default bindings and macros have been reset!")
-        CE_Debug("Macros created: " .. macrosCreated .. ", placed on action bar: " .. macrosPlaced)
-    end)
-    
-    -- Show Placement Frame button (bottom right, same row as reset button)
-    local showPlacementButton = CreateFrame("Button", "CEConfigShowPlacement", keybindingsBox, "UIPanelButtonTemplate")
-    showPlacementButton:SetWidth(160)
-    showPlacementButton:SetHeight(24)
-    showPlacementButton:SetPoint("TOP", resetBindingsButton, "TOP", 0, 0)
-    showPlacementButton:SetPoint("RIGHT", keybindingsBox, "RIGHT", keybindingsBox.contentRight, 0)
-    showPlacementButton:SetText(T("Spell Placement"))
-    showPlacementButton.label = T("Show Placement Frame")
-    showPlacementButton.tooltipText = T("Opens the spell placement frame where you can drag and drop spells, macros, and items onto action bar slots.")
-    showPlacementButton:SetScript("OnClick", function()
-        if ConsoleExperience.placement then
-            -- Show placement frame and close config frame
-            ConsoleExperience.placement:Show()
-            Config:Hide()
-        else
-            CE_Debug("Placement module not loaded!")
-        end
-    end)
-    
     -- ==================== Chat Settings Box ====================
     local chatBox = self:CreateSectionBox(section, T("Chat"))
-    chatBox:SetPoint("TOP", keybindingsBox, "BOTTOM", 0, -30)
+    chatBox:SetPoint("TOP", crosshairBox, "BOTTOM", 0, -30)
     
     -- Row 1: Width, Height inputs and Reset button
     local chatWidthLabel = chatBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -1809,6 +1725,370 @@ function Config:CreateBarsSection()
     end)
     
     self.contentSections["bars"] = section
+end
+
+function Config:CreateBindingsSection()
+    local content = self.frame.content
+    local Locale = ConsoleExperience.locale
+    local T = Locale and Locale.T or function(key) return key end
+    
+    local section = CreateFrame("Frame", nil, content)
+    section:SetPoint("TOPLEFT", content, "TOPLEFT", 5, -5)
+    section:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -5, 5)
+    section:Hide()
+    
+    -- ==================== System Bindings Box ====================
+    local bindingsBox = self:CreateSectionBox(section, T("System Bindings"))
+    bindingsBox:SetPoint("TOP", section, "TOP", 0, -25)
+    bindingsBox:SetHeight(400)
+    bindingsBox.heightCalculated = true
+    
+    -- Description text
+    local descText = bindingsBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    descText:SetPoint("TOPLEFT", bindingsBox, "TOPLEFT", bindingsBox.contentLeft, bindingsBox.contentTop)
+    descText:SetPoint("TOPRIGHT", bindingsBox, "TOPRIGHT", bindingsBox.contentRight, bindingsBox.contentTop)
+    descText:SetJustifyH("LEFT")
+    descText:SetText(T("Assign controller buttons to system actions instead of action bar slots."))
+    descText:SetTextColor(0.7, 0.7, 0.7)
+    
+    -- Create scroll frame for bindings list
+    local scrollFrame = CreateFrame("ScrollFrame", "CEBindingsScrollFrame", bindingsBox, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", descText, "BOTTOMLEFT", 0, -10)
+    scrollFrame:SetPoint("BOTTOMRIGHT", bindingsBox, "BOTTOMRIGHT", -30, 15)
+    
+    -- Create scroll child for content
+    local scrollChild = CreateFrame("Frame", "CEBindingsScrollChild", scrollFrame)
+    scrollChild:SetWidth(scrollFrame:GetWidth() - 20)
+    scrollChild:SetHeight(1)  -- Will be adjusted
+    scrollFrame:SetScrollChild(scrollChild)
+    
+    -- Storage for dropdown frames and icon textures for refresh
+    self.bindingDropdowns = {}
+    self.bindingIcons = {}
+    
+    -- Button icon names (matches controller texture files)
+    local buttonIcons = { "a", "x", "y", "b", "down", "left", "up", "right", "rb", "lb" }
+    -- Modifier icon names
+    local modifierIcons = {
+        [1] = {},           -- No modifier
+        [2] = {"lt"},       -- LT (Shift)
+        [3] = {"rt"},       -- RT (Ctrl)
+        [4] = {"lt", "rt"}, -- LT+RT (Ctrl+Shift)
+    }
+    
+    -- Helper to get controller icon path
+    local function GetIconPath(iconName)
+        local controllerType = "xbox"
+        if Config.Get then
+            controllerType = Config:Get("controllerType") or "xbox"
+        elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.controllerType then
+            controllerType = ConsoleExperienceDB.config.controllerType
+        end
+        
+        -- D-pad icons are shared, controller-specific icons are in controllers/<type>/
+        local dPadIcons = {down = true, left = true, right = true, up = true}
+        if dPadIcons[iconName] then
+            return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. iconName
+        else
+            return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. controllerType .. "\\" .. iconName
+        end
+    end
+    
+    local ICON_SIZE = 16
+    
+    -- Create binding rows for all 40 slots
+    local rowHeight = 28
+    local currentY = 0
+    
+    -- Group by page (modifier)
+    for page = 1, 4 do
+        -- Page header with modifier icons
+        local pageHeaderFrame = CreateFrame("Frame", "CEBindingPageHeader" .. page, scrollChild)
+        pageHeaderFrame:SetWidth(scrollChild:GetWidth())
+        pageHeaderFrame:SetHeight(20)
+        pageHeaderFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+        
+        -- Create modifier icons for page header
+        local headerIconX = 10
+        local pageModIcons = modifierIcons[page]
+        pageHeaderFrame.icons = {}
+        
+        if table.getn(pageModIcons) > 0 then
+            for i, iconName in ipairs(pageModIcons) do
+                local modIcon = pageHeaderFrame:CreateTexture(nil, "OVERLAY")
+                modIcon:SetWidth(ICON_SIZE)
+                modIcon:SetHeight(ICON_SIZE)
+                modIcon:SetTexture(GetIconPath(iconName))
+                modIcon:SetPoint("LEFT", pageHeaderFrame, "LEFT", headerIconX, 0)
+                table.insert(pageHeaderFrame.icons, {texture = modIcon, iconName = iconName})
+                headerIconX = headerIconX + ICON_SIZE + 2
+            end
+            
+            -- Add " + " text after modifier icons
+            local plusText = pageHeaderFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            plusText:SetPoint("LEFT", pageHeaderFrame, "LEFT", headerIconX, 0)
+            plusText:SetText("...")
+            plusText:SetTextColor(1, 0.82, 0)
+        else
+            -- No modifier - show "No Modifier" text
+            local noModText = pageHeaderFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            noModText:SetPoint("LEFT", pageHeaderFrame, "LEFT", headerIconX, 0)
+            noModText:SetText("-- " .. T("No Modifier") .. " --")
+            noModText:SetTextColor(1, 0.82, 0)
+        end
+        
+        -- Store for refresh
+        if not self.bindingIcons.pageHeaders then
+            self.bindingIcons.pageHeaders = {}
+        end
+        self.bindingIcons.pageHeaders[page] = pageHeaderFrame
+        
+        currentY = currentY + 20
+        
+        -- Buttons in this page
+        for btn = 1, 10 do
+            local slot = ((page - 1) * 10) + btn
+            local iconName = buttonIcons[btn]
+            
+            -- Create row
+            local rowFrame = CreateFrame("Frame", "CEBindingRow" .. slot, scrollChild)
+            rowFrame:SetWidth(scrollChild:GetWidth())
+            rowFrame:SetHeight(rowHeight)
+            rowFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+            rowFrame.icons = {}
+            
+            -- Create icon container for button label
+            local iconX = 10
+            
+            -- Add modifier icons first
+            local mods = modifierIcons[page]
+            for i, modIconName in ipairs(mods) do
+                local modIcon = rowFrame:CreateTexture(nil, "OVERLAY")
+                modIcon:SetWidth(ICON_SIZE)
+                modIcon:SetHeight(ICON_SIZE)
+                modIcon:SetTexture(GetIconPath(modIconName))
+                modIcon:SetPoint("LEFT", rowFrame, "LEFT", iconX, 0)
+                table.insert(rowFrame.icons, {texture = modIcon, iconName = modIconName})
+                iconX = iconX + ICON_SIZE + 2
+            end
+            
+            -- Add main button icon
+            local mainIcon = rowFrame:CreateTexture(nil, "OVERLAY")
+            mainIcon:SetWidth(ICON_SIZE)
+            mainIcon:SetHeight(ICON_SIZE)
+            mainIcon:SetTexture(GetIconPath(iconName))
+            mainIcon:SetPoint("LEFT", rowFrame, "LEFT", iconX, 0)
+            table.insert(rowFrame.icons, {texture = mainIcon, iconName = iconName})
+            iconX = iconX + ICON_SIZE + 10
+            
+            -- Store row for icon refresh
+            if not self.bindingIcons.rows then
+                self.bindingIcons.rows = {}
+            end
+            self.bindingIcons.rows[slot] = rowFrame
+            
+            -- Dropdown for action selection (positioned after icons)
+            local dropdownName = "CEBindingDropdown" .. slot
+            local dropdown = CreateFrame("Frame", dropdownName, rowFrame, "UIDropDownMenuTemplate")
+            dropdown:SetPoint("LEFT", rowFrame, "LEFT", iconX, -3)
+            dropdown.slot = slot
+            
+            -- Capture slot value for closure (WoW 1.12 closure fix)
+            local capturedSlot = slot
+            local capturedDropdown = dropdown
+            
+            -- Initialize dropdown
+            local function InitializeBindingDropdown()
+                local currentValue = nil
+                if ConsoleExperience.proxied and ConsoleExperience.proxied.GetSlotBinding then
+                    currentValue = ConsoleExperience.proxied:GetSlotBinding(capturedSlot)
+                end
+                
+                -- None option
+                local info = {}
+                info.text = T("None (Action Bar)")
+                info.value = nil
+                info.func = function()
+                    if ConsoleExperience.proxied and ConsoleExperience.proxied.SetSlotBinding then
+                        ConsoleExperience.proxied:SetSlotBinding(capturedSlot, nil)
+                    end
+                    UIDropDownMenu_SetSelectedValue(capturedDropdown, nil)
+                    UIDropDownMenu_SetText(T("None (Action Bar)"), capturedDropdown)
+                end
+                if currentValue == nil then
+                    info.checked = 1
+                end
+                UIDropDownMenu_AddButton(info)
+                
+                -- Add all proxied actions
+                if ConsoleExperience.proxied and ConsoleExperience.proxied.ACTIONS then
+                    for _, action in ipairs(ConsoleExperience.proxied.ACTIONS) do
+                        if action.header then
+                            -- Header (disabled)
+                            info = {}
+                            info.text = "-- " .. action.header .. " --"
+                            info.disabled = true
+                            info.notCheckable = true
+                            UIDropDownMenu_AddButton(info)
+                        else
+                            -- Action item - capture action values for closure
+                            local actionId = action.id
+                            local actionName = action.name
+                            info = {}
+                            info.text = actionName
+                            info.value = actionId
+                            info.func = function()
+                                if ConsoleExperience.proxied and ConsoleExperience.proxied.SetSlotBinding then
+                                    ConsoleExperience.proxied:SetSlotBinding(capturedSlot, actionId)
+                                end
+                                UIDropDownMenu_SetSelectedValue(capturedDropdown, actionId)
+                                UIDropDownMenu_SetText(actionName, capturedDropdown)
+                            end
+                            if currentValue == actionId then
+                                info.checked = 1
+                            end
+                            UIDropDownMenu_AddButton(info)
+                        end
+                    end
+                end
+            end
+            
+            UIDropDownMenu_Initialize(dropdown, InitializeBindingDropdown)
+            UIDropDownMenu_SetWidth(180, dropdown)
+            
+            -- Set initial text
+            local currentValue = nil
+            if ConsoleExperience.proxied and ConsoleExperience.proxied.GetSlotBinding then
+                currentValue = ConsoleExperience.proxied:GetSlotBinding(slot)
+            end
+            
+            if currentValue then
+                local action = ConsoleExperience.proxied:GetActionByID(currentValue)
+                if action then
+                    UIDropDownMenu_SetText(action.name, dropdown)
+                else
+                    UIDropDownMenu_SetText(currentValue, dropdown)
+                end
+            else
+                UIDropDownMenu_SetText(T("None (Action Bar)"), dropdown)
+            end
+            
+            self.bindingDropdowns[slot] = dropdown
+            currentY = currentY + rowHeight
+        end
+        
+        -- Add spacing between pages
+        currentY = currentY + 10
+    end
+    
+    -- Set scroll child height
+    scrollChild:SetHeight(currentY + 20)
+    
+    -- Ensure dropdown buttons are navigable
+    local bindingsDelayFrame = CreateFrame("Frame")
+    bindingsDelayFrame:SetScript("OnUpdate", function()
+        bindingsDelayFrame:Hide()
+        for slot = 1, 40 do
+            local dropdownButton = getglobal("CEBindingDropdown" .. slot .. "Button")
+            if dropdownButton then
+                dropdownButton:Enable()
+                dropdownButton:Show()
+            end
+        end
+        if ConsoleExperience.cursor and ConsoleExperience.cursor.RefreshFrame then
+            ConsoleExperience.cursor:RefreshFrame()
+        end
+    end)
+    bindingsDelayFrame:Show()
+    
+    -- ==================== Actions Box ====================
+    local actionsBox = self:CreateSectionBox(section, T("Actions"))
+    actionsBox:SetPoint("TOP", bindingsBox, "BOTTOM", 0, -30)
+    
+    -- Reset Default Bindings button (left)
+    local resetBindingsButton = CreateFrame("Button", "CEConfigResetBindings", actionsBox, "UIPanelButtonTemplate")
+    resetBindingsButton:SetWidth(160)
+    resetBindingsButton:SetHeight(24)
+    resetBindingsButton:SetPoint("TOPLEFT", actionsBox, "TOPLEFT", actionsBox.contentLeft, actionsBox.contentTop)
+    resetBindingsButton:SetText(T("Reset Bindings"))
+    resetBindingsButton.label = T("Reset Default Bindings")
+    resetBindingsButton.tooltipText = T("Resets all keybindings to default (1-0 keys).")
+    resetBindingsButton:SetScript("OnClick", function()
+        -- Reset keybindings
+        ConsoleExperienceKeybindings:ResetAllBindings()
+        
+        -- Update action bar display
+        if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+            ConsoleExperience.actionbars:UpdateAllButtons()
+        end
+        
+        CE_Debug("Default bindings have been reset!")
+    end)
+    
+    -- Show Placement Frame button (right, same row as reset button)
+    local showPlacementButton = CreateFrame("Button", "CEConfigShowPlacement", actionsBox, "UIPanelButtonTemplate")
+    showPlacementButton:SetWidth(160)
+    showPlacementButton:SetHeight(24)
+    showPlacementButton:SetPoint("TOP", resetBindingsButton, "TOP", 0, 0)
+    showPlacementButton:SetPoint("RIGHT", actionsBox, "RIGHT", actionsBox.contentRight, 0)
+    showPlacementButton:SetText(T("Spell Placement"))
+    showPlacementButton.label = T("Show Placement Frame")
+    showPlacementButton.tooltipText = T("Opens the spell placement frame where you can drag and drop spells and items onto action bar slots.")
+    showPlacementButton:SetScript("OnClick", function()
+        if ConsoleExperience.placement then
+            -- Show placement frame and close config frame
+            ConsoleExperience.placement:Show()
+            Config:Hide()
+        else
+            CE_Debug("Placement module not loaded!")
+        end
+    end)
+    
+    self.contentSections["bindings"] = section
+end
+
+-- Refresh binding icons when controller type changes
+function Config:RefreshBindingIcons()
+    if not self.bindingIcons then return end
+    
+    -- Helper to get controller icon path
+    local function GetIconPath(iconName)
+        local controllerType = "xbox"
+        if self.Get then
+            controllerType = self:Get("controllerType") or "xbox"
+        elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.controllerType then
+            controllerType = ConsoleExperienceDB.config.controllerType
+        end
+        
+        local dPadIcons = {down = true, left = true, right = true, up = true}
+        if dPadIcons[iconName] then
+            return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. iconName
+        else
+            return "Interface\\AddOns\\ConsoleExperienceClassic\\textures\\controllers\\" .. controllerType .. "\\" .. iconName
+        end
+    end
+    
+    -- Refresh page header icons
+    if self.bindingIcons.pageHeaders then
+        for page, headerFrame in pairs(self.bindingIcons.pageHeaders) do
+            if headerFrame.icons then
+                for _, iconInfo in ipairs(headerFrame.icons) do
+                    iconInfo.texture:SetTexture(GetIconPath(iconInfo.iconName))
+                end
+            end
+        end
+    end
+    
+    -- Refresh row icons
+    if self.bindingIcons.rows then
+        for slot, rowFrame in pairs(self.bindingIcons.rows) do
+            if rowFrame.icons then
+                for _, iconInfo in ipairs(rowFrame.icons) do
+                    iconInfo.texture:SetTexture(GetIconPath(iconInfo.iconName))
+                end
+            end
+        end
+    end
 end
 
 -- ============================================================================

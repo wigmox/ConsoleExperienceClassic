@@ -5,36 +5,68 @@ ConsoleExperienceClassic uses custom keybindings for controller support.
 ## Default Bindings
 
 ### Action Bar - Right Star (Face Buttons)
-| Button | Action |
-|--------|--------|
-| A | Jump (or Action 1 if configured) |
-| B | Action 2 |
-| X | Action 3 |
-| Y | Action 4 |
-| RT + A | Action 5 |
-| RT + B | Action 6 |
-| RT + X | Action 7 |
-| RT + Y | Action 8 |
-| RB + A | Action 9 |
-| RB + B | Action 10 |
-| RB + X | Action 11 |
-| RB + Y | Action 12 |
+| Button | Key | Default Action |
+|--------|-----|----------------|
+| A | 1 | Jump (System Binding) |
+| X | 2 | Action Slot 2 |
+| Y | 3 | Action Slot 3 |
+| B | 4 | Action Slot 4 |
 
 ### Action Bar - Left Star (D-Pad)
-| Button | Action |
-|--------|--------|
-| D-Up | Action 13 |
-| D-Down | Action 14 |
-| D-Left | Action 15 |
-| D-Right | Action 16 |
-| LT + D-Up | Action 17 |
-| LT + D-Down | Action 18 |
-| LT + D-Left | Action 19 |
-| LT + D-Right | Action 20 |
-| LB + D-Up | Action 21 |
-| LB + D-Down | Action 22 |
-| LB + D-Left | Action 23 |
-| LB + D-Right | Action 24 |
+| Button | Key | Default Action |
+|--------|-----|----------------|
+| D-Down | 5 | Action Slot 5 |
+| D-Left | 6 | Action Slot 6 |
+| D-Up | 7 | Action Slot 7 |
+| D-Right | 8 | Action Slot 8 |
+
+### Bumpers
+| Button | Key | Default Action |
+|--------|-----|----------------|
+| RB | 9 | Action Slot 9 |
+| LB | 0 | Action Slot 10 |
+
+### With LT Modifier (Shift)
+| Button | Key | Default Action |
+|--------|-----|----------------|
+| LT + A | Shift-1 | Action Slot 11 |
+| LT + X | Shift-2 | Action Slot 12 |
+| LT + Y | Shift-3 | Action Slot 13 |
+| LT + B | Shift-4 | Action Slot 14 |
+| LT + D-Down | Shift-5 | Action Slot 15 |
+| LT + D-Left | Shift-6 | Action Slot 16 |
+| LT + D-Up | Shift-7 | Action Slot 17 |
+| LT + D-Right | Shift-8 | Action Slot 18 |
+| LT + RB | Shift-9 | Action Slot 19 |
+| LT + LB | Shift-0 | Action Slot 20 |
+
+### With RT Modifier (Ctrl)
+| Button | Key | Default Action |
+|--------|-----|----------------|
+| RT + A | Ctrl-1 | Action Slot 21 |
+| RT + X | Ctrl-2 | Action Slot 22 |
+| RT + Y | Ctrl-3 | Action Slot 23 |
+| RT + B | Ctrl-4 | Action Slot 24 |
+| RT + D-Down | Ctrl-5 | Action Slot 25 |
+| RT + D-Left | Ctrl-6 | Action Slot 26 |
+| RT + D-Up | Ctrl-7 | Action Slot 27 |
+| RT + D-Right | Ctrl-8 | Action Slot 28 |
+| RT + RB | Ctrl-9 | Action Slot 29 |
+| RT + LB | Ctrl-0 | Interact (System Binding) |
+
+### With LT+RT Modifier (Ctrl+Shift)
+| Button | Key | Default Action |
+|--------|-----|----------------|
+| LT + RT + A | Ctrl-Shift-1 | Action Slot 31 |
+| LT + RT + X | Ctrl-Shift-2 | Action Slot 32 |
+| LT + RT + Y | Ctrl-Shift-3 | Action Slot 33 |
+| LT + RT + B | Ctrl-Shift-4 | Action Slot 34 |
+| LT + RT + D-Down | Ctrl-Shift-5 | Action Slot 35 |
+| LT + RT + D-Left | Ctrl-Shift-6 | Action Slot 36 |
+| LT + RT + D-Up | Ctrl-Shift-7 | Action Slot 37 |
+| LT + RT + D-Right | Ctrl-Shift-8 | Action Slot 38 |
+| LT + RT + RB | Ctrl-Shift-9 | Action Slot 39 |
+| LT + RT + LB | Ctrl-Shift-0 | Action Slot 40 |
 
 ### Navigation
 | Button | Action |
@@ -45,6 +77,44 @@ ConsoleExperienceClassic uses custom keybindings for controller support.
 | Start | Open radial menu |
 | Select | Toggle map |
 
+## System Bindings
+
+System Bindings allow you to assign controller buttons to system actions (like Jump, Auto Run, etc.) instead of action bar slots. Configure these in the **Bindings** section of `/ce`.
+
+![Bindings Configuration](images/bindings.png)
+
+### Available System Actions
+
+| Category | Action | Description |
+|----------|--------|-------------|
+| **Custom** | Interact | Interact with target (requires Interact.dll) |
+| **Movement** | Jump | Jump |
+| | Toggle Auto Run | Toggle auto-run on/off |
+| | Sit/Stand | Sit down or stand up |
+| **Targeting** | Target Nearest Enemy | Target nearest hostile |
+| | Target Previous Enemy | Target previous hostile |
+| | Target Nearest Friend | Target nearest friendly |
+| | Assist Target | Assist current target |
+| | Target Pet | Target your pet |
+| | Clear Target | Clear current target |
+| **Interface** | Toggle Map | Open/close world map |
+| | Open All Bags | Open all bags |
+| | Toggle Character | Open character panel |
+| | Toggle Spellbook | Open spellbook |
+| | Toggle Talents | Open talent panel |
+| **Camera** | Zoom In | Zoom camera in |
+| | Zoom Out | Zoom camera out |
+| **Combat** | Attack | Start auto-attack |
+| | Pet Attack | Command pet to attack |
+| | Stop Attack | Stop attacking |
+
+### Default System Bindings
+
+| Button | System Action |
+|--------|---------------|
+| A (Slot 1) | Jump |
+| RT + LB (Slot 30) | Interact |
+
 ## Configuring Keybindings
 
 ### In-Game Key Bindings Menu
@@ -52,13 +122,12 @@ ConsoleExperienceClassic uses custom keybindings for controller support.
 2. Scroll to "ConsoleExperience" section
 3. Set your preferred keys
 
-### A Button Configuration
-| Setting | Effect |
-|---------|--------|
-| "Use A for Jump" ON | A button = Jump |
-| "Use A for Jump" OFF | A button = Action 1 |
-
-Configure in the "Keybindings" section of `/ce`.
+### System Bindings Configuration
+1. Type `/ce` to open configuration
+2. Go to the **Bindings** tab
+3. For each controller button slot, select either:
+   - **None (Action Bar)** - Uses the action bar slot normally
+   - **A system action** - Binds directly to that WoW action
 
 ## Controller Setup
 

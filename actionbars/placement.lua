@@ -133,12 +133,6 @@ function Placement:CreateFrame()
     -- Create column headers with button icons
     local labelColumnWidth = 50  -- Space for modifier icons column on the left
     
-    -- Check if A button should be hidden (useAForJump config)
-    local useAForJump = false
-    if ConsoleExperience.config and ConsoleExperience.config.Get then
-        useAForJump = ConsoleExperience.config:Get("useAForJump") or false
-    end
-    
     frame.headerIcons = {}  -- Store header icons for visibility control
     for btn = 1, NUM_BUTTONS do
         local btnInfo = self.BUTTON_INFO[btn]
@@ -153,7 +147,7 @@ function Placement:CreateFrame()
             headerIcon:SetTexture(GetIconPath(btnInfo.icon))
             headerIcon:SetPoint("TOP", frame, "TOPLEFT", xOffset, -42)
             
-            -- Header icon stays visible even if first button is hidden (other A buttons are still visible)
+            -- Header icon stays visible (column may have buttons on other pages)
             frame.headerIcons[btn] = headerIcon
         end
     end
@@ -166,10 +160,11 @@ function Placement:CreateFrame()
             local actionSlot = ((page - 1) * NUM_BUTTONS) + btn
             local button = self:CreateActionButton(frame, actionSlot, btn, page)
             
-            -- Hide only the first A button (slot 1, page 1) if useAForJump is enabled
-            -- Other A buttons (LT+A, RT+A, LT+RT+A) should remain visible
-            if btn == 1 and page == 1 and useAForJump then
-                button:Hide()
+            -- Hide buttons that have proxied actions assigned
+            if ConsoleExperience.proxied and ConsoleExperience.proxied.IsSlotProxied then
+                if ConsoleExperience.proxied:IsSlotProxied(actionSlot) then
+                    button:Hide()
+                end
             end
             
             self.buttons[actionSlot] = button
@@ -808,22 +803,15 @@ end
 function Placement:UpdateButtonVisibility()
     if not self.frame then return end
     
-    -- Check if A button should be hidden (useAForJump config)
-    local useAForJump = false
-    if ConsoleExperience.config and ConsoleExperience.config.Get then
-        useAForJump = ConsoleExperience.config:Get("useAForJump") or false
-    end
-    
-    -- Header icon stays visible (column still has LT+A, RT+A, LT+RT+A buttons)
-    
-    -- Hide/show only the first A button (slot 1, page 1) if useAForJump is enabled
-    -- Other A buttons (LT+A, RT+A, LT+RT+A) should remain visible
+    -- Hide/show buttons based on proxied action assignments
     if self.buttons then
-        local actionSlot = 1  -- Only slot 1 (page 1, button 1)
-        local button = self.buttons[actionSlot]
-        if button then
-            if useAForJump then
-                button:Hide()
+        for actionSlot, button in pairs(self.buttons) do
+            if ConsoleExperience.proxied and ConsoleExperience.proxied.IsSlotProxied then
+                if ConsoleExperience.proxied:IsSlotProxied(actionSlot) then
+                    button:Hide()
+                else
+                    button:Show()
+                end
             else
                 button:Show()
             end

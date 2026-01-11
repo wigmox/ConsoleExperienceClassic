@@ -100,18 +100,24 @@ ConsoleExperience_translation["enUS"] = {
     ["Click to choose the color for channeling spells (bandages, etc)."] = "Click to choose the color for channeling spells (bandages, etc).",
     ["Configure the custom cast bar that appears above chat."] = "Configure the custom cast bar that appears above chat.",
     
-    -- Keybindings
+    -- Keybindings / Bindings
     ["Keybindings"] = "Keybindings",
     ["Keybinding Settings"] = "Keybinding Settings",
     ["Configure special keybindings for controller-style gameplay."] = "Configure special keybindings for controller-style gameplay.",
-    ["Use A button for Jump"] = "Use A button for Jump",
-    ["When enabled, pressing the A button (key 1) will jump. When disabled, it will use whatever action is in slot 1 of the action bar."] = "When enabled, pressing the A button (key 1) will jump. When disabled, it will use whatever action is in slot 1 of the action bar.",
+    ["Bindings"] = "Bindings",
+    ["System Bindings"] = "System Bindings",
+    ["Assign controller buttons to system actions instead of action bar slots."] = "Assign controller buttons to system actions instead of action bar slots.",
+    ["None (Action Bar)"] = "None (Action Bar)",
+    ["No Modifier"] = "No Modifier",
+    ["Actions"] = "Actions",
     ["Reset Bindings"] = "Reset Bindings",
     ["Reset Default Bindings"] = "Reset Default Bindings",
-    ["Resets all keybindings to default (1-0 keys) and places default macros (Target) on the action bar."] = "Resets all keybindings to default (1-0 keys) and places default macros (Target) on the action bar.",
+    ["Resets all keybindings to default (1-0 keys)."] = "Resets all keybindings to default (1-0 keys).",
     ["Spell Placement"] = "Spell Placement",
     ["Show Placement Frame"] = "Show Placement Frame",
-    ["Opens the spell placement frame where you can drag and drop spells, macros, and items onto action bar slots."] = "Opens the spell placement frame where you can drag and drop spells, macros, and items onto action bar slots.",
+    ["Opens the spell placement frame where you can drag and drop spells and items onto action bar slots."] = "Opens the spell placement frame where you can drag and drop spells and items onto action bar slots.",
+    ["Open all bags at vendor"] = "Open all bags at vendor",
+    ["Automatically open all bags when interacting with merchants, auction house, or bank."] = "Automatically open all bags when interacting with merchants, auction house, or bank.",
     
     -- Bars (Action Bars, XP/Rep, Cast Bar)
     ["Bars"] = "Bars",

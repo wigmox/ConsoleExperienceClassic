@@ -23,9 +23,11 @@ The action bar uses a "star" layout with two groups of buttons:
 - With LB modifier
 
 **Right Star (Face Buttons):**
-- A (or Jump), B, X, Y
+- A, B, X, Y (A defaults to Jump via System Bindings)
 - With RT modifier  
 - With RB modifier
+
+> **Note:** Any button slot can be assigned to a System Binding (like Jump, Auto Run, etc.) instead of an action bar slot. See [Keybindings](../Keybindings.md) for details.
 
 ## Appearance Styles
 
@@ -97,5 +99,5 @@ Two optional vertical action bars designed for touch screen input. These bars ha
 - Use the placement mode to fine-tune button positions
 - The right star typically holds your most-used abilities
 - Modifier buttons (triggers/bumpers) give you 3x the slots per star
-- Combine with macros for even more functionality
+- Use System Bindings for common actions like Jump, Auto Run, etc.
 - Side bars share size/padding settings with main action bars

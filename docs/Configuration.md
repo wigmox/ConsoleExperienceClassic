@@ -26,6 +26,11 @@ Open the configuration panel with `/ce` or `/consoleexperience`.
 |---------|-------------|---------|
 | Controller Type | "xbox" or "ps" button icons | xbox |
 
+### Other Options
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Open all bags at vendor | Auto-open bags at merchants/bank | Off |
+
 ## Action Bar Settings
 
 ### Layout
@@ -91,11 +96,32 @@ Open the configuration panel with `/ce` or `/consoleexperience`.
 | Height | Bar height | 20 |
 | Color | Cast bar color | Blue |
 
-## Keybinding Settings
+## Bindings Settings
 
+The Bindings section allows you to assign controller buttons to system actions instead of action bar slots.
+
+![Bindings Configuration](images/bindings.png)
+
+### System Bindings
 | Setting | Description | Default |
 |---------|-------------|---------|
-| Use A for Jump | Bind A button to Jump instead of action | On |
+| Slot 1 (A) | System action for A button | Jump |
+| Slot 30 (RT+LB) | System action for RT+LB | Interact |
+| Other Slots | Can be assigned to any system action | None (Action Bar) |
+
+### Available System Actions
+- **Movement:** Jump, Toggle Auto Run, Sit/Stand
+- **Targeting:** Target Nearest Enemy, Target Previous Enemy, Target Nearest Friend, Assist Target, Target Pet, Clear Target
+- **Interface:** Toggle Map, Open All Bags, Toggle Character, Toggle Spellbook, Toggle Talents
+- **Camera:** Zoom In, Zoom Out
+- **Combat:** Attack, Pet Attack, Stop Attack
+- **Custom:** Interact (requires Interact.dll)
+
+### Actions
+| Setting | Description |
+|---------|-------------|
+| Reset Bindings | Reset all keybindings to defaults |
+| Spell Placement | Open the spell placement frame |
 
 ## Slash Commands
 

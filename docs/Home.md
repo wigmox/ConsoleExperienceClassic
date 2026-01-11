@@ -5,6 +5,7 @@ A controller-friendly addon for World of Warcraft 1.12 (Vanilla) that provides a
 ## Features
 
 - **🎮 Gamepad-Style Action Bars** - Controller-optimized button layout with visual button prompts
+- **🔗 System Bindings** - Assign controller buttons to system actions (Jump, Auto Run, etc.)
 - **🎯 Cursor Navigation** - Navigate UI elements with controller/keyboard
 - **📻 Radial Menu** - Quick access menu for common actions
 - **⌨️ Virtual Keyboard** - On-screen keyboard for chat input

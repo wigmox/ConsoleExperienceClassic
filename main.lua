@@ -58,11 +58,6 @@ ConsoleExperience:SetScript("OnEvent", function()
             ConsoleExperience.radial:Initialize()
         end
         
-        -- Initialize macros (creates default macros on first load)
-        if ConsoleExperience.macros and ConsoleExperience.macros.Initialize then
-            ConsoleExperience.macros:Initialize()
-        end
-        
         -- Initialize placement frame
         if ConsoleExperience.placement and ConsoleExperience.placement.Initialize then
             ConsoleExperience.placement:Initialize()

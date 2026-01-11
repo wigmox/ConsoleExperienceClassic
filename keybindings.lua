@@ -69,6 +69,25 @@ _G["BINDING_NAME_CE_CURSOR_CLOSE"] = "Cursor Close"
 _G["BINDING_HEADER_CERADIAL"] = "CE Radial Menu"
 _G["BINDING_NAME_CE_TOGGLE_RADIAL"] = "Toggle Radial Menu"
 
+-- Interact header and binding name
+_G["BINDING_HEADER_CEINTERACT"] = "CE Interact"
+_G["BINDING_NAME_CE_INTERACT"] = "Interact with Target"
+
+-- ============================================================================
+-- CE_InteractNearest Function (used by CE_INTERACT binding)
+-- ============================================================================
+
+function CE_InteractNearest()
+    -- InteractNearest is provided by Interact.dll (Turtle WoW addon)
+    if InteractNearest then
+        InteractNearest(1)
+    else
+        -- Fallback: target nearest enemy if Interact.dll is not loaded
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff9900[CE]|r Interact.dll not loaded - using TargetNearestEnemy() as fallback", 1, 0.6, 0)
+        TargetNearestEnemy()
+    end
+end
+
 -- ============================================================================
 -- Global Action Button Handler (like pfUI's pfActionButton)
 -- ============================================================================
@@ -122,31 +141,11 @@ function ConsoleExperienceKeybindings:SetupDefaultBindings()
     
     local keys = self.DEFAULT_KEYS
     
-    -- Check if useAForJump is enabled in config
-    local useAForJump = true  -- Default
-    if ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.useAForJump ~= nil then
-        useAForJump = ConsoleExperienceDB.config.useAForJump
-    end
-    
     -- Page 1: No modifier (actions 1-10)
     for i = 1, 10 do
         local currentKey = GetBindingKey("CE_ACTION_" .. i)
         if not currentKey then
-            -- Skip key 1 if useAForJump is enabled (will be set to JUMP below)
-            if i == 1 and useAForJump then
-                CE_Debug("Skipping CE_ACTION_1 setup (useAForJump enabled)")
-            else
-                SetBinding(keys[i], "CE_ACTION_" .. i)
-            end
-        end
-    end
-    
-    -- If useAForJump is enabled, ensure key 1 is bound to JUMP
-    if useAForJump then
-        local currentAction = GetBindingAction(keys[1])
-        if currentAction ~= "JUMP" then
-            SetBinding(keys[1], "JUMP")
-            CE_Debug("Set key 1 to JUMP on startup (useAForJump enabled)")
+            SetBinding(keys[i], "CE_ACTION_" .. i)
         end
     end
     
@@ -198,8 +197,10 @@ function ConsoleExperienceKeybindings:Initialize()
         self:SetupDefaultBindings()
     end
     
-    -- ALWAYS enforce useAForJump setting on every load/reload
-    self:EnforceJumpBinding()
+    -- Initialize and apply proxied actions (replaces old useAForJump system)
+    if ConsoleExperience.proxied and ConsoleExperience.proxied.Initialize then
+        ConsoleExperience.proxied:Initialize()
+    end
     
     -- Override default action button handlers like pfUI does
     -- This redirects default action bar keypresses to our buttons
@@ -213,36 +214,6 @@ function ConsoleExperienceKeybindings:Initialize()
     CE_Debug("Keybindings module initialized!")
 end
 
--- Enforce the useAForJump config setting (called on every load/reload)
-function ConsoleExperienceKeybindings:EnforceJumpBinding()
-    local keys = self.DEFAULT_KEYS
-    
-    -- Check if useAForJump is enabled in config
-    local useAForJump = true  -- Default
-    if ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.useAForJump ~= nil then
-        useAForJump = ConsoleExperienceDB.config.useAForJump
-    end
-    
-    local currentBinding = GetBindingAction(keys[1])
-    CE_Debug("EnforceJumpBinding: useAForJump=" .. tostring(useAForJump) .. ", current key 1 binding=" .. tostring(currentBinding))
-    
-    if useAForJump then
-        -- Should be JUMP
-        if currentBinding ~= "JUMP" then
-            SetBinding(keys[1], "JUMP")
-            SaveBindings(1)
-            CE_Debug("Enforced key 1 to JUMP")
-        end
-    else
-        -- Should be CE_ACTION_1
-        if currentBinding ~= "CE_ACTION_1" then
-            SetBinding(keys[1], "CE_ACTION_1")
-            SaveBindings(1)
-            CE_Debug("Enforced key 1 to CE_ACTION_1")
-        end
-    end
-end
-
 -- Attach to main addon
 ConsoleExperience.keybindings = ConsoleExperienceKeybindings
 
@@ -250,35 +221,21 @@ ConsoleExperience.keybindings = ConsoleExperienceKeybindings
 function ConsoleExperienceKeybindings:ResetAllBindings()
     local keys = self.DEFAULT_KEYS
     
-    -- Check if A button should be JUMP (from config)
-    local useAForJump = true  -- Default
-    if ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.useAForJump ~= nil then
-        useAForJump = ConsoleExperienceDB.config.useAForJump
-    end
-    
-    -- Set all CE_ACTION bindings
+    -- Set all CE_ACTION bindings first (proxied module will override as needed)
     for i = 1, 10 do
-        -- Skip key 1 if useAForJump is enabled (it will be set to JUMP below)
-        if i == 1 and useAForJump then
-            CE_Debug("Skipping CE_ACTION_1 for key 1 (useAForJump enabled)")
-        else
-            SetBinding(keys[i], "CE_ACTION_" .. i)
-        end
-        
-        -- Modifier keys always use CE actions
+        SetBinding(keys[i], "CE_ACTION_" .. i)
         SetBinding("SHIFT-" .. keys[i], "CE_ACTION_" .. (i + 10))
         SetBinding("CTRL-" .. keys[i], "CE_ACTION_" .. (i + 20))
         SetBinding("CTRL-SHIFT-" .. keys[i], "CE_ACTION_" .. (i + 30))
-    end
-    
-    -- If useAForJump is enabled, bind key 1 to JUMP
-    if useAForJump then
-        SetBinding(keys[1], "JUMP")
-        CE_Debug("Set key 1 to JUMP (useAForJump enabled)")
     end
     
     -- Radial menu binding
     SetBinding("SHIFT-ESCAPE", "CE_TOGGLE_RADIAL")
     
     SaveBindings(1)
+    
+    -- Now apply proxied actions (will override CE_ACTION bindings where needed)
+    if ConsoleExperience.proxied and ConsoleExperience.proxied.ApplyAllBindings then
+        ConsoleExperience.proxied:ApplyAllBindings()
+    end
 end

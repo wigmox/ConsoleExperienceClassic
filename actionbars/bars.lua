@@ -385,24 +385,14 @@ function ActionBars:UpdateButton(button)
         end
     end
     
-    -- Check for special bindings (like JUMP for button A)
-    -- Only show special binding icon if the config option is enabled
-    local specialBinding = nil
-    local useAForJump = false
+    -- Check for proxied actions (like JUMP, AUTORUN, etc.)
+    -- These are WoW bindings assigned to controller buttons instead of action bar slots
+    local proxiedAction = nil
+    local actionSlot = self:GetActionOffset() + buttonID
     
-    if self.currentPage == 1 and buttonID == 1 then
-        -- Check if useAForJump is enabled in config
-        useAForJump = true  -- Default
-        if ConsoleExperience.config and ConsoleExperience.config.Get then
-            useAForJump = ConsoleExperience.config:Get("useAForJump")
-        elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.useAForJump ~= nil then
-            useAForJump = ConsoleExperienceDB.config.useAForJump
-        end
-        
-        CE_Debug("UpdateButton A: useAForJump=" .. tostring(useAForJump) .. ", hasTexture=" .. tostring(texture ~= nil))
-        
-        if useAForJump and ConsoleExperience.macros and ConsoleExperience.macros.SPECIAL_BINDINGS then
-            specialBinding = ConsoleExperience.macros.SPECIAL_BINDINGS[buttonID]
+    if ConsoleExperience.proxied and ConsoleExperience.proxied.IsSlotProxied then
+        if ConsoleExperience.proxied:IsSlotProxied(actionSlot) then
+            proxiedAction = ConsoleExperience.proxied:GetSlotActionInfo(actionSlot)
         end
     end
     
@@ -418,20 +408,20 @@ function ActionBars:UpdateButton(button)
     local normalTexture = "Interface\\Buttons\\UI-Quickslot2"
     local emptyTexture = "Interface\\Buttons\\UI-Quickslot"
     
-    -- If useAForJump is enabled for button 1, ALWAYS show jump icon (priority over action slot)
-    if specialBinding then
-        icon:SetTexture(specialBinding.icon)
+    -- If slot has a proxied action, show that icon (priority over action slot)
+    if proxiedAction then
+        icon:SetTexture(proxiedAction.icon)
         icon:Show()
         button.rangeTimer = nil
-        button.isSpecialBinding = specialBinding
+        button.isProxiedAction = proxiedAction
         cooldown:Hide()
-        -- Stop any flashing/glow effects since this is a special binding, not an action
+        -- Stop any flashing/glow effects since this is a proxied action, not an action slot
         self:StopFlash(button)
         button:SetChecked(0)
     elseif texture then
         icon:SetTexture(texture)
         icon:Show()
-        button.isSpecialBinding = nil
+        button.isProxiedAction = nil
         
         -- Reset range state when updating button
         -- Use -1 to force UpdateButtonUsable to refresh colors (since valid states are 0-3)
@@ -454,7 +444,7 @@ function ActionBars:UpdateButton(button)
         icon:Hide()
         cooldown:Hide()
         button.rangeTimer = nil
-        button.isSpecialBinding = nil
+        button.isProxiedAction = nil
         -- Reset color state for empty slots
         button.outofrange = nil
         button.vertexstate = -1
@@ -476,11 +466,11 @@ function ActionBars:UpdateButton(button)
     -- Always keep button visible so we can drop actions onto it
     button:Show()
     
-    -- Update equipped border (only if not a special binding)
+    -- Update equipped border (only if not a proxied action)
     local border = getglobal(button:GetName().."Border")
     if border then
-        if button.isSpecialBinding then
-            -- Hide border for special bindings
+        if button.isProxiedAction then
+            -- Hide border for proxied actions
             border:Hide()
         elseif IsEquippedAction(actionID) then
             border:SetVertexColor(0, 1.0, 0, 0.35)
@@ -498,8 +488,8 @@ function ActionBars:UpdateButton(button)
     -- Update macro name
     local macroName = getglobal(button:GetName().."Name")
     if macroName then
-        if button.isSpecialBinding then
-            macroName:SetText(button.isSpecialBinding.name)
+        if button.isProxiedAction then
+            macroName:SetText(button.isProxiedAction.name)
         else
             macroName:SetText(GetActionText(actionID))
         end
@@ -887,8 +877,8 @@ end
 function ActionBars:ButtonOnEvent(button, event)
     local actionID = self:GetActionID(button)
     
-    -- Skip action-related updates if button has a special binding (like JUMP)
-    local hasSpecialBinding = button.isSpecialBinding ~= nil
+    -- Skip action-related updates if button has a proxied action (like JUMP, AUTORUN)
+    local hasProxiedAction = button.isProxiedAction ~= nil
     
     if event == "PLAYER_ENTERING_WORLD" then
         self:UpdateButton(button)
@@ -905,20 +895,20 @@ function ActionBars:ButtonOnEvent(button, event)
             end
         end
     elseif event == "ACTIONBAR_UPDATE_STATE" then
-        if not hasSpecialBinding then
+        if not hasProxiedAction then
             self:UpdateButtonState(button)
         end
     elseif event == "ACTIONBAR_UPDATE_USABLE" then
-        if not hasSpecialBinding then
+        if not hasProxiedAction then
             self:UpdateButtonUsable(button)
         end
     elseif event == "ACTIONBAR_UPDATE_COOLDOWN" or event == "UPDATE_INVENTORY_ALERTS" then
-        if not hasSpecialBinding then
+        if not hasProxiedAction then
             self:UpdateButtonCooldown(button)
         end
     elseif event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_AURAS_CHANGED" then
         self:UpdateButton(button)
-        if not hasSpecialBinding then
+        if not hasProxiedAction then
             self:UpdateButtonState(button)
             self:UpdateButtonUsable(button)
         end
@@ -927,19 +917,19 @@ function ActionBars:ButtonOnEvent(button, event)
             self:UpdateButton(button)
         end
     elseif event == "PLAYER_ENTER_COMBAT" then
-        if not hasSpecialBinding and IsAttackAction(actionID) then
+        if not hasProxiedAction and IsAttackAction(actionID) then
             self:StartFlash(button)
         end
     elseif event == "PLAYER_LEAVE_COMBAT" then
-        if not hasSpecialBinding and IsAttackAction(actionID) then
+        if not hasProxiedAction and IsAttackAction(actionID) then
             self:StopFlash(button)
         end
     elseif event == "START_AUTOREPEAT_SPELL" then
-        if not hasSpecialBinding and IsAutoRepeatAction(actionID) then
+        if not hasProxiedAction and IsAutoRepeatAction(actionID) then
             self:StartFlash(button)
         end
     elseif event == "STOP_AUTOREPEAT_SPELL" then
-        if not hasSpecialBinding and self:IsFlashing(button) and not IsAttackAction(actionID) then
+        if not hasProxiedAction and self:IsFlashing(button) and not IsAttackAction(actionID) then
             self:StopFlash(button)
         end
     end
@@ -952,15 +942,15 @@ end
 function ActionBars:ButtonOnUpdate(button, elapsed)
     local actionID = self:GetActionID(button)
     
-    -- Don't flash if button has a special binding (like JUMP)
-    if button.isSpecialBinding then
+    -- Don't flash if button has a proxied action (like JUMP, AUTORUN)
+    if button.isProxiedAction then
         if self:IsFlashing(button) then
             self:StopFlash(button)
         end
     end
     
-    -- Handle flashing (attack/auto-repeat) - skip if special binding
-    if not button.isSpecialBinding and self:IsFlashing(button) then
+    -- Handle flashing (attack/auto-repeat) - skip if proxied action
+    if not button.isProxiedAction and self:IsFlashing(button) then
         button.flashtime = button.flashtime - elapsed
         if button.flashtime <= 0 then
             local overtime = -button.flashtime
@@ -1088,10 +1078,13 @@ function ActionBars:SetButtonTooltip(button)
         GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
     end
     
-    -- Check for special binding
-    if button.isSpecialBinding then
-        GameTooltip:SetText(button.isSpecialBinding.name, 1, 1, 1)
-        GameTooltip:AddLine("Bound to: " .. button.isSpecialBinding.binding, 0.5, 0.5, 0.5)
+    -- Check for proxied action
+    if button.isProxiedAction then
+        GameTooltip:SetText(button.isProxiedAction.name, 1, 1, 1)
+        if button.isProxiedAction.desc then
+            GameTooltip:AddLine(button.isProxiedAction.desc, 0.7, 0.7, 0.7)
+        end
+        GameTooltip:AddLine("Bound to: " .. button.isProxiedAction.id, 0.5, 0.5, 0.5)
         GameTooltip:Show()
         button.updateTooltip = nil
     elseif GameTooltip:SetAction(actionID) then
