@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.13.0...v0.13.1) (2026-01-11)
+
+
+### Bug Fixes
+
+* correct system bindings ([ddb05da](https://github.com/pepordev/ConsoleExperienceClassic/commit/ddb05dab68f12ddb104b68589a7798dcb72d1707))
+
 ## [0.13.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.12.2...v0.13.0) (2026-01-11)
 
 
