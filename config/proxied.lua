@@ -268,10 +268,32 @@ function Proxied:SetSlotBinding(slot, bindingID)
         ConsoleExperienceDB.proxiedActions = {}
     end
     
+    -- If assigning a proxied action, check if it's already bound to another slot
+    -- and release that binding first (set back to CE_ACTION_X)
+    local previousSlot = nil
+    if bindingID then
+        for existingSlot, existingBindingID in pairs(ConsoleExperienceDB.proxiedActions) do
+            if existingBindingID == bindingID and existingSlot ~= slot then
+                previousSlot = existingSlot
+                break
+            end
+        end
+        
+        if previousSlot then
+            CE_Debug("Proxied: Action " .. bindingID .. " was already on slot " .. previousSlot .. ", releasing it")
+            ConsoleExperienceDB.proxiedActions[previousSlot] = nil
+            -- Apply the binding change to restore CE_ACTION_X for the previous slot
+            self:ApplySlotBinding(previousSlot)
+        end
+    end
+    
     ConsoleExperienceDB.proxiedActions[slot] = bindingID
     
     -- Apply the binding change
     self:ApplySlotBinding(slot)
+    
+    -- Save bindings (1 = account-wide)
+    SaveBindings(1)
     
     -- Update action bar display
     if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
@@ -281,6 +303,19 @@ function Proxied:SetSlotBinding(slot, bindingID)
     -- Update placement frame if open
     if ConsoleExperience.placement and ConsoleExperience.placement.UpdateButtonVisibility then
         ConsoleExperience.placement:UpdateButtonVisibility()
+    end
+    
+    -- Update config dropdowns if the config panel is open (to reflect the released slot)
+    if previousSlot and ConsoleExperience.config and ConsoleExperience.config.bindingDropdowns then
+        local previousDropdown = ConsoleExperience.config.bindingDropdowns[previousSlot]
+        if previousDropdown then
+            UIDropDownMenu_SetSelectedValue(previousDropdown, nil)
+            local noneText = "None (Action Bar)"
+            if Locale and Locale.T then
+                noneText = Locale.T("None (Action Bar)")
+            end
+            UIDropDownMenu_SetText(noneText, previousDropdown)
+        end
     end
 end
 
@@ -321,41 +356,47 @@ function Proxied:ApplySlotBinding(slot)
     
     local bindingID = self:GetSlotBinding(slot)
     
-    -- Check if cursor mode is active (we need to update saved bindings instead)
+    -- Target action to bind
+    local targetAction = bindingID or ("CE_ACTION_" .. slot)
+    
+    -- Check if cursor mode is active
     local cursorModeActive = false
     if ConsoleExperience.cursor and ConsoleExperience.cursor.keybindings then
         cursorModeActive = ConsoleExperience.cursor.keybindings.cursorModeActive
     end
     
-    if bindingID then
-        -- Slot has a proxied action - bind key directly to WoW binding
-        if cursorModeActive then
-            -- Update saved original binding for when cursor mode exits
-            local cursorKeys = ConsoleExperience.cursor.keybindings
-            if not cursorKeys.originalBindings then
-                cursorKeys.originalBindings = {}
-            end
-            cursorKeys.originalBindings[key] = bindingID
-            CE_Debug("Proxied: Updated cursor original binding for " .. key .. " to " .. bindingID)
-        else
-            SetBinding(key, bindingID)
-            SaveBindings(1)  -- Save immediately (1 = account-wide)
-            CE_Debug("Proxied: Set " .. key .. " to " .. bindingID .. " (saved)")
+    -- Check if this key is managed by cursor mode (keys 1-8 are used for cursor navigation)
+    -- Modifier keys (SHIFT-X, CTRL-X, etc.) are NOT managed by cursor mode
+    local isCursorManagedKey = (slot >= 1 and slot <= 8)
+    
+    if cursorModeActive and isCursorManagedKey then
+        -- For keys 1-8 during cursor mode: only update originalBindings
+        -- Don't call SetBinding because cursor mode is using these keys for navigation
+        -- The binding will be applied when cursor mode exits
+        local cursorKeys = ConsoleExperience.cursor.keybindings
+        if not cursorKeys.originalBindings then
+            cursorKeys.originalBindings = {}
         end
+        cursorKeys.originalBindings[key] = targetAction
+        CE_Debug("Proxied: Updated cursor original binding for " .. key .. " to " .. targetAction .. " (will apply when cursor mode exits)")
     else
-        -- No proxied action - bind to CE_ACTION_X
-        local actionBinding = "CE_ACTION_" .. slot
-        if cursorModeActive then
-            local cursorKeys = ConsoleExperience.cursor.keybindings
-            if not cursorKeys.originalBindings then
-                cursorKeys.originalBindings = {}
-            end
-            cursorKeys.originalBindings[key] = actionBinding
-            CE_Debug("Proxied: Updated cursor original binding for " .. key .. " to " .. actionBinding)
+        -- For modifier keys (slots 9-40) OR when cursor mode is not active:
+        -- Apply the binding immediately via SetBinding
+        
+        -- First, clear any existing binding on this key
+        SetBinding(key, nil)
+        
+        -- Now set the new binding
+        SetBinding(key, targetAction)
+        
+        -- Verify the binding was set by checking what action this key is now bound to
+        local verifyAction = GetBindingAction(key)
+        if verifyAction == targetAction then
+            CE_Debug("Proxied: Set " .. key .. " to " .. targetAction .. " (verified)")
+        elseif verifyAction then
+            CE_Debug("Proxied: WARNING - " .. key .. " is bound to " .. verifyAction .. " instead of " .. targetAction)
         else
-            SetBinding(key, actionBinding)
-            SaveBindings(1)  -- Save immediately (1 = account-wide)
-            CE_Debug("Proxied: Set " .. key .. " to " .. actionBinding .. " (saved)")
+            CE_Debug("Proxied: WARNING - " .. key .. " has no binding after SetBinding call")
         end
     end
 end
