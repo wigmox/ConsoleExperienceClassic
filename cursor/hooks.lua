@@ -68,6 +68,7 @@ Hooks.frames = {
     {frame = "KeyBindingFrame", name = "Key Bindings"},
     {frame = "HelpFrame", name = "Help"},
     {frame = "CinematicFrame", name = "Cinematic"},
+    {frame = "LFTFrame", name = "Looking For Group"},
 }
 
 -- ============================================================================
