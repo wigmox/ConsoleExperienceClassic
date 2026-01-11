@@ -12,6 +12,10 @@ If you enjoy using ConsoleExperience Classic and want to support its development
 
 Your support helps maintain and improve the addon!
 
+## 🎬 Video Guides & Demos
+
+Check out the [YouTube playlist](https://www.youtube.com/watch?v=VoJzjZnJxbw&list=PLTY0NFyVGLrUhCEH55gXD9Bt9P13FYQY0) for demos, guides, and showcases of the addon in action.
+
 ## Features
 
 - 🎮 **Gamepad-Style Action Bars** - Controller-optimized button layout with visual prompts
