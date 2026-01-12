@@ -207,6 +207,65 @@ function CE_ClickCursor(mouseButton)
         Cursor.tooltip:HideButtonTooltip()
     end
     
+    -- Handle binding dropdown buttons - scroll the parent scroll frame to show dropdown
+    local buttonName = element:GetName()
+    if buttonName and string.find(buttonName, "CEBindingDropdown%d+Button") then
+        -- This is a binding dropdown button, scroll to make room for dropdown
+        local scrollFrame = getglobal("CEBindingsScrollFrame")
+        if scrollFrame then
+            local scrollBar = getglobal("CEBindingsScrollFrameScrollBar")
+            if scrollBar then
+                -- Get the dropdown frame (parent of button)
+                local dropdown = element:GetParent()
+                if dropdown then
+                    -- Calculate the Y position of the dropdown relative to the scroll child
+                    local _, dropdownY = dropdown:GetCenter()
+                    local scrollChild = scrollFrame:GetScrollChild()
+                    if scrollChild and dropdownY then
+                        local _, childTop = scrollChild:GetTop(), nil
+                        childTop = scrollChild:GetTop()
+                        if childTop then
+                            -- Calculate offset from top of scroll child
+                            local offsetFromTop = childTop - dropdownY
+                            -- Scroll so dropdown is near the top of visible area (with small margin)
+                            local margin = 30
+                            local targetScroll = math.max(0, offsetFromTop - margin)
+                            local currentScroll = scrollBar:GetValue()
+                            
+                            -- Only delay if we need to scroll significantly
+                            if math.abs(targetScroll - currentScroll) > 10 then
+                                -- Scroll first
+                                scrollBar:SetValue(targetScroll)
+                                
+                                -- Delay the dropdown click until scroll completes
+                                -- Create a timer frame if it doesn't exist
+                                if not CE_DropdownDelayFrame then
+                                    CE_DropdownDelayFrame = CreateFrame("Frame")
+                                end
+                                
+                                CE_DropdownDelayFrame.elapsed = 0
+                                CE_DropdownDelayFrame.targetButton = element
+                                CE_DropdownDelayFrame:SetScript("OnUpdate", function()
+                                    this.elapsed = this.elapsed + arg1
+                                    if this.elapsed >= 0.05 then  -- 50ms delay
+                                        this:SetScript("OnUpdate", nil)
+                                        if this.targetButton and this.targetButton.Click then
+                                            this.targetButton:Click(mouseButton or "LeftButton")
+                                        end
+                                        this.targetButton = nil
+                                    end
+                                end)
+                                
+                                -- Return early - the delayed click will happen via OnUpdate
+                                return
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
     -- Handle placement buttons specially
     local buttonName = element:GetName()
     if buttonName and string.find(buttonName, "CEPlacementButton%d+") then

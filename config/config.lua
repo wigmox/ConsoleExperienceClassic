@@ -1219,6 +1219,10 @@ function Config:CreateBarsSection()
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
                 ConsoleExperience.actionbars:UpdateSideBars()
             end
+            -- Update sidebar binding visibility in config panel
+            if Config.UpdateSidebarBindingVisibility then
+                Config:UpdateSidebarBindingVisibility()
+            end
         end,
         T("Enable vertical action bar on the left edge of the screen for touch input."))
     leftBarCheck:SetPoint("TOPLEFT", leftSideBox, "TOPLEFT", leftSideBox.contentLeft, leftSideBox.contentTop)
@@ -1237,6 +1241,10 @@ function Config:CreateBarsSection()
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
                 ConsoleExperience.actionbars:UpdateSideBars()
             end
+            -- Update sidebar binding visibility in config panel
+            if Config.UpdateSidebarBindingVisibility then
+                Config:UpdateSidebarBindingVisibility()
+            end
         end,
         T("Left Bar Buttons"),
         T("Number of buttons on the left side bar. Range: 1-5."))
@@ -1247,6 +1255,10 @@ function Config:CreateBarsSection()
             Config:Set("sideBarLeftButtons", num)
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
                 ConsoleExperience.actionbars:UpdateSideBars()
+            end
+            -- Update sidebar binding visibility in config panel
+            if Config.UpdateSidebarBindingVisibility then
+                Config:UpdateSidebarBindingVisibility()
             end
         end
     end)
@@ -1266,6 +1278,10 @@ function Config:CreateBarsSection()
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
                 ConsoleExperience.actionbars:UpdateSideBars()
             end
+            -- Update sidebar binding visibility in config panel
+            if Config.UpdateSidebarBindingVisibility then
+                Config:UpdateSidebarBindingVisibility()
+            end
         end,
         T("Enable vertical action bar on the right edge of the screen for touch input."))
     rightBarCheck:SetPoint("TOPLEFT", rightSideBox, "TOPLEFT", rightSideBox.contentLeft, rightSideBox.contentTop)
@@ -1284,6 +1300,10 @@ function Config:CreateBarsSection()
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
                 ConsoleExperience.actionbars:UpdateSideBars()
             end
+            -- Update sidebar binding visibility in config panel
+            if Config.UpdateSidebarBindingVisibility then
+                Config:UpdateSidebarBindingVisibility()
+            end
         end,
         T("Right Bar Buttons"),
         T("Number of buttons on the right side bar. Range: 1-5."))
@@ -1294,6 +1314,10 @@ function Config:CreateBarsSection()
             Config:Set("sideBarRightButtons", num)
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateSideBars then
                 ConsoleExperience.actionbars:UpdateSideBars()
+            end
+            -- Update sidebar binding visibility in config panel
+            if Config.UpdateSidebarBindingVisibility then
+                Config:UpdateSidebarBindingVisibility()
             end
         end
     end)
@@ -1981,14 +2005,280 @@ function Config:CreateBindingsSection()
         currentY = currentY + 10
     end
     
+    -- ==================== Sidebar Bindings ====================
+    -- Add sidebar binding options (slots 41-50)
+    
+    -- Left Sidebar Header
+    local leftSidebarHeader = CreateFrame("Frame", "CEBindingSidebarLeftHeader", scrollChild)
+    leftSidebarHeader:SetWidth(scrollChild:GetWidth())
+    leftSidebarHeader:SetHeight(20)
+    leftSidebarHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+    
+    local leftSidebarText = leftSidebarHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    leftSidebarText:SetPoint("LEFT", leftSidebarHeader, "LEFT", 10, 0)
+    leftSidebarText:SetText("-- " .. T("Left Sidebar") .. " --")
+    leftSidebarText:SetTextColor(1, 0.82, 0)
+    
+    -- Store for visibility toggle and dynamic repositioning
+    self.sidebarBindingFrames = self.sidebarBindingFrames or {}
+    self.sidebarBindingFrames.leftHeader = leftSidebarHeader
+    self.sidebarBindingFrames.leftRows = {}
+    self.sidebarBindingFrames.scrollChild = scrollChild
+    self.sidebarBindingFrames.scrollFrame = scrollFrame
+    self.sidebarBindingFrames.rowHeight = rowHeight
+    self.sidebarBindingFrames.headerHeight = 20
+    self.sidebarBindingFrames.spacing = 10
+    
+    currentY = currentY + 20
+    
+    -- Left sidebar buttons (slots 41-45)
+    for i = 1, 5 do
+        local slot = 40 + i
+        
+        local rowFrame = CreateFrame("Frame", "CEBindingRow" .. slot, scrollChild)
+        rowFrame:SetWidth(scrollChild:GetWidth())
+        rowFrame:SetHeight(rowHeight)
+        rowFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+        
+        -- Button label
+        local buttonLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        buttonLabel:SetPoint("LEFT", rowFrame, "LEFT", 10, 0)
+        buttonLabel:SetText(T("Left") .. " " .. i)
+        buttonLabel:SetTextColor(1, 1, 1)
+        
+        -- Dropdown for action selection
+        local dropdownName = "CEBindingDropdown" .. slot
+        local dropdown = CreateFrame("Frame", dropdownName, rowFrame, "UIDropDownMenuTemplate")
+        dropdown:SetPoint("LEFT", rowFrame, "LEFT", 80, -3)
+        dropdown.slot = slot
+        
+        -- Capture slot value for closure
+        local capturedSlot = slot
+        local capturedDropdown = dropdown
+        
+        -- Initialize dropdown
+        local function InitializeSidebarBindingDropdown()
+            local currentValue = nil
+            if ConsoleExperience.proxied and ConsoleExperience.proxied.GetSlotBinding then
+                currentValue = ConsoleExperience.proxied:GetSlotBinding(capturedSlot)
+            end
+            
+            -- None option
+            local info = {}
+            info.text = T("None (Action Bar)")
+            info.value = nil
+            info.func = function()
+                if ConsoleExperience.proxied and ConsoleExperience.proxied.SetSlotBinding then
+                    ConsoleExperience.proxied:SetSlotBinding(capturedSlot, nil)
+                end
+                UIDropDownMenu_SetSelectedValue(capturedDropdown, nil)
+                UIDropDownMenu_SetText(T("None (Action Bar)"), capturedDropdown)
+            end
+            if currentValue == nil then
+                info.checked = 1
+            end
+            UIDropDownMenu_AddButton(info)
+            
+            -- Add all proxied actions
+            if ConsoleExperience.proxied and ConsoleExperience.proxied.ACTIONS then
+                for _, action in ipairs(ConsoleExperience.proxied.ACTIONS) do
+                    if action.header then
+                        info = {}
+                        info.text = "-- " .. action.header .. " --"
+                        info.disabled = true
+                        info.notCheckable = true
+                        UIDropDownMenu_AddButton(info)
+                    else
+                        local actionId = action.id
+                        local actionName = action.name
+                        info = {}
+                        info.text = actionName
+                        info.value = actionId
+                        info.func = function()
+                            if ConsoleExperience.proxied and ConsoleExperience.proxied.SetSlotBinding then
+                                ConsoleExperience.proxied:SetSlotBinding(capturedSlot, actionId)
+                            end
+                            UIDropDownMenu_SetSelectedValue(capturedDropdown, actionId)
+                            UIDropDownMenu_SetText(actionName, capturedDropdown)
+                        end
+                        if currentValue == actionId then
+                            info.checked = 1
+                        end
+                        UIDropDownMenu_AddButton(info)
+                    end
+                end
+            end
+        end
+        
+        UIDropDownMenu_Initialize(dropdown, InitializeSidebarBindingDropdown)
+        UIDropDownMenu_SetWidth(180, dropdown)
+        
+        -- Set initial text
+        local currentValue = nil
+        if ConsoleExperience.proxied and ConsoleExperience.proxied.GetSlotBinding then
+            currentValue = ConsoleExperience.proxied:GetSlotBinding(slot)
+        end
+        
+        if currentValue then
+            local action = ConsoleExperience.proxied:GetActionByID(currentValue)
+            if action then
+                UIDropDownMenu_SetText(action.name, dropdown)
+            else
+                UIDropDownMenu_SetText(currentValue, dropdown)
+            end
+        else
+            UIDropDownMenu_SetText(T("None (Action Bar)"), dropdown)
+        end
+        
+        self.bindingDropdowns[slot] = dropdown
+        self.sidebarBindingFrames.leftRows[i] = rowFrame
+        
+        currentY = currentY + rowHeight
+    end
+    
+    currentY = currentY + 10
+    
+    -- Right Sidebar Header
+    local rightSidebarHeader = CreateFrame("Frame", "CEBindingSidebarRightHeader", scrollChild)
+    rightSidebarHeader:SetWidth(scrollChild:GetWidth())
+    rightSidebarHeader:SetHeight(20)
+    rightSidebarHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+    
+    local rightSidebarText = rightSidebarHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    rightSidebarText:SetPoint("LEFT", rightSidebarHeader, "LEFT", 10, 0)
+    rightSidebarText:SetText("-- " .. T("Right Sidebar") .. " --")
+    rightSidebarText:SetTextColor(1, 0.82, 0)
+    
+    self.sidebarBindingFrames.rightHeader = rightSidebarHeader
+    self.sidebarBindingFrames.rightRows = {}
+    
+    currentY = currentY + 20
+    
+    -- Right sidebar buttons (slots 46-50)
+    for i = 1, 5 do
+        local slot = 45 + i
+        
+        local rowFrame = CreateFrame("Frame", "CEBindingRow" .. slot, scrollChild)
+        rowFrame:SetWidth(scrollChild:GetWidth())
+        rowFrame:SetHeight(rowHeight)
+        rowFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+        
+        -- Button label
+        local buttonLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        buttonLabel:SetPoint("LEFT", rowFrame, "LEFT", 10, 0)
+        buttonLabel:SetText(T("Right") .. " " .. i)
+        buttonLabel:SetTextColor(1, 1, 1)
+        
+        -- Dropdown for action selection
+        local dropdownName = "CEBindingDropdown" .. slot
+        local dropdown = CreateFrame("Frame", dropdownName, rowFrame, "UIDropDownMenuTemplate")
+        dropdown:SetPoint("LEFT", rowFrame, "LEFT", 80, -3)
+        dropdown.slot = slot
+        
+        -- Capture slot value for closure
+        local capturedSlot = slot
+        local capturedDropdown = dropdown
+        
+        -- Initialize dropdown
+        local function InitializeSidebarBindingDropdown()
+            local currentValue = nil
+            if ConsoleExperience.proxied and ConsoleExperience.proxied.GetSlotBinding then
+                currentValue = ConsoleExperience.proxied:GetSlotBinding(capturedSlot)
+            end
+            
+            -- None option
+            local info = {}
+            info.text = T("None (Action Bar)")
+            info.value = nil
+            info.func = function()
+                if ConsoleExperience.proxied and ConsoleExperience.proxied.SetSlotBinding then
+                    ConsoleExperience.proxied:SetSlotBinding(capturedSlot, nil)
+                end
+                UIDropDownMenu_SetSelectedValue(capturedDropdown, nil)
+                UIDropDownMenu_SetText(T("None (Action Bar)"), capturedDropdown)
+            end
+            if currentValue == nil then
+                info.checked = 1
+            end
+            UIDropDownMenu_AddButton(info)
+            
+            -- Add all proxied actions
+            if ConsoleExperience.proxied and ConsoleExperience.proxied.ACTIONS then
+                for _, action in ipairs(ConsoleExperience.proxied.ACTIONS) do
+                    if action.header then
+                        info = {}
+                        info.text = "-- " .. action.header .. " --"
+                        info.disabled = true
+                        info.notCheckable = true
+                        UIDropDownMenu_AddButton(info)
+                    else
+                        local actionId = action.id
+                        local actionName = action.name
+                        info = {}
+                        info.text = actionName
+                        info.value = actionId
+                        info.func = function()
+                            if ConsoleExperience.proxied and ConsoleExperience.proxied.SetSlotBinding then
+                                ConsoleExperience.proxied:SetSlotBinding(capturedSlot, actionId)
+                            end
+                            UIDropDownMenu_SetSelectedValue(capturedDropdown, actionId)
+                            UIDropDownMenu_SetText(actionName, capturedDropdown)
+                        end
+                        if currentValue == actionId then
+                            info.checked = 1
+                        end
+                        UIDropDownMenu_AddButton(info)
+                    end
+                end
+            end
+        end
+        
+        UIDropDownMenu_Initialize(dropdown, InitializeSidebarBindingDropdown)
+        UIDropDownMenu_SetWidth(180, dropdown)
+        
+        -- Set initial text
+        local currentValue = nil
+        if ConsoleExperience.proxied and ConsoleExperience.proxied.GetSlotBinding then
+            currentValue = ConsoleExperience.proxied:GetSlotBinding(slot)
+        end
+        
+        if currentValue then
+            local action = ConsoleExperience.proxied:GetActionByID(currentValue)
+            if action then
+                UIDropDownMenu_SetText(action.name, dropdown)
+            else
+                UIDropDownMenu_SetText(currentValue, dropdown)
+            end
+        else
+            UIDropDownMenu_SetText(T("None (Action Bar)"), dropdown)
+        end
+        
+        self.bindingDropdowns[slot] = dropdown
+        self.sidebarBindingFrames.rightRows[i] = rowFrame
+        
+        currentY = currentY + rowHeight
+    end
+    
     -- Set scroll child height
     scrollChild:SetHeight(currentY + 20)
+    
+    -- Update sidebar binding visibility based on config
+    self:UpdateSidebarBindingVisibility()
     
     -- Ensure dropdown buttons are navigable
     local bindingsDelayFrame = CreateFrame("Frame")
     bindingsDelayFrame:SetScript("OnUpdate", function()
         bindingsDelayFrame:Hide()
+        -- Main action bar dropdowns
         for slot = 1, 40 do
+            local dropdownButton = getglobal("CEBindingDropdown" .. slot .. "Button")
+            if dropdownButton then
+                dropdownButton:Enable()
+                dropdownButton:Show()
+            end
+        end
+        -- Sidebar dropdowns
+        for slot = 41, 50 do
             local dropdownButton = getglobal("CEBindingDropdown" .. slot .. "Button")
             if dropdownButton then
                 dropdownButton:Enable()
@@ -2045,6 +2335,105 @@ function Config:CreateBindingsSection()
     end)
     
     self.contentSections["bindings"] = section
+end
+
+-- Update sidebar binding visibility based on sidebar enabled state and button count
+function Config:UpdateSidebarBindingVisibility()
+    if not self.sidebarBindingFrames then return end
+    
+    local leftEnabled = self:Get("sideBarLeftEnabled")
+    local rightEnabled = self:Get("sideBarRightEnabled")
+    local leftCount = self:Get("sideBarLeftButtons") or 3
+    local rightCount = self:Get("sideBarRightButtons") or 3
+    
+    -- Clamp counts
+    if leftCount < 1 then leftCount = 1 end
+    if leftCount > 5 then leftCount = 5 end
+    if rightCount < 1 then rightCount = 1 end
+    if rightCount > 5 then rightCount = 5 end
+    
+    local scrollChild = self.sidebarBindingFrames.scrollChild
+    local scrollFrame = self.sidebarBindingFrames.scrollFrame
+    if not scrollChild then return end
+    
+    local rowHeight = self.sidebarBindingFrames.rowHeight or 28
+    local headerHeight = self.sidebarBindingFrames.headerHeight or 20
+    local spacing = self.sidebarBindingFrames.spacing or 10
+    
+    -- Calculate base Y from main action bar bindings
+    -- 4 pages × (header 20px + 10 rows × 28px + spacing 10px) = 4 × 310 = 1240
+    local mainBarHeight = 4 * (headerHeight + (10 * rowHeight) + spacing)
+    local currentY = mainBarHeight
+    
+    -- Update left sidebar visibility and position
+    if self.sidebarBindingFrames.leftHeader then
+        if leftEnabled then
+            self.sidebarBindingFrames.leftHeader:ClearAllPoints()
+            self.sidebarBindingFrames.leftHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+            self.sidebarBindingFrames.leftHeader:Show()
+            currentY = currentY + headerHeight
+        else
+            self.sidebarBindingFrames.leftHeader:Hide()
+        end
+    end
+    
+    if self.sidebarBindingFrames.leftRows then
+        for i, rowFrame in ipairs(self.sidebarBindingFrames.leftRows) do
+            if leftEnabled and i <= leftCount then
+                rowFrame:ClearAllPoints()
+                rowFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+                rowFrame:Show()
+                currentY = currentY + rowHeight
+            else
+                rowFrame:Hide()
+            end
+        end
+    end
+    
+    -- Add spacing between left and right if left is enabled
+    if leftEnabled then
+        currentY = currentY + spacing
+    end
+    
+    -- Update right sidebar visibility and position
+    if self.sidebarBindingFrames.rightHeader then
+        if rightEnabled then
+            self.sidebarBindingFrames.rightHeader:ClearAllPoints()
+            self.sidebarBindingFrames.rightHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+            self.sidebarBindingFrames.rightHeader:Show()
+            currentY = currentY + headerHeight
+        else
+            self.sidebarBindingFrames.rightHeader:Hide()
+        end
+    end
+    
+    if self.sidebarBindingFrames.rightRows then
+        for i, rowFrame in ipairs(self.sidebarBindingFrames.rightRows) do
+            if rightEnabled and i <= rightCount then
+                rowFrame:ClearAllPoints()
+                rowFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -currentY)
+                rowFrame:Show()
+                currentY = currentY + rowHeight
+            else
+                rowFrame:Hide()
+            end
+        end
+    end
+    
+    -- Update scroll child height to fit all visible content
+    local newHeight = currentY + 20
+    scrollChild:SetHeight(newHeight)
+    
+    -- Update scroll frame's scroll bar range
+    if scrollFrame then
+        local scrollBar = getglobal(scrollFrame:GetName() .. "ScrollBar")
+        if scrollBar then
+            local scrollFrameHeight = scrollFrame:GetHeight()
+            local maxScroll = newHeight - scrollFrameHeight
+            if maxScroll < 0 then maxScroll = 0 end
+            scrollBar:SetMinMaxValues(0, maxScroll)
+        end
+    end
 end
 
 -- Refresh binding icons when controller type changes

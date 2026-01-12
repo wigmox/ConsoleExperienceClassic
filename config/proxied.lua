@@ -205,6 +205,48 @@ Proxied.PAGE_MODIFIERS = {
 }
 
 -- ============================================================================
+-- Sidebar Slot Configuration
+-- ============================================================================
+
+-- Sidebar slot offsets (same as in bars.lua)
+Proxied.SIDE_BAR_LEFT_OFFSET = 40   -- Slots 41-45
+Proxied.SIDE_BAR_RIGHT_OFFSET = 45  -- Slots 46-50
+
+-- Sidebar slot names for display
+Proxied.SIDEBAR_SLOT_NAMES = {
+    -- Left sidebar (slots 41-45)
+    [41] = "Left 1", [42] = "Left 2", [43] = "Left 3", [44] = "Left 4", [45] = "Left 5",
+    -- Right sidebar (slots 46-50)
+    [46] = "Right 1", [47] = "Right 2", [48] = "Right 3", [49] = "Right 4", [50] = "Right 5",
+}
+
+-- Check if a slot is a sidebar slot
+function Proxied:IsSidebarSlot(slot)
+    return slot >= 41 and slot <= 50
+end
+
+-- Get sidebar side and button index for a slot
+-- Returns: side ("left" or "right"), buttonIndex (1-5), or nil if not a sidebar slot
+function Proxied:GetSidebarSlotInfo(slot)
+    if slot >= 41 and slot <= 45 then
+        return "left", slot - 40
+    elseif slot >= 46 and slot <= 50 then
+        return "right", slot - 45
+    end
+    return nil, nil
+end
+
+-- Get slot number for a sidebar button
+function Proxied:GetSidebarSlot(side, buttonIndex)
+    if side == "left" then
+        return 40 + buttonIndex
+    elseif side == "right" then
+        return 45 + buttonIndex
+    end
+    return nil
+end
+
+-- ============================================================================
 -- Get Action Info
 -- ============================================================================
 
@@ -240,6 +282,12 @@ end
 
 -- Get display name for a slot
 function Proxied:GetSlotDisplayName(slot)
+    -- Check if it's a sidebar slot
+    if self.SIDEBAR_SLOT_NAMES[slot] then
+        return self.SIDEBAR_SLOT_NAMES[slot]
+    end
+    
+    -- Main action bar slots (1-40)
     local page = math.floor((slot - 1) / 10) + 1
     local buttonIndex = math.mod(slot - 1, 10) + 1
     local modifier = self.PAGE_MODIFIERS[page] or ""
@@ -346,11 +394,82 @@ function Proxied:GetSlotActionInfo(slot)
 end
 
 -- ============================================================================
+-- Sidebar Binding Release
+-- ============================================================================
+
+-- Release proxied actions for hidden sidebar slots
+-- side: "left" or "right"
+-- maxButtons: maximum number of visible buttons (1-5)
+function Proxied:ReleaseSidebarBindings(side, maxButtons)
+    if not ConsoleExperienceDB or not ConsoleExperienceDB.proxiedActions then
+        return
+    end
+    
+    local startSlot, endSlot
+    if side == "left" then
+        startSlot = 41
+        endSlot = 45
+    elseif side == "right" then
+        startSlot = 46
+        endSlot = 50
+    else
+        return
+    end
+    
+    -- Release bindings for slots beyond maxButtons
+    for i = (maxButtons + 1), 5 do
+        local slot = startSlot + i - 1
+        if ConsoleExperienceDB.proxiedActions[slot] then
+            CE_Debug("Proxied: Releasing sidebar binding for " .. self:GetSlotDisplayName(slot))
+            ConsoleExperienceDB.proxiedActions[slot] = nil
+        end
+    end
+    
+    -- Update action bar display
+    if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllSideBarButtons then
+        ConsoleExperience.actionbars:UpdateAllSideBarButtons()
+    end
+    
+    -- Update config dropdowns if open
+    if ConsoleExperience.config and ConsoleExperience.config.bindingDropdowns then
+        for i = (maxButtons + 1), 5 do
+            local slot = startSlot + i - 1
+            local dropdown = ConsoleExperience.config.bindingDropdowns[slot]
+            if dropdown then
+                UIDropDownMenu_SetSelectedValue(dropdown, nil)
+                local noneText = "None (Action Bar)"
+                if Locale and Locale.T then
+                    noneText = Locale.T("None (Action Bar)")
+                end
+                UIDropDownMenu_SetText(noneText, dropdown)
+            end
+        end
+    end
+end
+
+-- Release proxied actions for a disabled sidebar
+-- side: "left" or "right"
+function Proxied:ReleaseSidebarAllBindings(side)
+    self:ReleaseSidebarBindings(side, 0)
+end
+
+-- ============================================================================
 -- Binding Application
 -- ============================================================================
 
 -- Apply binding for a single slot
 function Proxied:ApplySlotBinding(slot)
+    -- Sidebar slots (41-50) don't use keyboard bindings - they're click-activated
+    -- We just need to update the sidebar button display
+    if self:IsSidebarSlot(slot) then
+        CE_Debug("Proxied: Sidebar slot " .. slot .. " binding updated (click-activated)")
+        -- Update sidebar button display
+        if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllSideBarButtons then
+            ConsoleExperience.actionbars:UpdateAllSideBarButtons()
+        end
+        return
+    end
+    
     local key = self:GetKeyForSlot(slot)
     if not key then return end
     
@@ -405,12 +524,18 @@ end
 function Proxied:ApplyAllBindings()
     CE_Debug("Proxied: Applying all bindings...")
     
+    -- Apply main action bar bindings (slots 1-40)
     for slot = 1, 40 do
         self:ApplySlotBinding(slot)
     end
     
     -- Save bindings (1 = account-wide)
     SaveBindings(1)
+    
+    -- Update sidebar buttons (slots 41-50 are click-activated, not key-bound)
+    if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllSideBarButtons then
+        ConsoleExperience.actionbars:UpdateAllSideBarButtons()
+    end
     
     CE_Debug("Proxied: All bindings applied and saved")
 end

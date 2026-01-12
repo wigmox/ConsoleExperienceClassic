@@ -360,6 +360,12 @@ function Tooltip:Initialize()
             actions = {{icon = "a", prompt = "Toggle"}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
+        -- Loot buttons
+        {
+            pattern = "LootButton%d+",
+            actions = {{icon = "a", prompt = "Loot"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
+        },
         -- Keyboard keys
         {
             pattern = "CEKeyboardKey.*",

@@ -132,7 +132,7 @@ function CursorKeys:IsCursorModeActive()
 end
 
 -- Apply context-specific bindings based on hovered element
-function CursorKeys:ApplyContextBindings(bindings)
+function CursorKeys:ApplyContextBindings(bindings, buttonName)
     if not self.cursorModeActive then return end
     if not bindings then return end
     

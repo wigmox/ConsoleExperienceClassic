@@ -1434,7 +1434,16 @@ function ActionBars:CreateSideBarButton(parent, buttonIndex, side)
     
     -- Tooltip
     button:SetScript("OnEnter", function()
-        if HasAction(this.actionSlot) then
+        -- Check for proxied action first
+        if this.isProxiedAction then
+            GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+            GameTooltip:SetText(this.isProxiedAction.name, 1, 1, 1)
+            if this.isProxiedAction.desc then
+                GameTooltip:AddLine(this.isProxiedAction.desc, 0.7, 0.7, 0.7)
+            end
+            GameTooltip:AddLine("System Binding: " .. this.isProxiedAction.id, 0.5, 0.5, 0.5)
+            GameTooltip:Show()
+        elseif HasAction(this.actionSlot) then
             GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
             GameTooltip:SetAction(this.actionSlot)
         end
@@ -1530,6 +1539,20 @@ function ActionBars:SideBarButtonOnUpdate(button, elapsed)
 end
 
 function ActionBars:SideBarButtonOnClick(button, mouseButton)
+    -- Check for proxied action first
+    if button.isProxiedAction then
+        local bindingID = button.isProxiedAction.id
+        CE_Debug("SideBar: Executing proxied action: " .. bindingID)
+        
+        -- Execute the binding
+        -- RunBinding() triggers the WoW binding action
+        if RunBinding then
+            RunBinding(bindingID)
+        end
+        return
+    end
+    
+    -- Normal action bar slot behavior
     if mouseButton == "LeftButton" then
         if IsShiftKeyDown() and not CursorHasItem() then
             PickupAction(button.actionSlot)
@@ -1544,6 +1567,42 @@ end
 
 function ActionBars:UpdateSideBarButton(button)
     local actionSlot = button.actionSlot
+    
+    -- Check for proxied actions (like JUMP, AUTORUN, etc.)
+    local proxiedAction = nil
+    if ConsoleExperience.proxied and ConsoleExperience.proxied.IsSlotProxied then
+        if ConsoleExperience.proxied:IsSlotProxied(actionSlot) then
+            proxiedAction = ConsoleExperience.proxied:GetSlotActionInfo(actionSlot)
+        end
+    end
+    
+    -- Store proxied action on button for click handler
+    button.isProxiedAction = proxiedAction
+    
+    local normalTexture = getglobal(button:GetName() .. "NormalTexture")
+    local overlay = getglobal(button:GetName() .. "Overlay")  -- Modern style overlay
+    
+    -- If slot has a proxied action, show that icon (priority over action slot)
+    if proxiedAction then
+        button.icon:SetTexture(proxiedAction.icon)
+        button.icon:Show()
+        button:SetAlpha(1.0)
+        button.rangeTimer = nil
+        button.cooldown:Hide()
+        button:SetChecked(0)
+        -- Normal colors for proxied actions
+        button.icon:SetVertexColor(self.NORMAL_COLOR[1], self.NORMAL_COLOR[2], self.NORMAL_COLOR[3], self.NORMAL_COLOR[4])
+        if normalTexture then
+            normalTexture:SetVertexColor(self.NORMAL_COLOR[1], self.NORMAL_COLOR[2], self.NORMAL_COLOR[3], self.NORMAL_COLOR[4])
+        end
+        if overlay then
+            overlay:SetVertexColor(self.NORMAL_COLOR[1], self.NORMAL_COLOR[2], self.NORMAL_COLOR[3], self.NORMAL_COLOR[4])
+        end
+        -- Hide count for proxied actions
+        button.count:Hide()
+        return
+    end
+    
     local texture = GetActionTexture(actionSlot)
     
     if texture then
@@ -1566,8 +1625,6 @@ function ActionBars:UpdateSideBarButton(button)
     
     -- Update usable state - exact Blizzard behavior (using same constants as main action bar)
     local isUsable, notEnoughMana = IsUsableAction(actionSlot)
-    local normalTexture = getglobal(button:GetName() .. "NormalTexture")
-    local overlay = getglobal(button:GetName() .. "Overlay")  -- Modern style overlay
     
     -- Check range first (if out of range, show red)
     if button.outofrange then
@@ -1675,6 +1732,25 @@ function ActionBars:UpdateSideBars()
     if leftCount > 5 then leftCount = 5 end
     if rightCount < 1 then rightCount = 1 end
     if rightCount > 5 then rightCount = 5 end
+    
+    -- Release proxied actions for hidden/disabled sidebar slots
+    if ConsoleExperience.proxied and ConsoleExperience.proxied.ReleaseSidebarBindings then
+        if leftEnabled then
+            -- Release bindings for buttons beyond the current count
+            ConsoleExperience.proxied:ReleaseSidebarBindings("left", leftCount)
+        else
+            -- Release all left sidebar bindings when disabled
+            ConsoleExperience.proxied:ReleaseSidebarAllBindings("left")
+        end
+        
+        if rightEnabled then
+            -- Release bindings for buttons beyond the current count
+            ConsoleExperience.proxied:ReleaseSidebarBindings("right", rightCount)
+        else
+            -- Release all right sidebar bindings when disabled
+            ConsoleExperience.proxied:ReleaseSidebarAllBindings("right")
+        end
+    end
     
     -- Ensure frames exist
     if not self.sideBarLeftFrame then

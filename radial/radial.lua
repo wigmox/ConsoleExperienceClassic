@@ -72,7 +72,7 @@ local menuItems = {
     },
     {
         name = "LFG",
-        icon = "Interface\\Icons\\INV_Misc_GroupLooking",
+        icon = "Interface\\FrameXML\\LFT\\images\\eye\\battlenetworking0",
         action = function() 
             if ToggleLFTFrame then
                 ToggleLFTFrame()
