@@ -11,11 +11,126 @@ local Placement = ConsoleExperience.placement
 
 -- Constants
 local NUM_BUTTONS = 10
-local NUM_PAGES = 4
 local BUTTON_SIZE = 60
 local BUTTON_SPACING = 8
 local FRAME_PADDING = 25
 local ICON_SIZE = 14
+
+-- Stance/form slot offsets (bonusBar * 12 + 60)
+-- These are fixed regardless of which stance you're currently in
+local STANCE_OFFSETS = {
+    [0] = 0,    -- No stance/form (slots 1-10)
+    [1] = 72,   -- Bonus bar 1 (slots 73-82) - Battle/Bear/Stealth
+    [2] = 84,   -- Bonus bar 2 (slots 85-94) - Defensive/Aquatic
+    [3] = 96,   -- Bonus bar 3 (slots 97-106) - Berserker/Cat
+    [4] = 108,  -- Bonus bar 4 (slots 109-118) - Travel
+    [5] = 120,  -- Bonus bar 5 (slots 121-130) - Moonkin (if applicable)
+}
+
+-- Modifier page offsets (always the same)
+local MODIFIER_OFFSETS = {
+    [1] = 10,   -- LT (Shift) - slots 11-20
+    [2] = 20,   -- RT (Ctrl) - slots 21-30
+    [3] = 30,   -- LT+RT (Shift+Ctrl) - slots 31-40
+}
+
+-- Get stance/form info for the player's class
+function Placement:GetStanceInfo()
+    local _, class = UnitClass("player")
+    local numForms = GetNumShapeshiftForms() or 0
+    local stances = {}
+    
+    if class == "WARRIOR" then
+        -- Warriors always have stances in a fixed order
+        -- Check which ones are learned
+        for i = 1, numForms do
+            local _, name = GetShapeshiftFormInfo(i)
+            table.insert(stances, {
+                name = name or ("Stance " .. i),
+                bonusBar = i,
+                offset = STANCE_OFFSETS[i]
+            })
+        end
+    elseif class == "DRUID" then
+        -- Druids: Caster (no form) + learned forms
+        -- Always show caster form first
+        table.insert(stances, {
+            name = "Caster",
+            bonusBar = 0,
+            offset = STANCE_OFFSETS[0]
+        })
+        for i = 1, numForms do
+            local _, name = GetShapeshiftFormInfo(i)
+            table.insert(stances, {
+                name = name or ("Form " .. i),
+                bonusBar = i,
+                offset = STANCE_OFFSETS[i]
+            })
+        end
+    elseif class == "ROGUE" then
+        -- Rogues: Normal + Stealth
+        table.insert(stances, {
+            name = "Normal",
+            bonusBar = 0,
+            offset = STANCE_OFFSETS[0]
+        })
+        if numForms > 0 then
+            table.insert(stances, {
+                name = "Stealth",
+                bonusBar = 1,
+                offset = STANCE_OFFSETS[1]
+            })
+        end
+    elseif class == "PRIEST" and numForms > 0 then
+        -- Priests with Shadowform
+        table.insert(stances, {
+            name = "Normal",
+            bonusBar = 0,
+            offset = STANCE_OFFSETS[0]
+        })
+        for i = 1, numForms do
+            local _, name = GetShapeshiftFormInfo(i)
+            table.insert(stances, {
+                name = name or "Shadowform",
+                bonusBar = i,
+                offset = STANCE_OFFSETS[i]
+            })
+        end
+    else
+        -- Other classes: just base page
+        table.insert(stances, {
+            name = "",
+            bonusBar = 0,
+            offset = STANCE_OFFSETS[0]
+        })
+    end
+    
+    return stances
+end
+
+-- Build page info dynamically based on class and learned forms
+function Placement:BuildPageInfo()
+    local pages = {}
+    local stances = self:GetStanceInfo()
+    
+    -- Add stance/form pages
+    for i, stance in ipairs(stances) do
+        table.insert(pages, {
+            text = stance.name,
+            icons = {},
+            offset = stance.offset,
+            isStance = true,
+            bonusBar = stance.bonusBar
+        })
+    end
+    
+    -- Add modifier pages
+    table.insert(pages, { text = "LT", icons = {"lt"}, offset = MODIFIER_OFFSETS[1], isStance = false })
+    table.insert(pages, { text = "RT", icons = {"rt"}, offset = MODIFIER_OFFSETS[2], isStance = false })
+    table.insert(pages, { text = "LT+RT", icons = {"lt", "rt"}, offset = MODIFIER_OFFSETS[3], isStance = false })
+    
+    return pages
+end
 
 -- Function to get icon path based on controller type
 local function GetIconPath(iconName)
@@ -50,13 +165,23 @@ Placement.BUTTON_INFO = {
     { id = 10, icon = "lb",    name = "LB" },
 }
 
--- Page modifiers (with icons)
-Placement.PAGE_MODIFIERS = {
-    [1] = { text = "", icons = {} },
-    [2] = { text = "LT", icons = {"lt"} },
-    [3] = { text = "RT", icons = {"rt"} },
-    [4] = { text = "LT+RT", icons = {"lt", "rt"} },
-}
+-- Page info will be built dynamically based on class
+Placement.PAGE_INFO = nil
+
+-- Helper function to get action slot for a button based on page offset
+function Placement:GetActionSlotForButton(pageIndex, buttonIndex)
+    if not self.PAGE_INFO then
+        self.PAGE_INFO = self:BuildPageInfo()
+    end
+    
+    local pageInfo = self.PAGE_INFO[pageIndex]
+    if pageInfo then
+        return pageInfo.offset + buttonIndex
+    end
+    
+    -- Fallback to simple calculation
+    return ((pageIndex - 1) * NUM_BUTTONS) + buttonIndex
+end
 
 -- ============================================================================
 -- Frame Creation
@@ -65,9 +190,13 @@ Placement.PAGE_MODIFIERS = {
 function Placement:CreateFrame()
     if self.frame then return self.frame end
     
+    -- Build page info based on class and learned forms
+    self.PAGE_INFO = self:BuildPageInfo()
+    local NUM_PAGES = table.getn(self.PAGE_INFO)
+    
     -- Calculate frame size (bigger frame)
     -- Add extra width for row labels on the left
-    local labelColumnWidth = 50  -- Space for modifier icons column
+    local labelColumnWidth = 80  -- Space for stance names and modifier icons
     local frameWidth = (BUTTON_SIZE * NUM_BUTTONS) + (BUTTON_SPACING * (NUM_BUTTONS - 1)) + (FRAME_PADDING * 2) + labelColumnWidth
     local frameHeight = (BUTTON_SIZE * NUM_PAGES) + (BUTTON_SPACING * (NUM_PAGES - 1)) + (FRAME_PADDING * 2) + 80  -- +80 for title and header row
     
@@ -131,7 +260,7 @@ function Placement:CreateFrame()
     end)
     
     -- Create column headers with button icons
-    local labelColumnWidth = 50  -- Space for modifier icons column on the left
+    local labelColumnWidth = 80  -- Space for stance names and modifier icons
     
     frame.headerIcons = {}  -- Store header icons for visibility control
     for btn = 1, NUM_BUTTONS do
@@ -154,11 +283,19 @@ function Placement:CreateFrame()
     
     -- Create action buttons grid
     self.buttons = {}
+    self.buttonsByPage = {}  -- Also store by page for easier updates
+    local NUM_PAGES = table.getn(self.PAGE_INFO)
     
     for page = 1, NUM_PAGES do
+        self.buttonsByPage[page] = {}
+        local pageInfo = self.PAGE_INFO[page]
+        
         for btn = 1, NUM_BUTTONS do
-            local actionSlot = ((page - 1) * NUM_BUTTONS) + btn
+            local actionSlot = pageInfo.offset + btn
             local button = self:CreateActionButton(frame, actionSlot, btn, page)
+            
+            -- Store the page offset for later use
+            button.pageOffset = pageInfo.offset
             
             -- Hide buttons that have proxied actions assigned
             if ConsoleExperience.proxied and ConsoleExperience.proxied.IsSlotProxied then
@@ -168,39 +305,46 @@ function Placement:CreateFrame()
             end
             
             self.buttons[actionSlot] = button
+            self.buttonsByPage[page][btn] = button
         end
     end
     
-    -- Row labels (page modifiers) with icons
+    -- Row labels (stance names and modifier icons)
     -- Position them inside the frame, to the left of the buttons
-    local labelColumnWidth = 50  -- Space for modifier icons column on the left
+    local labelColumnWidth = 80  -- Space for stance names and modifier icons
+    local NUM_PAGES = table.getn(self.PAGE_INFO)
+    
     for page = 1, NUM_PAGES do
-        local pageInfo = self.PAGE_MODIFIERS[page]
-        -- Calculate Y position to center on the row (same coordinate system as buttons)
-        -- Buttons use: yOffset = -70 - ((pageIndex - 1) * (BUTTON_SIZE + BUTTON_SPACING))
-        -- Row center is at button top + BUTTON_SIZE/2
+        local pageInfo = self.PAGE_INFO[page]
+        -- Calculate Y position to center on the row
         local buttonTopY = -70 - ((page - 1) * (BUTTON_SIZE + BUTTON_SPACING))
-        local rowCenterY = buttonTopY - (BUTTON_SIZE / 2)  -- Negative because going down from TOP
+        local rowCenterY = buttonTopY - (BUTTON_SIZE / 2)
         
-        -- Create icon container for row label
+        -- Create label container for row
         local labelContainer = CreateFrame("Frame", "CEPlacementRowLabel" .. page, frame)
-        labelContainer:SetWidth(40)
-        labelContainer:SetHeight(ICON_SIZE)
-        -- Position inside frame, to the left of buttons
-        -- Use CENTER anchor vertically to align with row center
-        -- Position horizontally: FRAME_PADDING + labelColumnWidth/2 (center of label column)
+        labelContainer:SetWidth(75)
+        labelContainer:SetHeight(BUTTON_SIZE)
         labelContainer:SetPoint("CENTER", frame, "TOPLEFT", FRAME_PADDING + (labelColumnWidth / 2), rowCenterY)
         
-        -- Store modifier icons for later refresh
+        -- For stance pages, show text label
+        if pageInfo.isStance and pageInfo.text and pageInfo.text ~= "" then
+            local stanceLabel = labelContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            stanceLabel:SetPoint("CENTER", labelContainer, "CENTER", 0, 0)
+            stanceLabel:SetText(pageInfo.text)
+            stanceLabel:SetTextColor(1, 0.82, 0, 1)  -- Gold color for stance names
+            labelContainer.stanceLabel = stanceLabel
+        end
+        
+        -- For modifier pages, show icons
         labelContainer.modIcons = {}
-        local xPos = 0
-        if pageInfo and pageInfo.icons and table.getn(pageInfo.icons) > 0 then
+        if pageInfo.icons and table.getn(pageInfo.icons) > 0 then
+            local xPos = 0
             for i = 1, table.getn(pageInfo.icons) do
                 local iconName = pageInfo.icons[i]
                 local modIcon = labelContainer:CreateTexture(nil, "OVERLAY")
                 modIcon:SetWidth(ICON_SIZE)
                 modIcon:SetHeight(ICON_SIZE)
-                modIcon:SetTexCoord(0, 1, 0, 1)  -- Ensure proper texture coordinates
+                modIcon:SetTexCoord(0, 1, 0, 1)
                 modIcon:SetTexture(GetIconPath(iconName))
                 modIcon:SetPoint("RIGHT", labelContainer, "RIGHT", -xPos, 0)
                 labelContainer.modIcons[i] = modIcon
@@ -227,7 +371,7 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
     local button = CreateFrame("Button", buttonName, parent)
     
     -- Position (accounting for header row and label column)
-    local labelColumnWidth = 50  -- Space for modifier icons column on the left
+    local labelColumnWidth = 80  -- Space for stance names and modifier icons
     local xOffset = FRAME_PADDING + labelColumnWidth + ((buttonIndex - 1) * (BUTTON_SIZE + BUTTON_SPACING))
     local yOffset = -70 - ((pageIndex - 1) * (BUTTON_SIZE + BUTTON_SPACING))
     
@@ -259,7 +403,7 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
     
     -- Controller button icons overlay
     local btnInfo = self.BUTTON_INFO[buttonIndex]
-    local pageInfo = self.PAGE_MODIFIERS[pageIndex]
+    local pageInfo = self.PAGE_INFO and self.PAGE_INFO[pageIndex]
     
     -- Create icon container (positioned at bottom-left with proper padding)
     local iconContainer = CreateFrame("Frame", nil, button)
@@ -318,12 +462,15 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
     
     -- Click handler - place cursor item
     button:SetScript("OnClick", function()
+        -- Use the stored action slot (fixed per stance row)
+        local slot = this.actionSlot
+        
         -- Check for cursor item OR fake cursor item (for macros)
         local hasCursorItem = CursorHasItem() or CursorHasSpell()
         local hasFakeCursorItem = ConsoleExperience.cursor and ConsoleExperience.cursor.heldItemTexturePath
         if hasCursorItem or hasFakeCursorItem then
-            PlaceAction(this.actionSlot)
-            CE_Debug("Placed item in action slot " .. this.actionSlot)
+            PlaceAction(slot)
+            CE_Debug("Placed item in action slot " .. slot)
             
             -- Update the button display
             Placement:UpdateButton(this)
@@ -341,11 +488,11 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
             -- Don't auto-hide - allow user to continue placing items
         else
             -- No cursor item, maybe pick up from this slot
-            PickupAction(this.actionSlot)
+            PickupAction(slot)
             Placement:UpdateButton(this)
             
             -- Show held item on fake cursor
-            local texture = GetActionTexture(this.actionSlot)
+            local texture = GetActionTexture(slot)
             if texture and ConsoleExperience.cursor and ConsoleExperience.cursor.SetHeldItemTexture then
                 ConsoleExperience.cursor:SetHeldItemTexture(texture)
             end
@@ -355,10 +502,11 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
     -- Right-click to pick up
     button:SetScript("OnMouseDown", function()
         if arg1 == "RightButton" then
-            PickupAction(this.actionSlot)
+            local slot = this.actionSlot
+            PickupAction(slot)
             Placement:UpdateButton(this)
             
-            local texture = GetActionTexture(this.actionSlot)
+            local texture = GetActionTexture(slot)
             if texture and ConsoleExperience.cursor and ConsoleExperience.cursor.SetHeldItemTexture then
                 ConsoleExperience.cursor:SetHeldItemTexture(texture)
             end
@@ -367,15 +515,16 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
     
     -- Tooltip
     button:SetScript("OnEnter", function()
+        local slot = this.actionSlot
         GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-        if HasAction(this.actionSlot) then
-            GameTooltip:SetAction(this.actionSlot)
+        if HasAction(slot) then
+            GameTooltip:SetAction(slot)
             -- Prompts will be added automatically by tooltip system: A = Pickup/Place, B = Clear
         else
             local btnInfo = Placement.BUTTON_INFO[this.buttonIndex]
-            local pageInfo = Placement.PAGE_MODIFIERS[this.pageIndex]
+            local pageInfo = Placement.PAGE_INFO and Placement.PAGE_INFO[this.pageIndex]
             local slotName = btnInfo and btnInfo.name or ("Slot " .. this.buttonIndex)
-            if pageInfo and pageInfo.text ~= "" then
+            if pageInfo and pageInfo.text and pageInfo.text ~= "" then
                 slotName = pageInfo.text .. " + " .. slotName
             end
             GameTooltip:SetText(slotName)
@@ -392,23 +541,26 @@ function Placement:CreateActionButton(parent, actionSlot, buttonIndex, pageIndex
     -- Receive drag
     button:RegisterForDrag("LeftButton")
     button:SetScript("OnReceiveDrag", function()
+        -- Use the stored action slot (fixed per stance row)
+        local slot = this.actionSlot
+        
         -- Check for cursor item OR fake cursor item (for macros)
         local hasCursorItem = CursorHasItem() or CursorHasSpell()
         local hasFakeCursorItem = ConsoleExperience.cursor and ConsoleExperience.cursor.heldItemTexturePath
         if hasCursorItem or hasFakeCursorItem then
-            PlaceAction(this.actionSlot)
+            PlaceAction(slot)
             Placement:UpdateButton(this)
-            
+
             if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
                 ConsoleExperience.actionbars:UpdateAllButtons()
             end
-            
+
             if ConsoleExperience.cursor and ConsoleExperience.cursor.ClearHeldItemTexture then
                 ConsoleExperience.cursor:ClearHeldItemTexture()
             end
         end
     end)
-    
+
     return button
 end
 
@@ -418,10 +570,11 @@ end
 
 function Placement:UpdateButton(button)
     if not button then return end
-    
+
+    -- Use the stored action slot (fixed per stance row)
     local actionSlot = button.actionSlot
     local texture = GetActionTexture(actionSlot)
-    
+
     if texture then
         button.icon:SetTexture(texture)
         button.icon:Show()
@@ -452,6 +605,9 @@ end
 
 function Placement:RefreshIcons()
     if not self.frame then return end
+    if not self.PAGE_INFO then return end
+    
+    local NUM_PAGES = table.getn(self.PAGE_INFO)
     
     -- Update header icons (stored in frame.headerIcons table)
     if self.frame.headerIcons then
@@ -470,7 +626,7 @@ function Placement:RefreshIcons()
     for page = 1, NUM_PAGES do
         local labelContainer = getglobal("CEPlacementRowLabel" .. page)
         if labelContainer and labelContainer.modIcons then
-            local pageInfo = self.PAGE_MODIFIERS[page]
+            local pageInfo = self.PAGE_INFO[page]
             if pageInfo and pageInfo.icons then
                 for i = 1, table.getn(pageInfo.icons) do
                     local iconName = pageInfo.icons[i]
@@ -487,7 +643,7 @@ function Placement:RefreshIcons()
         for actionSlot, button in pairs(self.buttons) do
             if button.iconContainer then
                 local pageIndex = button.pageIndex
-                local pageInfo = self.PAGE_MODIFIERS[pageIndex]
+                local pageInfo = self.PAGE_INFO[pageIndex]
                 
                 -- Update modifier icons
                 if pageInfo and pageInfo.icons and button.iconContainer.modIcons then
@@ -704,6 +860,7 @@ function Placement:UpdateSideBarButtons()
     end
     
     -- Position side bar frames below the main grid
+    local NUM_PAGES = self.PAGE_INFO and table.getn(self.PAGE_INFO) or 4
     local mainGridBottom = -70 - ((NUM_PAGES - 1) * (BUTTON_SIZE + BUTTON_SPACING)) - BUTTON_SIZE - 20
     
     -- Left side bar
@@ -787,6 +944,7 @@ function Placement:UpdateSideBarButtons()
     end
     
     -- Adjust main frame height if side bars are enabled
+    local NUM_PAGES = self.PAGE_INFO and table.getn(self.PAGE_INFO) or 4
     if leftEnabled or rightEnabled then
         local baseHeight = (BUTTON_SIZE * NUM_PAGES) + (BUTTON_SPACING * (NUM_PAGES - 1)) + (FRAME_PADDING * 2) + 80
         self.frame:SetHeight(baseHeight + BUTTON_SIZE + 40)  -- Extra space for side bar row
@@ -820,19 +978,31 @@ function Placement:UpdateButtonVisibility()
 end
 
 function Placement:Show()
+    -- Check if we need to rebuild (stances may have changed)
+    local currentNumForms = GetNumShapeshiftForms() or 0
+    if self.frame and self.lastNumForms ~= currentNumForms then
+        -- Stances changed, need to rebuild
+        self.frame:Hide()
+        self.frame = nil
+        self.PAGE_INFO = nil
+        self.buttons = nil
+        self.buttonsByPage = nil
+    end
+    self.lastNumForms = currentNumForms
+    
     if not self.frame then
         self:CreateFrame()
     end
-    
+
     -- Update button visibility based on config
     self:UpdateButtonVisibility()
-    
+
     -- Create/update side bar buttons in placement frame
     self:UpdateSideBarButtons()
-    
+
     self:UpdateAllButtons()
     self.frame:Show()
-    
+
     CE_Debug("Placement frame shown")
 end
 

@@ -25,7 +25,7 @@ local ActionBars = ConsoleExperience.actionbars
 -- ============================================================================
 
 ActionBars.NUM_BUTTONS = 10
-ActionBars.NUM_PAGES = 4
+ActionBars.NUM_PAGES = 4  -- 4 pages accessible via modifier keys
 ActionBars.TOOLTIP_UPDATE_TIME = 0.2
 ActionBars.RANGE_CHECK_TIME = 0.2  -- Check range every 200ms (like pfUI)
 ActionBars.FLASH_TIME = 0.4
@@ -42,14 +42,21 @@ ActionBars.eventCache = {}
 ActionBars.updateCache = {}
 
 -- Action slot offsets for each page (each page uses 10 consecutive action slots)
--- WoW 1.12 has 120 action slots total (12 action bar pages of 10 buttons each)
--- Using slots 1-40 (first 4 action bar pages)
+-- WoW 1.12 has 120 action slots total (12 action bar pages of 12 buttons each)
+-- Warriors/Druids/Rogues use bonus bars for stances/forms (slots 73+)
+-- We use modifier keys to access additional pages for non-stance abilities
 ActionBars.PAGE_OFFSETS = {
-    [1] = 0,    -- Page 1: slots 1-10 (no modifier)
+    [1] = 0,    -- Page 1: slots 1-10 (no modifier, no stance)
     [2] = 10,   -- Page 2: slots 11-20 (Shift)
-    [3] = 20,   -- Page 3: slots 21-30 (Ctrl)  
+    [3] = 20,   -- Page 3: slots 21-30 (Ctrl)
     [4] = 30,   -- Page 4: slots 31-40 (Shift+Ctrl)
 }
+
+-- Bonus bar offset calculation for stances/forms
+-- Formula: (NUM_ACTIONBAR_PAGES + bonusBarOffset - 1) * 12
+-- Where NUM_ACTIONBAR_PAGES = 6, so base offset is 60 + (bonusBarOffset * 12)
+-- Battle Stance (bonus=1): 72, Defensive (bonus=2): 84, Berserker (bonus=3): 96
+ActionBars.BONUS_BAR_BASE = 60  -- (6 pages * 12 buttons) - 12 = 60
 
 -- Current active page
 ActionBars.currentPage = 1
@@ -298,7 +305,7 @@ end
 function ActionBars:GetCurrentModifierPage()
     local shift = IsShiftKeyDown()
     local ctrl = IsControlKeyDown()
-    
+
     if shift and ctrl then
         return 4  -- Shift+Ctrl
     elseif ctrl then
@@ -306,7 +313,7 @@ function ActionBars:GetCurrentModifierPage()
     elseif shift then
         return 2  -- Shift only
     else
-        return 1  -- No modifiers
+        return 1  -- No modifiers (WoW handles stance swapping internally)
     end
 end
 
@@ -350,7 +357,25 @@ function ActionBars:CheckModifiers()
 end
 
 function ActionBars:GetActionOffset()
-    return self.PAGE_OFFSETS[self.currentPage] or self.PAGE_OFFSETS[1]
+    -- If using modifier keys (pages 2-4), use those offsets
+    if self.currentPage > 1 then
+        return self.PAGE_OFFSETS[self.currentPage] or self.PAGE_OFFSETS[1]
+    end
+    
+    -- For page 1 (no modifier), check for bonus bar (stances/forms)
+    -- Warriors: Battle=1, Defensive=2, Berserker=3
+    -- Druids: Bear=1, Aquatic=2, Cat=3, Travel=4, Moonkin=5
+    -- Rogues: Stealth=1
+    local bonusBar = GetBonusBarOffset()
+    if bonusBar and bonusBar > 0 then
+        -- Bonus bar slots start at 73 (offset 72)
+        -- Formula: 60 + (bonusBar * 12) = offset for first slot
+        -- But we use 10 buttons, so: 60 + (bonusBar * 12)
+        return self.BONUS_BAR_BASE + (bonusBar * 12)
+    end
+    
+    -- No bonus bar active, use page 1 (slots 1-10)
+    return self.PAGE_OFFSETS[1]
 end
 
 -- ============================================================================
@@ -488,6 +513,9 @@ function ActionBars:ButtonOnLoad(button)
     button:RegisterEvent("ACTIONBAR_UPDATE_STATE")
     button:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
     button:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
+    button:RegisterEvent("ACTIONBAR_PAGE_CHANGED")
+    button:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
+    button:RegisterEvent("UPDATE_SHAPESHIFT_FORMS")
     button:RegisterEvent("PLAYER_ENTER_COMBAT")
     button:RegisterEvent("PLAYER_LEAVE_COMBAT")
     button:RegisterEvent("PLAYER_AURAS_CHANGED")
@@ -1129,6 +1157,24 @@ function ActionBars:ButtonOnEvent(button, event)
         if not hasProxiedAction and self:IsFlashing(button) and not IsAttackAction(actionID) then
             self:StopFlash(button)
         end
+    elseif event == "ACTIONBAR_PAGE_CHANGED" or event == "UPDATE_BONUS_ACTIONBAR" or event == "UPDATE_SHAPESHIFT_FORMS" then
+        -- Stance or form changed - bonus bar offset changes
+        -- Need to update all buttons since they now read from different slots
+        -- Use a flag to only trigger once per event (all buttons receive the event)
+        if not self._bonusBarUpdatePending then
+            self._bonusBarUpdatePending = true
+            -- Schedule update for next frame to batch all button updates
+            if not self._bonusBarUpdateFrame then
+                self._bonusBarUpdateFrame = CreateFrame("Frame")
+                self._bonusBarUpdateFrame.actionBars = self  -- Store reference
+                self._bonusBarUpdateFrame:SetScript("OnUpdate", function()
+                    this:Hide()
+                    this.actionBars._bonusBarUpdatePending = false
+                    this.actionBars:UpdateAllButtons()
+                end)
+            end
+            self._bonusBarUpdateFrame:Show()
+        end
     end
 end
 
@@ -1225,25 +1271,19 @@ end
 -- ============================================================================
 
 function ActionBars:ButtonOnClick(button, mouseButton)
-    local actionID = self:GetActionID(button)
     local buttonID = button:GetID()
-    
-    -- Debug output
-    if ConsoleExperience_DEBUG_KEYS then
-        local texture = GetActionTexture(actionID) or "empty"
-        local hasAction = HasAction(actionID)
-        local iconName = texture
-        if texture then
-            iconName = string.gsub(texture, ".*\\", "")
-        end
-        local offset = self:GetActionOffset()
-        CE_Debug("Click: Button " .. buttonID .. " | Offset " .. offset .. " | ActionSlot " .. actionID .. " | HasAction: " .. tostring(hasAction) .. " | Icon: " .. tostring(iconName))
-    end
-    
+    local bonusBar = GetBonusBarOffset() or 0
+    local currentPage = self.currentPage or 0
+    local offset = self:GetActionOffset()
+    local actionID = offset + buttonID
+
+    -- Debug output for stance issues
+    CE_Debug("Click: Btn=" .. buttonID .. " Page=" .. currentPage .. " Bonus=" .. bonusBar .. " Off=" .. offset .. " Slot=" .. actionID .. " Has=" .. tostring(HasAction(actionID)))
+
     if MacroFrame_SaveMacro then
         MacroFrame_SaveMacro()
     end
-    
+
     -- UseAction with checkCursor=1 handles both using actions and placing from cursor
     UseAction(actionID, 1)
     self:UpdateButtonState(button)

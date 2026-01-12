@@ -101,19 +101,27 @@ function ConsoleExperience_ActionButton(slot)
     
     -- Only trigger on key down (keystate is set by WoW for runOnUp bindings)
     if keystate == "down" then
+        -- Calculate actual slot, accounting for bonus bar (stances/forms)
+        local actualSlot = slot
+        
+        -- For slots 1-10 (base bar without modifiers), check for bonus bar
+        if slot >= 1 and slot <= 10 then
+            local bonusBar = GetBonusBarOffset()
+            if bonusBar and bonusBar > 0 then
+                -- Bonus bar slots: 60 + (bonusBar * 12) + buttonIndex
+                -- Battle=1: 73-82, Defensive=2: 85-94, Berserker=3: 97-106
+                actualSlot = 60 + (bonusBar * 12) + slot
+            end
+        end
+        
         -- Debug output
         if ConsoleExperience_DEBUG_KEYS then
-            local texture = GetActionTexture(slot) or "empty"
-            local hasAction = HasAction(slot)
-            local iconName = texture
-            if texture then
-                iconName = string.gsub(texture, ".*\\", "")
-            end
-            CE_Debug("Slot " .. slot .. " triggered | HasAction: " .. tostring(hasAction) .. " | Icon: " .. tostring(iconName))
+            local bonusBar = GetBonusBarOffset() or 0
+            CE_Debug("Key slot=" .. slot .. " bonus=" .. bonusBar .. " actual=" .. actualSlot .. " has=" .. tostring(HasAction(actualSlot)))
         end
         
         -- Use the action (checkCursor=0, onSelf=nil to use normal targeting)
-        UseAction(slot, 0)
+        UseAction(actualSlot, 0)
         
         -- Update button visual
         local buttonNum = math.mod(slot - 1, 10) + 1

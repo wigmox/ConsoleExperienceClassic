@@ -296,14 +296,85 @@ function Proxied:GetSlotDisplayName(slot)
 end
 
 -- ============================================================================
+-- Stance Slot Mapping
+-- ============================================================================
+
+-- Stance slot offsets (same as in bars.lua and placement.lua)
+local STANCE_OFFSETS = {
+    [0] = 0,    -- No stance/form (slots 1-10)
+    [1] = 72,   -- Bonus bar 1 (slots 73-82)
+    [2] = 84,   -- Bonus bar 2 (slots 85-94)
+    [3] = 96,   -- Bonus bar 3 (slots 97-106)
+    [4] = 108,  -- Bonus bar 4 (slots 109-118)
+    [5] = 120,  -- Bonus bar 5 (slots 121-130)
+}
+
+-- Check if a slot is a stance/form slot (bonus bar)
+function Proxied:IsStanceSlot(slot)
+    return slot >= 73 and slot <= 130
+end
+
+-- Get the button position (1-10) for any slot
+-- For stance slots (73+), returns the button position within that stance bar
+-- For modifier slots (11-40), returns nil (handled separately)
+-- For base slots (1-10), returns the slot itself
+function Proxied:GetButtonPositionForSlot(slot)
+    if slot >= 1 and slot <= 10 then
+        return slot
+    elseif slot >= 73 and slot <= 82 then
+        return slot - 72  -- Bonus bar 1: 73->1, 82->10
+    elseif slot >= 85 and slot <= 94 then
+        return slot - 84  -- Bonus bar 2: 85->1, 94->10
+    elseif slot >= 97 and slot <= 106 then
+        return slot - 96  -- Bonus bar 3: 97->1, 106->10
+    elseif slot >= 109 and slot <= 118 then
+        return slot - 108  -- Bonus bar 4: 109->1, 118->10
+    elseif slot >= 121 and slot <= 130 then
+        return slot - 120  -- Bonus bar 5: 121->1, 130->10
+    end
+    return nil  -- Modifier slots (11-40) or other
+end
+
+-- Get all slots that share the same button position (1-10)
+-- This includes the base slot and all stance bar slots
+function Proxied:GetAllSlotsForButtonPosition(buttonPos)
+    if buttonPos < 1 or buttonPos > 10 then
+        return {}
+    end
+    
+    local slots = { buttonPos }  -- Base slot
+    
+    -- Add stance bar slots
+    for bonusBar = 1, 5 do
+        table.insert(slots, STANCE_OFFSETS[bonusBar] + buttonPos)
+    end
+    
+    return slots
+end
+
+-- ============================================================================
 -- Database Access
 -- ============================================================================
 
 -- Get proxied action for a slot (returns binding ID or nil)
+-- For stance slots, also checks the corresponding base slot (1-10)
 function Proxied:GetSlotBinding(slot)
-    if ConsoleExperienceDB and ConsoleExperienceDB.proxiedActions then
-        return ConsoleExperienceDB.proxiedActions[slot]
+    if not ConsoleExperienceDB or not ConsoleExperienceDB.proxiedActions then
+        return nil
     end
+    
+    -- First check the exact slot
+    local binding = ConsoleExperienceDB.proxiedActions[slot]
+    if binding then
+        return binding
+    end
+    
+    -- For stance slots (73+), also check the corresponding base slot (1-10)
+    local buttonPos = self:GetButtonPositionForSlot(slot)
+    if buttonPos and buttonPos ~= slot then
+        return ConsoleExperienceDB.proxiedActions[buttonPos]
+    end
+    
     return nil
 end
 
@@ -316,17 +387,22 @@ function Proxied:SetSlotBinding(slot, bindingID)
         ConsoleExperienceDB.proxiedActions = {}
     end
     
+    -- Normalize stance slots (73+) to base button position (1-10)
+    -- This ensures proxied actions apply to all stances
+    local buttonPos = self:GetButtonPositionForSlot(slot)
+    local normalizedSlot = buttonPos or slot
+    
     -- If assigning a proxied action, check if it's already bound to another slot
     -- and release that binding first (set back to CE_ACTION_X)
     local previousSlot = nil
     if bindingID then
         for existingSlot, existingBindingID in pairs(ConsoleExperienceDB.proxiedActions) do
-            if existingBindingID == bindingID and existingSlot ~= slot then
+            if existingBindingID == bindingID and existingSlot ~= normalizedSlot then
                 previousSlot = existingSlot
                 break
             end
         end
-        
+
         if previousSlot then
             CE_Debug("Proxied: Action " .. bindingID .. " was already on slot " .. previousSlot .. ", releasing it")
             ConsoleExperienceDB.proxiedActions[previousSlot] = nil
@@ -334,11 +410,20 @@ function Proxied:SetSlotBinding(slot, bindingID)
             self:ApplySlotBinding(previousSlot)
         end
     end
-    
-    ConsoleExperienceDB.proxiedActions[slot] = bindingID
-    
-    -- Apply the binding change
-    self:ApplySlotBinding(slot)
+
+    ConsoleExperienceDB.proxiedActions[normalizedSlot] = bindingID
+
+    -- Apply the binding change to all equivalent slots (base + all stance slots)
+    if buttonPos then
+        -- Apply to base slot and all stance slots
+        local allSlots = self:GetAllSlotsForButtonPosition(buttonPos)
+        for _, slotToApply in ipairs(allSlots) do
+            self:ApplySlotBinding(slotToApply)
+        end
+    else
+        -- Apply to just this slot (modifier slots 11-40)
+        self:ApplySlotBinding(slot)
+    end
     
     -- Save bindings (1 = account-wide)
     SaveBindings(1)
