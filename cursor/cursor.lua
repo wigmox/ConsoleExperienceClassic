@@ -395,6 +395,92 @@ function Cursor:UpdateCursorPosition(button)
     end
 end
 
+-- Find the parent ScrollFrame of a button (if any)
+function Cursor:FindParentScrollFrame(button)
+    if not button then return nil end
+    
+    local parent = button:GetParent()
+    local maxDepth = 20  -- Prevent infinite loops
+    local depth = 0
+    
+    while parent and depth < maxDepth do
+        -- Check if this parent is a ScrollFrame by looking for SetScrollChild method
+        -- or if it's named with "ScrollFrame" or "ScrollChild"
+        local parentName = parent:GetName() or ""
+        
+        -- If we found a scroll child, get its parent ScrollFrame
+        if string.find(parentName, "ScrollChild") then
+            local scrollFrameName = string.gsub(parentName, "ScrollChild", "ScrollFrame")
+            local scrollFrame = getglobal(scrollFrameName)
+            if scrollFrame then
+                return scrollFrame
+            end
+            -- Also try without "ScrollChild" suffix
+            scrollFrameName = string.gsub(parentName, "ScrollChild", "")
+            scrollFrame = getglobal(scrollFrameName)
+            if scrollFrame and scrollFrame.GetVerticalScroll then
+                return scrollFrame
+            end
+        end
+        
+        -- Check if this is a ScrollFrame directly
+        if string.find(parentName, "ScrollFrame") and parent.GetVerticalScroll then
+            return parent
+        end
+        
+        parent = parent:GetParent()
+        depth = depth + 1
+    end
+    
+    return nil
+end
+
+-- Auto-scroll a ScrollFrame to make a button visible
+function Cursor:ScrollToShowButton(button, scrollFrame)
+    if not button or not scrollFrame then return end
+    
+    local scrollChild = scrollFrame:GetScrollChild()
+    if not scrollChild then return end
+    
+    -- Get scroll frame visible bounds
+    local scrollFrameBottom = scrollFrame:GetBottom()
+    local scrollFrameTop = scrollFrame:GetTop()
+    local scrollFrameHeight = scrollFrame:GetHeight()
+    
+    if not scrollFrameBottom or not scrollFrameTop or not scrollFrameHeight then return end
+    
+    -- Get button bounds
+    local buttonBottom = button:GetBottom()
+    local buttonTop = button:GetTop()
+    local buttonHeight = button:GetHeight()
+    
+    if not buttonBottom or not buttonTop then return end
+    
+    -- Get the scroll bar
+    local scrollBarName = scrollFrame:GetName() and (scrollFrame:GetName() .. "ScrollBar")
+    local scrollBar = scrollBarName and getglobal(scrollBarName)
+    
+    if not scrollBar then return end
+    
+    local currentScroll = scrollBar:GetValue()
+    local minScroll, maxScroll = scrollBar:GetMinMaxValues()
+    
+    -- Calculate if button is outside visible area
+    -- Button is below visible area
+    if buttonBottom < scrollFrameBottom then
+        local scrollNeeded = scrollFrameBottom - buttonBottom + 10  -- 10px margin
+        local newScroll = currentScroll + scrollNeeded
+        if newScroll > maxScroll then newScroll = maxScroll end
+        scrollBar:SetValue(newScroll)
+    -- Button is above visible area
+    elseif buttonTop > scrollFrameTop then
+        local scrollNeeded = buttonTop - scrollFrameTop + 10  -- 10px margin
+        local newScroll = currentScroll - scrollNeeded
+        if newScroll < minScroll then newScroll = minScroll end
+        scrollBar:SetValue(newScroll)
+    end
+end
+
 function Cursor:MoveCursorToButton(button)
     if not button then return end
     if not button.GetParent then return end
@@ -402,6 +488,12 @@ function Cursor:MoveCursorToButton(button)
     -- Hide tooltip for previous button
     if self.navigationState.currentButton and ConsoleExperience.cursor.tooltip then
         ConsoleExperience.cursor.tooltip:HideButtonTooltip()
+    end
+    
+    -- Auto-scroll if button is inside a scroll frame and not fully visible
+    local scrollFrame = self:FindParentScrollFrame(button)
+    if scrollFrame then
+        self:ScrollToShowButton(button, scrollFrame)
     end
     
     -- Update state
