@@ -196,6 +196,7 @@ ConsoleExperience_translation["deDE"] = {
     ["Battle Stance"] = "Kampfhaltung",
     ["Defensive Stance"] = "Verteidigungshaltung",
     ["Berserker Stance"] = "Berserkerhaltung",
+    ["Stance"] = "Haltung",
     
     -- Druid Forms
     ["Bear Form"] = "Bärengestalt",
@@ -204,11 +205,73 @@ ConsoleExperience_translation["deDE"] = {
     ["Travel Form"] = "Reisegestalt",
     ["Aquatic Form"] = "Wassergestalt",
     ["Moonkin Form"] = "Mondkingestalt",
+    ["Caster"] = "Zauberer",
+    ["Form"] = "Gestalt",
     
     -- Other Forms
     ["Stealth"] = "Schleichen",
     ["Shadowform"] = "Schattenform",
     ["Ghost Wolf"] = "Geisterwolf",
+    ["Normal"] = "Normal",
+    
+    -- Placement Frame
+    ["Place Action"] = "Aktion platzieren",
+    
+    -- Proxied Actions - Categories
+    ["Movement"] = "Bewegung",
+    ["Targeting"] = "Zielauswahl",
+    ["Camera"] = "Kamera",
+    ["Combat"] = "Kampf",
+    
+    -- Proxied Actions - Movement
+    ["Jump"] = "Springen",
+    ["Auto Run"] = "Auto-Laufen",
+    ["Toggle auto-run"] = "Auto-Laufen umschalten",
+    ["Run/Walk"] = "Laufen/Gehen",
+    ["Toggle run/walk speed"] = "Laufen/Gehen umschalten",
+    
+    -- Proxied Actions - Targeting
+    ["Interact"] = "Interagieren",
+    ["Interact with nearest target"] = "Mit nächstem Ziel interagieren",
+    ["Target Self"] = "Selbst anvisieren",
+    ["Target yourself"] = "Dich selbst anvisieren",
+    ["Target Nearest Enemy"] = "Nächsten Feind anvisieren",
+    ["Target the nearest enemy"] = "Den nächsten Feind anvisieren",
+    ["Target Previous Enemy"] = "Vorherigen Feind anvisieren",
+    ["Target the previous enemy"] = "Den vorherigen Feind anvisieren",
+    ["Target Nearest Friend"] = "Nächsten Freund anvisieren",
+    ["Target the nearest friendly player"] = "Den nächsten freundlichen Spieler anvisieren",
+    ["Assist Target"] = "Ziel unterstützen",
+    ["Target your target's target"] = "Das Ziel deines Ziels anvisieren",
+    
+    -- Proxied Actions - Interface
+    ["Open Bags"] = "Taschen öffnen",
+    ["Open all bags"] = "Alle Taschen öffnen",
+    ["Game Menu"] = "Spielmenü",
+    ["Open the game menu"] = "Das Spielmenü öffnen",
+    ["World Map"] = "Weltkarte",
+    ["Toggle world map"] = "Weltkarte umschalten",
+    ["Character Panel"] = "Charakterfenster",
+    ["Toggle character info"] = "Charakterinfo umschalten",
+    ["Toggle spellbook"] = "Zauberbuch umschalten",
+    ["Toggle talent window"] = "Talentfenster umschalten",
+    ["Quest Log"] = "Questlog",
+    ["Toggle quest log"] = "Questlog umschalten",
+    ["Toggle friends list"] = "Freundesliste umschalten",
+    
+    -- Proxied Actions - Camera
+    ["Zoom In"] = "Heranzoomen",
+    ["Zoom camera in"] = "Kamera heranzoomen",
+    ["Zoom Out"] = "Herauszoomen",
+    ["Zoom camera out"] = "Kamera herauszoomen",
+    
+    -- Proxied Actions - Combat
+    ["Attack"] = "Angreifen",
+    ["Start auto-attack"] = "Auto-Angriff starten",
+    ["Pet Attack"] = "Begleiter angreifen",
+    ["Command pet to attack"] = "Begleiter zum Angriff befehlen",
+    ["Stop Attack"] = "Angriff stoppen",
+    ["Stop attacking"] = "Angriff stoppen",
     
     -- Keyboard Emotes
     ["Emotes"] = "Emotes",

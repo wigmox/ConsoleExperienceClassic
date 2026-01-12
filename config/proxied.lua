@@ -14,161 +14,191 @@
 ConsoleExperience.proxied = ConsoleExperience.proxied or {}
 local Proxied = ConsoleExperience.proxied
 
+-- Helper function to get localized text
+local function L(key)
+    if ConsoleExperience.locale and ConsoleExperience.locale.T then
+        return ConsoleExperience.locale.T(key)
+    end
+    return key
+end
+
 -- ============================================================================
 -- Proxied Actions Definition
 -- ============================================================================
 
 -- Available proxied actions organized by category
--- Format: { id = "WOW_BINDING_ID", name = "Display Name", icon = "texture path" }
+-- Format: { id = "WOW_BINDING_ID", nameKey = "translation key", icon = "texture path" }
 -- Note: id can be a native WoW binding (e.g., "JUMP") or a CE custom binding (e.g., "CE_INTERACT")
 Proxied.ACTIONS = {
     -- Movement
-    { header = "Movement" },
+    { headerKey = "Movement" },
     { 
         id = "JUMP", 
-        name = "Jump", 
+        nameKey = "Jump", 
         icon = "Interface\\Icons\\Ability_Rogue_FleetFooted",
-        desc = "Jump"
+        descKey = "Jump"
     },
     { 
         id = "TOGGLEAUTORUN", 
-        name = "Auto Run", 
+        nameKey = "Auto Run", 
         icon = "Interface\\Icons\\Ability_Rogue_Sprint",
-        desc = "Toggle auto-run"
+        descKey = "Toggle auto-run"
     },
     { 
         id = "TOGGLERUN", 
-        name = "Run/Walk", 
+        nameKey = "Run/Walk", 
         icon = "Interface\\Icons\\Ability_Tracking",
-        desc = "Toggle run/walk speed"
+        descKey = "Toggle run/walk speed"
     },
     
     -- Targeting
-    { header = "Targeting" },
+    { headerKey = "Targeting" },
     { 
         id = "CE_INTERACT", 
-        name = "Interact", 
+        nameKey = "Interact", 
         icon = "Interface\\Icons\\Ability_Eyeoftheowl",
-        desc = "Interact with nearest target (requires Interact.dll)"
+        descKey = "Interact with nearest target"
     },
     { 
         id = "TARGETSELF", 
-        name = "Target Self", 
+        nameKey = "Target Self", 
         icon = "Interface\\Icons\\Spell_Holy_HolyBolt",
-        desc = "Target yourself"
+        descKey = "Target yourself"
     },
     { 
         id = "TARGETNEARESTENEMY", 
-        name = "Target Nearest Enemy", 
+        nameKey = "Target Nearest Enemy", 
         icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
-        desc = "Target the nearest enemy"
+        descKey = "Target the nearest enemy"
     },
     { 
         id = "TARGETPREVIOUSENEMY", 
-        name = "Target Previous Enemy", 
+        nameKey = "Target Previous Enemy", 
         icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
-        desc = "Target the previous enemy"
+        descKey = "Target the previous enemy"
     },
     { 
         id = "TARGETNEARESTFRIEND", 
-        name = "Target Nearest Friend", 
+        nameKey = "Target Nearest Friend", 
         icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
-        desc = "Target the nearest friendly player"
+        descKey = "Target the nearest friendly player"
     },
     { 
         id = "ASSISTTARGET", 
-        name = "Assist Target", 
+        nameKey = "Assist Target", 
         icon = "Interface\\Icons\\Ability_Hunter_AspectOfTheViper",
-        desc = "Target your target's target"
+        descKey = "Target your target's target"
     },
     
     -- Interface
-    { header = "Interface" },
+    { headerKey = "Interface" },
     { 
         id = "OPENALLBAGS", 
-        name = "Open Bags", 
+        nameKey = "Open Bags", 
         icon = "Interface\\Icons\\INV_Misc_Bag_08",
-        desc = "Open all bags"
+        descKey = "Open all bags"
     },
     { 
         id = "TOGGLEGAMEMENU", 
-        name = "Game Menu", 
+        nameKey = "Game Menu", 
         icon = "Interface\\Icons\\INV_Misc_Gear_01",
-        desc = "Open the game menu"
+        descKey = "Open the game menu"
     },
     { 
         id = "TOGGLEWORLDMAP", 
-        name = "World Map", 
+        nameKey = "World Map", 
         icon = "Interface\\Icons\\INV_Misc_Map_01",
-        desc = "Toggle world map"
+        descKey = "Toggle world map"
     },
     { 
         id = "TOGGLECHARACTER0", 
-        name = "Character Panel", 
+        nameKey = "Character Panel", 
         icon = "Interface\\Icons\\INV_Shirt_Black_01",
-        desc = "Toggle character info"
+        descKey = "Toggle character info"
     },
     { 
         id = "TOGGLESPELLBOOK", 
-        name = "Spellbook", 
+        nameKey = "Spellbook", 
         icon = "Interface\\Icons\\INV_Misc_Book_09",
-        desc = "Toggle spellbook"
+        descKey = "Toggle spellbook"
     },
     { 
         id = "TOGGLETALENTS", 
-        name = "Talents", 
+        nameKey = "Talents", 
         icon = "Interface\\Icons\\Ability_Marksmanship",
-        desc = "Toggle talent window"
+        descKey = "Toggle talent window"
     },
     { 
         id = "TOGGLEQUESTLOG", 
-        name = "Quest Log", 
+        nameKey = "Quest Log", 
         icon = "Interface\\Icons\\INV_Misc_Book_08",
-        desc = "Toggle quest log"
+        descKey = "Toggle quest log"
     },
     { 
         id = "TOGGLESOCIAL", 
-        name = "Social", 
+        nameKey = "Social", 
         icon = "Interface\\Icons\\INV_Letter_02",
-        desc = "Toggle friends list"
+        descKey = "Toggle friends list"
     },
     
     -- Camera
-    { header = "Camera" },
+    { headerKey = "Camera" },
     { 
         id = "CAMERAZOOMIN", 
-        name = "Zoom In", 
+        nameKey = "Zoom In", 
         icon = "Interface\\Icons\\INV_Misc_SpyGlass_03",
-        desc = "Zoom camera in"
+        descKey = "Zoom camera in"
     },
     { 
         id = "CAMERAZOOMOUT", 
-        name = "Zoom Out", 
+        nameKey = "Zoom Out", 
         icon = "Interface\\Icons\\INV_Misc_SpyGlass_02",
-        desc = "Zoom camera out"
+        descKey = "Zoom camera out"
     },
     
     -- Combat
-    { header = "Combat" },
+    { headerKey = "Combat" },
     { 
         id = "ATTACKTARGET", 
-        name = "Attack", 
+        nameKey = "Attack", 
         icon = "Interface\\Icons\\Ability_SteelMelee",
-        desc = "Start auto-attack"
+        descKey = "Start auto-attack"
     },
     { 
         id = "PETATTACK", 
-        name = "Pet Attack", 
+        nameKey = "Pet Attack", 
         icon = "Interface\\Icons\\Ability_Hunter_Pet_Wolf",
-        desc = "Command pet to attack"
+        descKey = "Command pet to attack"
     },
     { 
         id = "STOPATTACK", 
-        name = "Stop Attack", 
+        nameKey = "Stop Attack", 
         icon = "Interface\\Icons\\Spell_Frost_Stun",
-        desc = "Stop attacking"
+        descKey = "Stop attacking"
     },
 }
+
+-- Get translated action info
+function Proxied:GetActionName(action)
+    if action.nameKey then
+        return L(action.nameKey)
+    end
+    return action.name or ""
+end
+
+function Proxied:GetActionDesc(action)
+    if action.descKey then
+        return L(action.descKey)
+    end
+    return action.desc or ""
+end
+
+function Proxied:GetHeaderName(action)
+    if action.headerKey then
+        return L(action.headerKey)
+    end
+    return action.header or ""
+end
 
 -- Key slot mapping (maps slot numbers to key combinations)
 -- Slot 1-10: No modifier (keys 1-0)
@@ -250,11 +280,17 @@ end
 -- Get Action Info
 -- ============================================================================
 
--- Get action info by binding ID
+-- Get action info by binding ID (returns with translated name/desc)
 function Proxied:GetActionByID(bindingID)
     for _, action in ipairs(self.ACTIONS) do
         if action.id == bindingID then
-            return action
+            -- Return a copy with translated name and desc for display
+            return {
+                id = action.id,
+                name = self:GetActionName(action),
+                desc = self:GetActionDesc(action),
+                icon = action.icon
+            }
         end
     end
     return nil
@@ -264,7 +300,7 @@ end
 function Proxied:GetAllActions()
     local actions = {}
     for _, action in ipairs(self.ACTIONS) do
-        if not action.header then
+        if not action.headerKey then
             table.insert(actions, action)
         end
     end
@@ -688,11 +724,11 @@ function Proxied:GetDropdownOptions()
     -- Add all actions organized by headers
     local currentHeader = nil
     for _, action in ipairs(self.ACTIONS) do
-        if action.header then
-            currentHeader = action.header
-            table.insert(options, { text = "-- " .. action.header .. " --", value = "HEADER_" .. action.header, disabled = true })
-        else
-            table.insert(options, { text = action.name, value = action.id })
+        if action.headerKey then
+            currentHeader = action.headerKey
+            table.insert(options, { text = "-- " .. self:GetHeaderName(action) .. " --", value = "HEADER_" .. action.headerKey, disabled = true })
+        elseif action.nameKey then
+            table.insert(options, { text = self:GetActionName(action), value = action.id })
         end
     end
     

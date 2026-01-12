@@ -34,6 +34,14 @@ local MODIFIER_OFFSETS = {
     [3] = 30,   -- LT+RT (Shift+Ctrl) - slots 31-40
 }
 
+-- Get localized text (with fallback)
+local function L(key)
+    if ConsoleExperience.locale and ConsoleExperience.locale.T then
+        return ConsoleExperience.locale.T(key)
+    end
+    return key
+end
+
 -- Get stance/form info for the player's class
 function Placement:GetStanceInfo()
     local _, class = UnitClass("player")
@@ -46,7 +54,7 @@ function Placement:GetStanceInfo()
         for i = 1, numForms do
             local _, name = GetShapeshiftFormInfo(i)
             table.insert(stances, {
-                name = name or ("Stance " .. i),
+                name = name or (L("Stance") .. " " .. i),
                 bonusBar = i,
                 offset = STANCE_OFFSETS[i]
             })
@@ -55,14 +63,14 @@ function Placement:GetStanceInfo()
         -- Druids: Caster (no form) + learned forms
         -- Always show caster form first
         table.insert(stances, {
-            name = "Caster",
+            name = L("Caster"),
             bonusBar = 0,
             offset = STANCE_OFFSETS[0]
         })
         for i = 1, numForms do
             local _, name = GetShapeshiftFormInfo(i)
             table.insert(stances, {
-                name = name or ("Form " .. i),
+                name = name or (L("Form") .. " " .. i),
                 bonusBar = i,
                 offset = STANCE_OFFSETS[i]
             })
@@ -70,13 +78,14 @@ function Placement:GetStanceInfo()
     elseif class == "ROGUE" then
         -- Rogues: Normal + Stealth
         table.insert(stances, {
-            name = "Normal",
+            name = L("Normal"),
             bonusBar = 0,
             offset = STANCE_OFFSETS[0]
         })
         if numForms > 0 then
+            local _, name = GetShapeshiftFormInfo(1)
             table.insert(stances, {
-                name = "Stealth",
+                name = name or L("Stealth"),
                 bonusBar = 1,
                 offset = STANCE_OFFSETS[1]
             })
@@ -84,14 +93,14 @@ function Placement:GetStanceInfo()
     elseif class == "PRIEST" and numForms > 0 then
         -- Priests with Shadowform
         table.insert(stances, {
-            name = "Normal",
+            name = L("Normal"),
             bonusBar = 0,
             offset = STANCE_OFFSETS[0]
         })
         for i = 1, numForms do
             local _, name = GetShapeshiftFormInfo(i)
             table.insert(stances, {
-                name = name or "Shadowform",
+                name = name or L("Shadowform"),
                 bonusBar = i,
                 offset = STANCE_OFFSETS[i]
             })

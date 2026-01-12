@@ -199,6 +199,7 @@ ConsoleExperience_translation["enUS"] = {
     ["Battle Stance"] = "Battle Stance",
     ["Defensive Stance"] = "Defensive Stance",
     ["Berserker Stance"] = "Berserker Stance",
+    ["Stance"] = "Stance",
     
     -- Druid Forms
     ["Bear Form"] = "Bear Form",
@@ -207,11 +208,73 @@ ConsoleExperience_translation["enUS"] = {
     ["Travel Form"] = "Travel Form",
     ["Aquatic Form"] = "Aquatic Form",
     ["Moonkin Form"] = "Moonkin Form",
+    ["Caster"] = "Caster",
+    ["Form"] = "Form",
     
     -- Other Forms
     ["Stealth"] = "Stealth",
     ["Shadowform"] = "Shadowform",
     ["Ghost Wolf"] = "Ghost Wolf",
+    ["Normal"] = "Normal",
+    
+    -- Placement Frame
+    ["Place Action"] = "Place Action",
+    
+    -- Proxied Actions - Categories
+    ["Movement"] = "Movement",
+    ["Targeting"] = "Targeting",
+    ["Camera"] = "Camera",
+    ["Combat"] = "Combat",
+    
+    -- Proxied Actions - Movement
+    ["Jump"] = "Jump",
+    ["Auto Run"] = "Auto Run",
+    ["Toggle auto-run"] = "Toggle auto-run",
+    ["Run/Walk"] = "Run/Walk",
+    ["Toggle run/walk speed"] = "Toggle run/walk speed",
+    
+    -- Proxied Actions - Targeting
+    ["Interact"] = "Interact",
+    ["Interact with nearest target"] = "Interact with nearest target",
+    ["Target Self"] = "Target Self",
+    ["Target yourself"] = "Target yourself",
+    ["Target Nearest Enemy"] = "Target Nearest Enemy",
+    ["Target the nearest enemy"] = "Target the nearest enemy",
+    ["Target Previous Enemy"] = "Target Previous Enemy",
+    ["Target the previous enemy"] = "Target the previous enemy",
+    ["Target Nearest Friend"] = "Target Nearest Friend",
+    ["Target the nearest friendly player"] = "Target the nearest friendly player",
+    ["Assist Target"] = "Assist Target",
+    ["Target your target's target"] = "Target your target's target",
+    
+    -- Proxied Actions - Interface
+    ["Open Bags"] = "Open Bags",
+    ["Open all bags"] = "Open all bags",
+    ["Game Menu"] = "Game Menu",
+    ["Open the game menu"] = "Open the game menu",
+    ["World Map"] = "World Map",
+    ["Toggle world map"] = "Toggle world map",
+    ["Character Panel"] = "Character Panel",
+    ["Toggle character info"] = "Toggle character info",
+    ["Toggle spellbook"] = "Toggle spellbook",
+    ["Toggle talent window"] = "Toggle talent window",
+    ["Quest Log"] = "Quest Log",
+    ["Toggle quest log"] = "Toggle quest log",
+    ["Toggle friends list"] = "Toggle friends list",
+    
+    -- Proxied Actions - Camera
+    ["Zoom In"] = "Zoom In",
+    ["Zoom camera in"] = "Zoom camera in",
+    ["Zoom Out"] = "Zoom Out",
+    ["Zoom camera out"] = "Zoom camera out",
+    
+    -- Proxied Actions - Combat
+    ["Attack"] = "Attack",
+    ["Start auto-attack"] = "Start auto-attack",
+    ["Pet Attack"] = "Pet Attack",
+    ["Command pet to attack"] = "Command pet to attack",
+    ["Stop Attack"] = "Stop Attack",
+    ["Stop attacking"] = "Stop attacking",
     
     -- Keyboard Emotes
     ["Emotes"] = "Emotes",

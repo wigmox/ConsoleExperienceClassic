@@ -1947,17 +1947,17 @@ function Config:CreateBindingsSection()
                 -- Add all proxied actions
                 if ConsoleExperience.proxied and ConsoleExperience.proxied.ACTIONS then
                     for _, action in ipairs(ConsoleExperience.proxied.ACTIONS) do
-                        if action.header then
+                        if action.headerKey then
                             -- Header (disabled)
                             info = {}
-                            info.text = "-- " .. action.header .. " --"
+                            info.text = "-- " .. ConsoleExperience.proxied:GetHeaderName(action) .. " --"
                             info.disabled = true
                             info.notCheckable = true
                             UIDropDownMenu_AddButton(info)
-                        else
+                        elseif action.nameKey then
                             -- Action item - capture action values for closure
                             local actionId = action.id
-                            local actionName = action.name
+                            local actionName = ConsoleExperience.proxied:GetActionName(action)
                             info = {}
                             info.text = actionName
                             info.value = actionId
@@ -2082,15 +2082,15 @@ function Config:CreateBindingsSection()
             -- Add all proxied actions
             if ConsoleExperience.proxied and ConsoleExperience.proxied.ACTIONS then
                 for _, action in ipairs(ConsoleExperience.proxied.ACTIONS) do
-                    if action.header then
+                    if action.headerKey then
                         info = {}
-                        info.text = "-- " .. action.header .. " --"
+                        info.text = "-- " .. ConsoleExperience.proxied:GetHeaderName(action) .. " --"
                         info.disabled = true
                         info.notCheckable = true
                         UIDropDownMenu_AddButton(info)
-                    else
+                    elseif action.nameKey then
                         local actionId = action.id
-                        local actionName = action.name
+                        local actionName = ConsoleExperience.proxied:GetActionName(action)
                         info = {}
                         info.text = actionName
                         info.value = actionId
@@ -2205,15 +2205,15 @@ function Config:CreateBindingsSection()
             -- Add all proxied actions
             if ConsoleExperience.proxied and ConsoleExperience.proxied.ACTIONS then
                 for _, action in ipairs(ConsoleExperience.proxied.ACTIONS) do
-                    if action.header then
+                    if action.headerKey then
                         info = {}
-                        info.text = "-- " .. action.header .. " --"
+                        info.text = "-- " .. ConsoleExperience.proxied:GetHeaderName(action) .. " --"
                         info.disabled = true
                         info.notCheckable = true
                         UIDropDownMenu_AddButton(info)
-                    else
+                    elseif action.nameKey then
                         local actionId = action.id
-                        local actionName = action.name
+                        local actionName = ConsoleExperience.proxied:GetActionName(action)
                         info = {}
                         info.text = actionName
                         info.value = actionId
