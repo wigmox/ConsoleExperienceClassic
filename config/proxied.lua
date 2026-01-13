@@ -234,6 +234,31 @@ Proxied.PAGE_MODIFIERS = {
     [4] = "LT + RT + ",
 }
 
+-- Protected bindings that can only be executed via keyboard, not mouse clicks
+-- These are WoW system functions that require secure execution
+Proxied.PROTECTED_BINDINGS = {
+    -- Movement
+    ["JUMP"] = true,
+    ["TOGGLEAUTORUN"] = true,
+    ["TOGGLERUN"] = true,
+    -- Combat
+    -- ["ATTACKTARGET"] = true,
+    -- ["STOPATTACK"] = true,
+    -- ["PETATTACK"] = true,
+    -- -- Targeting (some may be protected)
+    -- ["TARGETSELF"] = true,
+    -- ["TARGETNEARESTENEMY"] = true,
+    -- ["TARGETPREVIOUSENEMY"] = true,
+    -- ["TARGETNEARESTFRIEND"] = true,
+    -- ["ASSISTTARGET"] = true,
+}
+
+-- Check if a binding ID is protected (can only be executed via keyboard)
+function Proxied:IsProtectedBinding(bindingID)
+    if not bindingID then return false end
+    return self.PROTECTED_BINDINGS[bindingID] == true
+end
+
 -- ============================================================================
 -- Sidebar Slot Configuration
 -- ============================================================================
@@ -676,23 +701,20 @@ function Proxied:Initialize()
         ConsoleExperienceDB.proxiedActions = {}
     end
     
-    -- Check if this is a fresh install (no proxied actions set yet)
-    local isFreshInstall = true
-    for slot, _ in pairs(ConsoleExperienceDB.proxiedActions) do
-        isFreshInstall = false
-        break
-    end
+    -- Check if this is a fresh install by checking if the initialized flag exists
+    -- This flag is set the first time Initialize runs, so we only set defaults once
+    local isFreshInstall = (ConsoleExperienceDB.proxiedActionsInitialized ~= true)
     
     -- Migrate from old useAForJump setting
     if ConsoleExperienceDB.config and ConsoleExperienceDB.config.useAForJump then
-        -- If useAForJump was enabled, set slot 1 to JUMP
+        -- If useAForJump was enabled, set slot 1 to JUMP (only if not already set)
         if ConsoleExperienceDB.proxiedActions[1] == nil then
             ConsoleExperienceDB.proxiedActions[1] = "JUMP"
             CE_Debug("Proxied: Migrated useAForJump to proxied action JUMP on slot 1")
         end
     end
     
-    -- Set defaults for fresh install
+    -- Set defaults ONLY for truly fresh installs (first time ever)
     if isFreshInstall then
         -- Default: JUMP on slot 1 (A button)
         ConsoleExperienceDB.proxiedActions[1] = "JUMP"
@@ -701,6 +723,9 @@ function Proxied:Initialize()
         -- Default: CE_INTERACT on slot 30 (RT+LB = Ctrl+0)
         ConsoleExperienceDB.proxiedActions[30] = "CE_INTERACT"
         CE_Debug("Proxied: Set default CE_INTERACT on slot 30")
+        
+        -- Mark as initialized so we don't reset defaults on future logins
+        ConsoleExperienceDB.proxiedActionsInitialized = true
     end
     
     -- Apply all bindings

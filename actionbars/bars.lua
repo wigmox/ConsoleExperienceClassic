@@ -1271,6 +1271,21 @@ end
 -- ============================================================================
 
 function ActionBars:ButtonOnClick(button, mouseButton)
+    -- Check if this is a protected proxied action (like JUMP, AUTORUN)
+    -- Protected functions can only be executed via keyboard bindings, not mouse clicks in WoW 1.12
+    if button.isProxiedAction then
+        local bindingID = button.isProxiedAction.id
+        if ConsoleExperience.proxied and ConsoleExperience.proxied.IsProtectedBinding then
+            if ConsoleExperience.proxied:IsProtectedBinding(bindingID) then
+                local actionName = button.isProxiedAction.name or bindingID or "proxied action"
+                DEFAULT_CHAT_FRAME:AddMessage("|cffff0000[ConsoleExperience]|r " .. actionName .. " can only be used via keyboard binding, not mouse click.")
+                return
+            end
+            -- Non-protected proxied actions (like UI toggles) might work, but we'll let them try
+            -- If they fail, it's not a protected function issue
+        end
+    end
+    
     local buttonID = button:GetID()
     local bonusBar = GetBonusBarOffset() or 0
     local currentPage = self.currentPage or 0
