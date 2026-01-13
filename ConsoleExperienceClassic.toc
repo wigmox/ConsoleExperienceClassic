@@ -2,7 +2,7 @@
 ## Title: ConsoleExperience |cff7fff7f Classic|r
 ## Author: pepordev
 # x-release-please-start-version
-## Version: 0.14.1
+## Version: 0.14.2
 # x-release-please-end
 ## Notes: Console Experience for WoW Vanilla
 ## DefaultState: Enabled

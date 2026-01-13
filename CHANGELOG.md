@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.14.1...v0.14.2) (2026-01-13)
+
+
+### Bug Fixes
+
+* properly handle stance bars ([e108e7b](https://github.com/pepordev/ConsoleExperienceClassic/commit/e108e7b34dbc649344485fb66d259894e058ca61))
+
 ## [0.14.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.14.0...v0.14.1) (2026-01-12)
 
 
