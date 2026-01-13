@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.14.0...v0.14.1) (2026-01-12)
+
+
+### Bug Fixes
+
+* added missing translations ([d33783a](https://github.com/pepordev/ConsoleExperienceClassic/commit/d33783ae622bcbbe112efd5b93e6e4a681dc10b9))
+
 ## [0.14.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.13.1...v0.14.0) (2026-01-12)
 
 
