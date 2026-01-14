@@ -3030,12 +3030,20 @@ StaticPopupDialogs["CE_CLONE_PROFILE"] = {
                     -- Clone it
                     local success, error = ConsoleExperience.profiles:CreateProfile(name, currentProfile)
                     if success then
+                        -- Switch to the newly cloned profile
+                        ConsoleExperience.profiles:SetProfile(name)
                         -- Refresh UI
                         if ConsoleExperience.config and ConsoleExperience.config.RefreshProfileDropdown then
                             ConsoleExperience.config:RefreshProfileDropdown()
                         end
                         if ConsoleExperience.config and ConsoleExperience.config.UpdateDeleteButtonState then
                             ConsoleExperience.config:UpdateDeleteButtonState()
+                        end
+                        -- Refresh the profiles section to show the new profile is selected
+                        if ConsoleExperience.config and ConsoleExperience.config.frame and ConsoleExperience.config.frame:IsVisible() then
+                            if ConsoleExperience.config.ShowSection then
+                                ConsoleExperience.config:ShowSection("profiles")
+                            end
                         end
                     else
                         StaticPopup_Show("CE_PROFILE_ERROR", error or "Failed to clone profile")

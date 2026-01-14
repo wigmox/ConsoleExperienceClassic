@@ -104,10 +104,20 @@ end
 
 -- Save current action bar state
 -- Returns a table mapping slot -> action data
+-- Note: We save ALL slots (1-120), including empty ones as nil entries
+-- This ensures that when loading, we can clear slots that were previously filled
 function Profiles:SaveActionBars()
     local actionBars = {}
+    local profile = self:GetCurrentProfile()
     
-    -- Iterate through all possible action slots (1-120)
+    -- Start with existing action bars from profile (to preserve slots that might not be in current state)
+    if profile and profile.actionBars then
+        for slot, data in pairs(profile.actionBars) do
+            actionBars[slot] = data
+        end
+    end
+    
+    -- Now update with current state - iterate through all possible action slots (1-120)
     for slot = 1, self.MAX_ACTION_SLOTS do
         if HasAction(slot) then
             -- Get texture (always available)
@@ -159,6 +169,9 @@ function Profiles:SaveActionBars()
                     end
                 end
             end
+        else
+            -- Slot is empty - explicitly set to nil to clear it from profile
+            actionBars[slot] = nil
         end
     end
     
@@ -167,16 +180,17 @@ end
 
 -- Load action bar state from saved data
 function Profiles:LoadActionBars(actionBars)
-    -- If actionBars is empty or nil, clear all action bars
-    if not actionBars or next(actionBars) == nil then
-        -- Clear all action slots (1-120)
-        for slot = 1, self.MAX_ACTION_SLOTS do
-            if HasAction(slot) then
-                PickupAction(slot)
-                ClearCursor()
-            end
+    -- Always clear ALL action slots first (1-120) to ensure clean state
+    -- This ensures that slots that were cleared in the profile are actually cleared
+    for slot = 1, self.MAX_ACTION_SLOTS do
+        if HasAction(slot) then
+            PickupAction(slot)
+            ClearCursor()
         end
-        
+    end
+    
+    -- If actionBars is empty or nil, we're done (all slots already cleared)
+    if not actionBars or next(actionBars) == nil then
         -- Update action bar display
         if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
             ConsoleExperience.actionbars:UpdateAllButtons()
@@ -184,14 +198,6 @@ function Profiles:LoadActionBars(actionBars)
         
         CE_Debug("Profiles: All action bars cleared (empty profile)")
         return
-    end
-    
-    -- First, clear all action slots we're about to restore
-    for slot, _ in pairs(actionBars) do
-        if HasAction(slot) then
-            PickupAction(slot)
-            ClearCursor()
-        end
     end
     
     -- Small delay to ensure cursor is cleared before placing actions
@@ -313,6 +319,10 @@ function Profiles:CreateProfile(name, sourceProfile)
         -- New profile with defaults
         -- Config will be populated with defaults when loaded
         -- Action bars start empty
+        -- Set default proxied actions (same as proxied.lua Initialize)
+        newProfile.proxiedActions[1] = "JUMP"
+        newProfile.proxiedActions[30] = "CE_INTERACT"
+        CE_Debug("Profiles: Created new profile with default proxied actions (JUMP on slot 1, CE_INTERACT on slot 30)")
     end
     
     ConsoleExperienceDB.profiles[name] = newProfile
@@ -400,8 +410,11 @@ function Profiles:SaveCurrentProfile()
         end
     end
     
-    -- Save action bars
+    -- Save action bars (only saves slots that have actions)
+    -- Empty slots are not saved, which is fine because LoadActionBars clears all slots first
     profile.actionBars = self:SaveActionBars()
+    
+    CE_Debug("Profiles: Saved " .. (self:CountTableKeys(profile.actionBars) or 0) .. " action bar slots")
 end
 
 -- Load a profile (apply its settings)
@@ -444,6 +457,16 @@ function Profiles:LoadProfile(profileName)
     if profile.proxiedActions then
         for slot, binding in pairs(profile.proxiedActions) do
             ConsoleExperienceDB.proxiedActions[slot] = binding
+            CE_Debug("Profiles: Loaded proxied action - slot " .. slot .. " -> " .. tostring(binding))
+        end
+    else
+        -- If profile has no proxied actions, check if it's a new profile and should have defaults
+        -- (This shouldn't happen if CreateProfile sets defaults, but just in case)
+        if not profile.config or next(profile.config) == nil then
+            -- Looks like a new profile, set defaults
+            ConsoleExperienceDB.proxiedActions[1] = "JUMP"
+            ConsoleExperienceDB.proxiedActions[30] = "CE_INTERACT"
+            CE_Debug("Profiles: Applied default proxied actions to new profile")
         end
     end
     
@@ -661,6 +684,15 @@ end
 -- Initialization
 -- ============================================================================
 
+-- Hook into action bar changes
+local function OnActionBarSlotChanged()
+    -- Save current profile immediately when action bars change
+    if ConsoleExperience.profiles and ConsoleExperience.profiles.SaveCurrentProfile then
+        ConsoleExperience.profiles:SaveCurrentProfile()
+        CE_Debug("Profiles: Auto-saved profile after action bar change (slot " .. (arg1 or "unknown") .. ")")
+    end
+end
+
 function Profiles:Initialize()
     -- Run migration first
     local migrated = self:MigrateLegacyConfig()
@@ -691,6 +723,17 @@ function Profiles:Initialize()
                 end
             end
         end
+    end
+    
+    -- Register for action bar change events to auto-save profile
+    if not self.eventFrame then
+        self.eventFrame = CreateFrame("Frame")
+        self.eventFrame:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
+        self.eventFrame:SetScript("OnEvent", function()
+            if event == "ACTIONBAR_SLOT_CHANGED" then
+                OnActionBarSlotChanged()
+            end
+        end)
     end
     
     CE_Debug("Profiles: Initialized. Current profile: " .. self:GetCurrentProfileName())
