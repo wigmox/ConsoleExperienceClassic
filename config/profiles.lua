@@ -739,4 +739,46 @@ function Profiles:Initialize()
     CE_Debug("Profiles: Initialized. Current profile: " .. self:GetCurrentProfileName())
 end
 
+-- ============================================================================
+-- Slash Commands
+-- ============================================================================
+
+SLASH_CEPROFILE1 = "/ceprofile"
+SLASH_CEPROFILE2 = "/cep"
+SlashCmdList["CEPROFILE"] = function(msg)
+    msg = string.gsub(msg, "^%s*(.-)%s*$", "%1")  -- Trim whitespace
+    
+    if msg == "" or msg == nil then
+        -- Show current profile
+        local currentProfile = Profiles:GetCurrentProfileName()
+        CE_Print("Current profile: " .. currentProfile)
+        CE_Print("Usage: /ceprofile <name> or /cep <name>")
+        CE_Print("Available profiles:")
+        local profiles = Profiles:ListProfiles()
+        for _, name in ipairs(profiles) do
+            local marker = (name == currentProfile) and " (current)" or ""
+            CE_Print("  - " .. name .. marker)
+        end
+    else
+        -- Switch to specified profile
+        local profileName = msg
+        local profile = Profiles:GetProfile(profileName)
+        
+        if profile then
+            -- Save current profile before switching
+            Profiles:SaveCurrentProfile()
+            -- Switch to the profile
+            Profiles:SetProfile(profileName)
+            CE_Print("Switched to profile: " .. profileName)
+        else
+            CE_Print("Profile '" .. profileName .. "' not found.")
+            CE_Print("Available profiles:")
+            local profiles = Profiles:ListProfiles()
+            for _, name in ipairs(profiles) do
+                CE_Print("  - " .. name)
+            end
+        end
+    end
+end
+
 CE_Debug("Profiles module loaded")
