@@ -90,7 +90,12 @@ function Config:InitializeDB()
         ConsoleExperienceDB = {}
     end
     
-    -- Initialize config section if it doesn't exist
+    -- Initialize profiles system first (handles migration from legacy config)
+    if ConsoleExperience.profiles and ConsoleExperience.profiles.Initialize then
+        ConsoleExperience.profiles:Initialize()
+    end
+    
+    -- Initialize config section if it doesn't exist (profiles migration should have done this, but be safe)
     if not ConsoleExperienceDB.config then
         ConsoleExperienceDB.config = {}
     end
@@ -172,6 +177,7 @@ Config.SECTIONS = {
     { id = "interface", name = "Interface" },
     { id = "bars", name = "Bars" },
     { id = "bindings", name = "Bindings" },
+    { id = "profiles", name = "Profiles" },
 }
 
 -- ============================================================================
@@ -272,6 +278,10 @@ function Config:CreateMainFrame()
     closeButton:SetText(CLOSE or "Close")
     closeButton:SetScript("OnClick", function()
         PlaySound("gsTitleOptionExit")
+        -- Save current profile before closing
+        if ConsoleExperience.profiles and ConsoleExperience.profiles.SaveCurrentProfile then
+            ConsoleExperience.profiles:SaveCurrentProfile()
+        end
         ConsoleExperience.config.frame:Hide()
     end)
     frame.closeButton = closeButton
@@ -411,6 +421,9 @@ function Config:CreateContentSections()
     
     -- Create Bindings section
     self:CreateBindingsSection()
+    
+    -- Create Profiles section
+    self:CreateProfilesSection()
 end
 
 function Config:CreateInterfaceSection()
@@ -2338,6 +2351,143 @@ function Config:CreateBindingsSection()
     self.contentSections["bindings"] = section
 end
 
+function Config:CreateProfilesSection()
+    local content = self.frame.content
+    local Locale = ConsoleExperience.locale
+    local T = Locale and Locale.T or function(key) return key end
+    
+    -- Main section container
+    local section = CreateFrame("Frame", nil, content)
+    section:SetPoint("TOPLEFT", content, "TOPLEFT", 5, -5)
+    section:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -5, 5)
+    section:Hide()
+    
+    -- ==================== Current Profile Box ====================
+    local currentBox = self:CreateSectionBox(section, T("Current Profile"))
+    currentBox:SetPoint("TOP", section, "TOP", 0, -25)
+    
+    -- Profile selector dropdown
+    local profileLabel = currentBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    profileLabel:SetPoint("TOPLEFT", currentBox, "TOPLEFT", currentBox.contentLeft, currentBox.contentTop)
+    profileLabel:SetText(T("Active Profile") .. ":")
+    
+    local profileDropdown = CreateFrame("Frame", "CEConfigProfileDropdown", currentBox, "UIDropDownMenuTemplate")
+    profileDropdown:SetPoint("LEFT", profileLabel, "RIGHT", -15, -3)
+    
+    -- Function to refresh profile dropdown
+    local function RefreshProfileDropdown()
+        local selectedValue = ConsoleExperience.profiles:GetCurrentProfileName()
+        local info
+        
+        -- Clear existing menu
+        UIDropDownMenu_Initialize(profileDropdown, function()
+            local profiles = ConsoleExperience.profiles:ListProfiles()
+            for _, profileName in ipairs(profiles) do
+                info = {}
+                info.text = profileName
+                info.value = profileName
+                info.func = function()
+                    -- Save current profile before switching
+                    ConsoleExperience.profiles:SaveCurrentProfile()
+                    -- Switch to selected profile
+                    ConsoleExperience.profiles:SetProfile(this.value)
+                    -- Refresh dropdown
+                    RefreshProfileDropdown()
+                    -- Update delete button state
+                    if Config.UpdateDeleteButtonState then
+                        Config:UpdateDeleteButtonState()
+                    end
+                    -- Update UI to reflect new profile
+                    if ConsoleExperience.config and ConsoleExperience.config.frame then
+                        ConsoleExperience.config:ShowSection("profiles")
+                    end
+                end
+                if profileName == selectedValue then
+                    info.checked = 1
+                end
+                UIDropDownMenu_AddButton(info)
+            end
+        end)
+        
+        UIDropDownMenu_SetWidth(200, profileDropdown)
+        UIDropDownMenu_SetSelectedValue(profileDropdown, selectedValue)
+        UIDropDownMenu_SetText(selectedValue, profileDropdown)
+    end
+    
+    RefreshProfileDropdown()
+    self.profileDropdown = profileDropdown
+    self.RefreshProfileDropdown = RefreshProfileDropdown
+    
+    -- ==================== Profile Management Box ====================
+    local managementBox = self:CreateSectionBox(section, T("Profile Management"))
+    managementBox:SetPoint("TOP", currentBox, "BOTTOM", 0, -20)
+    
+    -- Create New Profile button
+    local createButton = CreateFrame("Button", "CEConfigCreateProfile", managementBox, "UIPanelButtonTemplate")
+    createButton:SetWidth(140)
+    createButton:SetHeight(24)
+    createButton:SetPoint("TOPLEFT", managementBox, "TOPLEFT", managementBox.contentLeft, managementBox.contentTop)
+    createButton:SetText(T("Create New"))
+    createButton:SetScript("OnClick", function()
+        -- Show input dialog
+        StaticPopup_Show("CE_CREATE_PROFILE")
+    end)
+    
+    -- Clone Current Profile button
+    local cloneButton = CreateFrame("Button", "CEConfigCloneProfile", managementBox, "UIPanelButtonTemplate")
+    cloneButton:SetWidth(140)
+    cloneButton:SetHeight(24)
+    cloneButton:SetPoint("LEFT", createButton, "RIGHT", 10, 0)
+    cloneButton:SetText(T("Clone Current"))
+    cloneButton:SetScript("OnClick", function()
+        -- Show input dialog
+        StaticPopup_Show("CE_CLONE_PROFILE")
+    end)
+    
+    -- Delete Profile button
+    local deleteButton = CreateFrame("Button", "CEConfigDeleteProfile", managementBox, "UIPanelButtonTemplate")
+    deleteButton:SetWidth(140)
+    deleteButton:SetHeight(24)
+    deleteButton:SetPoint("LEFT", cloneButton, "RIGHT", 10, 0)
+    deleteButton:SetText(T("Delete"))
+    
+    -- Function to update delete button state
+    local function UpdateDeleteButtonState()
+        local currentProfile = ConsoleExperience.profiles:GetCurrentProfileName()
+        if currentProfile == ConsoleExperience.profiles.DEFAULT_PROFILE_NAME then
+            deleteButton:Disable()
+            deleteButton:SetAlpha(0.5)
+        else
+            deleteButton:Enable()
+            deleteButton:SetAlpha(1.0)
+        end
+    end
+    
+    deleteButton:SetScript("OnClick", function()
+        local currentProfile = ConsoleExperience.profiles:GetCurrentProfileName()
+        if currentProfile == ConsoleExperience.profiles.DEFAULT_PROFILE_NAME then
+            -- Can't delete default
+            return
+        end
+        -- Show confirmation dialog with profile name
+        local dialog = StaticPopup_Show("CE_DELETE_PROFILE", currentProfile)
+        if dialog then
+            dialog.data = currentProfile
+        end
+    end)
+    
+    -- Update state initially
+    UpdateDeleteButtonState()
+    
+    -- Store update function for refresh
+    self.UpdateDeleteButtonState = UpdateDeleteButtonState
+    
+    -- Store references for refresh
+    self.profileListScrollFrame = scrollFrame
+    
+    self.contentSections["profiles"] = section
+end
+
 -- Update sidebar binding visibility based on sidebar enabled state and button count
 function Config:UpdateSidebarBindingVisibility()
     if not self.sidebarBindingFrames then return end
@@ -2651,6 +2801,15 @@ end
 -- ============================================================================
 
 function Config:ShowSection(sectionId)
+    -- Refresh profile dropdown if showing profiles section
+    if sectionId == "profiles" then
+        if self.RefreshProfileDropdown then
+            self:RefreshProfileDropdown()
+        end
+        if self.UpdateDeleteButtonState then
+            self:UpdateDeleteButtonState()
+        end
+    end
     -- Hide all sections
     for id, section in pairs(self.contentSections) do
         section:Hide()
@@ -2738,6 +2897,10 @@ function Config:Show()
 end
 
 function Config:Hide()
+    -- Save current profile before hiding
+    if ConsoleExperience.profiles and ConsoleExperience.profiles.SaveCurrentProfile then
+        ConsoleExperience.profiles:SaveCurrentProfile()
+    end
     if self.frame then
         self.frame:Hide()
     end
@@ -2792,6 +2955,137 @@ StaticPopupDialogs["CE_RELOAD_UI"] = {
     OnAccept = function()
         ReloadUI()
     end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
+-- Helper function to trim whitespace (WoW 1.12 doesn't have string.trim)
+local function trimString(s)
+    if not s then return "" end
+    return string.gsub(s, "^%s*(.-)%s*$", "%1")
+end
+
+-- Create profile popups
+StaticPopupDialogs["CE_CREATE_PROFILE"] = {
+    text = "Enter profile name:",
+    button1 = "Create",
+    button2 = "Cancel",
+    hasEditBox = true,
+    maxLetters = 20,
+    OnAccept = function()
+        local dialog = getglobal("StaticPopup1")
+        local editBox = getglobal("StaticPopup1EditBox")
+        if editBox then
+            local name = editBox:GetText()
+            if name and name ~= "" then
+                name = trimString(name)
+                if name ~= "" then
+                    local success, error = ConsoleExperience.profiles:CreateProfile(name, nil)
+                    if success then
+                        -- Switch to new profile
+                        ConsoleExperience.profiles:SetProfile(name)
+                    -- Refresh UI
+                    if ConsoleExperience.config and ConsoleExperience.config.RefreshProfileDropdown then
+                        ConsoleExperience.config:RefreshProfileDropdown()
+                    end
+                    if ConsoleExperience.config and ConsoleExperience.config.UpdateDeleteButtonState then
+                        ConsoleExperience.config:UpdateDeleteButtonState()
+                    end
+                else
+                    StaticPopup_Show("CE_PROFILE_ERROR", error or "Failed to create profile")
+                    end
+                end
+            end
+        end
+    end,
+    OnShow = function()
+        local editBox = getglobal("StaticPopup1EditBox")
+        if editBox then
+            editBox:SetText("")
+            editBox:SetFocus()
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
+StaticPopupDialogs["CE_CLONE_PROFILE"] = {
+    text = "Enter name for cloned profile:",
+    button1 = "Clone",
+    button2 = "Cancel",
+    hasEditBox = true,
+    maxLetters = 20,
+    OnAccept = function()
+        local editBox = getglobal("StaticPopup1EditBox")
+        if editBox then
+            local name = editBox:GetText()
+            if name and name ~= "" then
+                name = trimString(name)
+                if name ~= "" then
+                    local currentProfile = ConsoleExperience.profiles:GetCurrentProfileName()
+                    -- Save current profile first
+                    ConsoleExperience.profiles:SaveCurrentProfile()
+                    -- Clone it
+                    local success, error = ConsoleExperience.profiles:CreateProfile(name, currentProfile)
+                    if success then
+                        -- Refresh UI
+                        if ConsoleExperience.config and ConsoleExperience.config.RefreshProfileDropdown then
+                            ConsoleExperience.config:RefreshProfileDropdown()
+                        end
+                        if ConsoleExperience.config and ConsoleExperience.config.UpdateDeleteButtonState then
+                            ConsoleExperience.config:UpdateDeleteButtonState()
+                        end
+                    else
+                        StaticPopup_Show("CE_PROFILE_ERROR", error or "Failed to clone profile")
+                    end
+                end
+            end
+        end
+    end,
+    OnShow = function()
+        local editBox = getglobal("StaticPopup1EditBox")
+        if editBox then
+            editBox:SetText("")
+            editBox:SetFocus()
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
+StaticPopupDialogs["CE_DELETE_PROFILE"] = {
+    text = "Delete profile '%s'? This cannot be undone.",
+    button1 = "Delete",
+    button2 = "Cancel",
+    OnAccept = function()
+        local dialog = getglobal("StaticPopup1")
+        local profileName = dialog and dialog.data
+        if profileName then
+            local success, error = ConsoleExperience.profiles:DeleteProfile(profileName)
+            if success then
+                -- Refresh UI
+                if ConsoleExperience.config and ConsoleExperience.config.RefreshProfileDropdown then
+                    ConsoleExperience.config:RefreshProfileDropdown()
+                end
+                if ConsoleExperience.config and ConsoleExperience.config.UpdateDeleteButtonState then
+                    ConsoleExperience.config:UpdateDeleteButtonState()
+                end
+            else
+                StaticPopup_Show("CE_PROFILE_ERROR", error or "Failed to delete profile")
+            end
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
+StaticPopupDialogs["CE_PROFILE_ERROR"] = {
+    text = "%s",
+    button1 = "OK",
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,
