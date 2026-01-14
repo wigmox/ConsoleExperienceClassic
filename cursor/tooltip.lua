@@ -140,6 +140,7 @@ TooltipHookFrame:SetScript("OnShow", function()
     if not button then return end
     
     local buttonName = button:GetName() or ""
+    
     local elementType = nil
     if button:IsObjectType("EditBox") then
         elementType = "editbox"

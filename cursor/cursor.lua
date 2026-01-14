@@ -173,11 +173,12 @@ function Cursor:IsInteractiveElement(frame)
         return false
     end
     
+    local frameName = frame:GetName() or ""
+    
     -- Check if it's a Button (has IsEnabled method)
     if frame:IsObjectType("Button") then
         -- For dropdown buttons, always consider them interactive if visible
-        local buttonName = frame:GetName() or ""
-        if string.find(buttonName, "DropdownButton") or string.find(buttonName, "DropDownButton") then
+        if string.find(frameName, "DropdownButton") or string.find(frameName, "DropDownButton") then
             return true
         end
         if frame.IsEnabled and frame:IsEnabled() then
@@ -498,6 +499,8 @@ function Cursor:MoveCursorToButton(button)
     
     -- Update state
     self.navigationState.currentButton = button
+    
+    -- Use the button's parent as the current frame
     self.navigationState.currentFrame = button:GetParent()
     
     -- Update cursor position
@@ -507,11 +510,11 @@ function Cursor:MoveCursorToButton(button)
     if ConsoleExperience.cursor.tooltip and ConsoleExperience.cursor.keybindings then
         local buttonName = button:GetName() or ""
         local bindings = ConsoleExperience.cursor.tooltip:GetBindings(buttonName)
-        ConsoleExperience.cursor.keybindings:ApplyContextBindings(bindings)
+        ConsoleExperience.cursor.keybindings:ApplyContextBindings(bindings, button)
     end
     
-    -- Update navigation options
-    self:UpdateNavigationState(button, button:GetParent())
+    -- Update navigation options (use currentFrame we determined above)
+    self:UpdateNavigationState(button, self.navigationState.currentFrame)
 end
 
 function Cursor:UpdateNavigationState(button, frame)

@@ -21,7 +21,9 @@ CursorKeys.CURSOR_CONTROLS = {
 }
 
 -- Store original bindings to restore later
-CursorKeys.originalBindings = {}
+CursorKeys.originalBindings = {}  -- Stores D-pad bindings (always the same)
+CursorKeys.originalActionBindings = {}  -- Stores original action button bindings (1, 2, 3, 4) before cursor mode
+CursorKeys.currentButton = nil    -- Tracks which button we're currently on
 CursorKeys.cursorModeActive = false
 
 -- ============================================================================
@@ -29,27 +31,37 @@ CursorKeys.cursorModeActive = false
 -- ============================================================================
 
 function CursorKeys:SetupCursorBindings()
+    -- If already active, restore first to switch modes
     if self.cursorModeActive then 
-        CE_Debug("Cursor bindings already active")
-        return 
+        self:RestoreOriginalBindings()
     end
     
     CE_Debug("Setting up cursor bindings...")
     
-    -- Save original bindings
+    -- Save original D-pad bindings (movement keys)
     self:SaveOriginalBindings()
     
     -- Mark cursor mode as active
     self.cursorModeActive = true
+    self.currentButton = nil
     
     -- Apply base navigation bindings immediately so navigation works even before moving to a button
-    -- These are the default bindings that always apply
+    -- These are the default bindings that always apply (D-pad only at this point)
     local Tooltip = ConsoleExperience.cursor.tooltip
     if Tooltip and Tooltip.GetBindings then
-        -- Get default bindings (no button name = default)
+        -- Get default bindings (no button name = default, which includes D-pad)
         local bindings = Tooltip:GetBindings(nil)
         if bindings then
-            self:ApplyContextBindings(bindings)
+            -- Apply only D-pad bindings for now (no button yet)
+            for _, binding in ipairs(bindings) do
+                if binding.key and binding.action then
+                    -- Only apply D-pad keys (5, 6, 7, 8)
+                    local key = binding.key
+                    if key == "5" or key == "6" or key == "7" or key == "8" then
+                        SetBinding(key, binding.action)
+                    end
+                end
+            end
         end
     end
     
@@ -57,23 +69,18 @@ function CursorKeys:SetupCursorBindings()
 end
 
 function CursorKeys:SaveOriginalBindings()
-    -- Save current bindings for ALL keys that might be overridden by context bindings
-    -- This includes navigation keys (5, 6, 7, 8) and action keys (1, 2, 3, 4)
+    -- Save D-pad bindings (movement) - these are always the same
     self.originalBindings = {}
     
-    local keysToSave = {
+    local dPadKeys = {
         self.CURSOR_CONTROLS.up,      -- 7
         self.CURSOR_CONTROLS.down,    -- 5
         self.CURSOR_CONTROLS.left,    -- 6
         self.CURSOR_CONTROLS.right,   -- 8
-        self.CURSOR_CONTROLS.confirm, -- 1
-        self.CURSOR_CONTROLS.cancel,  -- 4
-        "2",  -- X button (used for bind/send actions)
-        "3",  -- Y button (used for delete/drop actions)
     }
     
-    CE_Debug("Saving original bindings before cursor override:")
-    for _, key in ipairs(keysToSave) do
+    CE_Debug("Saving original D-pad bindings:")
+    for _, key in ipairs(dPadKeys) do
         local action = GetBindingAction(key)
         if action and action ~= "" then
             self.originalBindings[key] = action
@@ -82,40 +89,73 @@ function CursorKeys:SaveOriginalBindings()
             CE_Debug("  Key " .. key .. " = (none)")
         end
     end
+    
+    -- Save original action button bindings (1, 2, 3, 4) - these are restored when leaving a button
+    self.originalActionBindings = {}
+    local actionKeys = {
+        self.CURSOR_CONTROLS.confirm, -- 1
+        "2",  -- X button
+        "3",  -- Y button
+        self.CURSOR_CONTROLS.cancel,  -- 4
+    }
+    
+    CE_Debug("Saving original action button bindings:")
+    for _, key in ipairs(actionKeys) do
+        local action = GetBindingAction(key)
+        if action and action ~= "" then
+            self.originalActionBindings[key] = action
+            CE_Debug("  Key " .. key .. " = " .. action)
+        else
+            CE_Debug("  Key " .. key .. " = (none)")
+        end
+    end
+end
+
+-- Restore action button bindings (1, 2, 3, 4) to their original state (before cursor mode)
+function CursorKeys:RestoreActionButtonsToOriginal()
+    local actionKeys = {
+        self.CURSOR_CONTROLS.confirm, -- 1
+        "2",  -- X button
+        "3",  -- Y button
+        self.CURSOR_CONTROLS.cancel,  -- 4
+    }
+    
+    CE_Debug("Restoring action buttons to original state:")
+    for _, key in ipairs(actionKeys) do
+        local originalAction = self.originalActionBindings[key]
+        if originalAction then
+            SetBinding(key, originalAction)
+            CE_Debug("  Restored key " .. key .. " to: " .. originalAction)
+        else
+            SetBinding(key, nil)
+            CE_Debug("  Cleared key " .. key .. " (no original binding)")
+        end
+    end
 end
 
 function CursorKeys:RestoreOriginalBindings()
     if not self.cursorModeActive then return end
     
-    CE_Debug("RestoreOriginalBindings called, originalBindings contents:")
-    for k, v in pairs(self.originalBindings) do
-        CE_Debug("  originalBindings[" .. tostring(k) .. "] = " .. tostring(v))
-    end
+    -- Restore action buttons to original state first
+    self:RestoreActionButtonsToOriginal()
     
-    -- Restore ALL original bindings exactly as they were saved
-    -- This includes all keys that might have been overridden by context bindings
-    local keysToRestore = {
+    -- Restore D-pad bindings
+    CE_Debug("Restoring original D-pad bindings:")
+    local dPadKeys = {
         self.CURSOR_CONTROLS.up,      -- 7
         self.CURSOR_CONTROLS.down,    -- 5
         self.CURSOR_CONTROLS.left,    -- 6
         self.CURSOR_CONTROLS.right,   -- 8
-        self.CURSOR_CONTROLS.confirm, -- 1
-        self.CURSOR_CONTROLS.cancel,  -- 4
-        "2",  -- X button
-        "3",  -- Y button
     }
     
-    for _, key in ipairs(keysToRestore) do
+    for _, key in ipairs(dPadKeys) do
         local originalAction = self.originalBindings[key]
-        CE_Debug("Checking key " .. key .. ": originalAction = " .. tostring(originalAction))
         if originalAction then
-            -- Restore to whatever was bound before cursor mode
             SetBinding(key, originalAction)
-            CE_Debug("Restored key " .. key .. " to: " .. originalAction)
+            CE_Debug("  Restored key " .. key .. " to: " .. originalAction)
         else
-            -- No binding existed before, clear it
             SetBinding(key, nil)
-            CE_Debug("Cleared key " .. key .. " (no original binding)")
+            CE_Debug("  Cleared key " .. key .. " (no original binding)")
         end
     end
     
@@ -123,6 +163,8 @@ function CursorKeys:RestoreOriginalBindings()
     
     self.cursorModeActive = false
     self.originalBindings = {}
+    self.originalActionBindings = {}
+    self.currentButton = nil
     
     CE_Debug("Cursor bindings deactivated")
 end
@@ -132,22 +174,34 @@ function CursorKeys:IsCursorModeActive()
 end
 
 -- Apply context-specific bindings based on hovered element
-function CursorKeys:ApplyContextBindings(bindings, buttonName)
+-- This should be called with the button object and its bindings
+function CursorKeys:ApplyContextBindings(bindings, button)
     if not self.cursorModeActive then return end
     if not bindings then return end
+    
+    -- If we're moving from one button to another, restore action buttons to original first
+    if self.currentButton and self.currentButton ~= button then
+        self:RestoreActionButtonsToOriginal()
+    end
+    
+    -- Update current button
+    if button then
+        self.currentButton = button
+    end
     
     -- Track if B button has a specific binding
     local hasBBinding = false
     
     -- Log all bindings being applied
-    CE_Debug("Applying context bindings:")
+    local buttonName = button and (button:GetName() or tostring(button)) or "unknown"
+    CE_Debug("Applying context bindings for button: " .. buttonName)
     for _, binding in ipairs(bindings) do
         if binding.key and binding.action then
             CE_Debug("  Key " .. binding.key .. " = " .. binding.action)
         end
     end
     
-    -- Apply all context bindings
+    -- Apply all bindings (D-pad + action buttons)
     for _, binding in ipairs(bindings) do
         if binding.key and binding.action then
             SetBinding(binding.key, binding.action)

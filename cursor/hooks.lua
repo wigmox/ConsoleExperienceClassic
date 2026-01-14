@@ -98,7 +98,6 @@ function Hooks:Initialize()
         self.eventFrame:RegisterEvent("MAIL_SHOW")
         self.eventFrame:RegisterEvent("TRADE_SKILL_SHOW")
         self.eventFrame:RegisterEvent("TRAINER_SHOW")
-        self.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
         self.eventFrame:RegisterEvent("MERCHANT_SHOW")
         self.eventFrame:RegisterEvent("AUCTION_HOUSE_SHOW")
         self.eventFrame:RegisterEvent("BANKFRAME_OPENED")
@@ -435,7 +434,7 @@ function Hooks:ProcessFrameHide(frame)
     
     -- Find another active frame
     local mostRecentFrame = nil
-    for activeFrame, _ in pairs(Cursor.navigationState.activeFrames) do
+    for activeFrame, frameInfo in pairs(Cursor.navigationState.activeFrames) do
         if activeFrame:IsVisible() then
             mostRecentFrame = activeFrame
             break
@@ -446,6 +445,12 @@ function Hooks:ProcessFrameHide(frame)
         -- Move cursor to the other active frame
         local firstButton = Cursor:FindFirstVisibleButton(mostRecentFrame)
         if firstButton then
+            -- Set up cursor bindings
+            if ConsoleExperience.cursor.keybindings then
+                ConsoleExperience.cursor.keybindings:RestoreOriginalBindings()
+                ConsoleExperience.cursor.keybindings:SetupCursorBindings()
+            end
+            
             Cursor:MoveCursorToButton(firstButton)
         end
     else
@@ -489,6 +494,7 @@ function Hooks:HasActiveFrames()
     return false
 end
 
+-- ============================================================================
 -- ============================================================================
 -- Vendor/Auction House Bag Opening
 -- ============================================================================
