@@ -25,6 +25,7 @@ Config.DEFAULTS = {
     crosshairColorB = 1.0,    -- Blue component (0-1)
     crosshairColorA = 0.8,    -- Alpha component (0-1)
     controllerType = "xbox",  -- "xbox" or "ps"
+    healerMode = false,  -- Healer mode (affects targeting and gameplay)
     -- Action Bar settings
     barButtonSize = 60,
     barXOffset = 0,
@@ -100,10 +101,11 @@ function Config:InitializeDB()
         ConsoleExperienceDB.config = {}
     end
     
-    -- Set defaults for any missing values
+    -- Set defaults for any missing values (generic - automatically adds new defaults)
     for key, defaultValue in pairs(self.DEFAULTS) do
         if ConsoleExperienceDB.config[key] == nil then
             ConsoleExperienceDB.config[key] = defaultValue
+            CE_Debug("Config: Added missing default '" .. key .. "' = " .. tostring(defaultValue))
         end
     end
     
@@ -504,6 +506,24 @@ function Config:CreateInterfaceSection()
     local currentControllerType = Config:Get("controllerType") or "xbox"
     UIDropDownMenu_SetSelectedValue(controllerTypeDropdown, currentControllerType)
     UIDropDownMenu_SetText(currentControllerType == "xbox" and "Xbox" or "PlayStation", controllerTypeDropdown)
+    
+    -- Healer Mode checkbox (below controller type, left side)
+    local healerModeCheck = self:CreateCheckbox(generalBox, T("Healer Mode"),
+        function() return Config:Get("healerMode") end,
+        function(checked)
+            Config:Set("healerMode", checked)
+            CE_Debug("Healer mode " .. (checked and "enabled" or "disabled"))
+            -- Update party/raid frame hooks when healer mode changes
+            if ConsoleExperience.hooks and ConsoleExperience.hooks.HookPartyRaidFrames then
+                ConsoleExperience.hooks:HookPartyRaidFrames()
+            end
+            -- Update action bar buttons (to hide/show D-pad buttons)
+            if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+                ConsoleExperience.actionbars:UpdateAllButtons()
+            end
+        end,
+        T("Enable healer mode for improved healing and targeting."))
+    healerModeCheck:SetPoint("TOPLEFT", controllerTypeLabel, "BOTTOMLEFT", 0, -15)
     
     -- Language dropdown (center)
     local langLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -2633,6 +2653,43 @@ function Config:RefreshBindingIcons()
     end
 end
 
+-- Refresh proxied action dropdowns to reflect current proxied action bindings
+function Config:RefreshProxiedDropdowns()
+    if not self.bindingDropdowns then return end
+    if not ConsoleExperience.proxied then return end
+    
+    -- Get translation function
+    local Locale = ConsoleExperience.locale
+    local T = Locale and Locale.T or function(key) return key end
+    
+    -- Refresh all dropdowns (main action bar and sidebars)
+    for slot, dropdown in pairs(self.bindingDropdowns) do
+        if dropdown then
+            -- Get current binding for this slot
+            local currentValue = nil
+            if ConsoleExperience.proxied.GetSlotBinding then
+                currentValue = ConsoleExperience.proxied:GetSlotBinding(slot)
+            end
+            
+            -- Update dropdown text and selected value
+            if currentValue then
+                local action = ConsoleExperience.proxied:GetActionByID(currentValue)
+                if action then
+                    local actionName = ConsoleExperience.proxied:GetActionName(action)
+                    UIDropDownMenu_SetText(actionName, dropdown)
+                    UIDropDownMenu_SetSelectedValue(dropdown, currentValue)
+                else
+                    UIDropDownMenu_SetText(currentValue, dropdown)
+                    UIDropDownMenu_SetSelectedValue(dropdown, currentValue)
+                end
+            else
+                UIDropDownMenu_SetText(T("None (Action Bar)"), dropdown)
+                UIDropDownMenu_SetSelectedValue(dropdown, nil)
+            end
+        end
+    end
+end
+
 -- ============================================================================
 -- UI Helpers
 -- ============================================================================
@@ -2737,9 +2794,11 @@ function Config:CreateCheckbox(parent, label, getFunc, setFunc, tooltipText)
     check.label = label
     -- Store tooltip help text
     check.tooltipText = tooltipText
+    -- Store getFunc so we can refresh the checkbox state
+    check.getFunc = getFunc
     
     -- Set initial state
-    check:SetChecked(getFunc())
+    check:SetChecked(getFunc() and 1 or 0)
     
     -- Click handler
     check:SetScript("OnClick", function()
@@ -2748,6 +2807,28 @@ function Config:CreateCheckbox(parent, label, getFunc, setFunc, tooltipText)
     end)
     
     return check
+end
+
+-- Refresh all checkboxes in a section
+function Config:RefreshCheckboxes(section)
+    if not section then return end
+    
+    -- Find all checkboxes in the section
+    local function RefreshCheckboxRecursive(frame)
+        if frame and frame.getFunc then
+            -- This is a checkbox with a getFunc, refresh it
+            local value = frame.getFunc()
+            frame:SetChecked(value and 1 or 0)
+        end
+        
+        -- Recursively check children
+        local children = {frame:GetChildren()}
+        for _, child in ipairs(children) do
+            RefreshCheckboxRecursive(child)
+        end
+    end
+    
+    RefreshCheckboxRecursive(section)
 end
 
 function Config:CreateEditBox(parent, width, getFunc, setFunc, label, tooltipText)
@@ -2822,11 +2903,22 @@ function Config:ShowSection(sectionId)
     
     -- Show selected section
     if self.contentSections[sectionId] then
-        self.contentSections[sectionId]:Show()
+        local section = self.contentSections[sectionId]
+        section:Show()
+        
+        -- Refresh all checkboxes in this section to reflect current config values
+        self:RefreshCheckboxes(section)
+        
+        -- Refresh proxied dropdowns if showing keybindings section
+        if sectionId == "keybindings" then
+            if self.RefreshProxiedDropdowns then
+                self:RefreshProxiedDropdowns()
+            end
+        end
         
         -- Recalculate box heights after layout settles
         local calcFrame = CreateFrame("Frame")
-        calcFrame.section = self.contentSections[sectionId]
+        calcFrame.section = section
         calcFrame:SetScript("OnUpdate", function()
             this:Hide()
             local section = this.section
@@ -3349,5 +3441,48 @@ SLASH_CECONFIG1 = "/ce"
 SLASH_CECONFIG2 = "/consoleexperience"
 SlashCmdList["CECONFIG"] = function(msg)
     Config:Toggle()
+end
+
+SLASH_CEHEALER1 = "/cehealer"
+SLASH_CEHEALER2 = "/ceheal"
+SlashCmdList["CEHEALER"] = function(msg)
+    local currentValue = Config:Get("healerMode")
+    local newValue = currentValue
+    local msgLower = string.lower(string.gsub(msg or "", "^%s*(.-)%s*$", "%1"))
+    
+    if msgLower == "on" or msgLower == "enable" or msgLower == "1" or msgLower == "true" then
+        newValue = true
+    elseif msgLower == "off" or msgLower == "disable" or msgLower == "0" or msgLower == "false" then
+        newValue = false
+    elseif msgLower == "" or msgLower == "toggle" then
+        -- Toggle if no argument or "toggle" is provided
+        newValue = not currentValue
+    else
+        -- Show current state and usage
+        CE_Print("Healer mode is currently: " .. (currentValue and "ENABLED" or "DISABLED"))
+        CE_Print("Usage: /cehealer [on|off|toggle]")
+        return
+    end
+    
+    -- Only update if value changed
+    if newValue ~= currentValue then
+        Config:Set("healerMode", newValue)
+        if newValue then
+            CE_Print("Healer mode ENABLED")
+        else
+            CE_Print("Healer mode DISABLED")
+        end
+        -- Update party/raid frame hooks when healer mode changes
+        if ConsoleExperience.hooks and ConsoleExperience.hooks.HookPartyRaidFrames then
+            ConsoleExperience.hooks:HookPartyRaidFrames()
+        end
+        -- Update action bar buttons (to hide/show D-pad buttons)
+        if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+            ConsoleExperience.actionbars:UpdateAllButtons()
+        end
+    else
+        -- Value didn't change, just show current state
+        CE_Print("Healer mode is already: " .. (currentValue and "ENABLED" or "DISABLED"))
+    end
 end
 

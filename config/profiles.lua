@@ -402,6 +402,16 @@ function Profiles:SaveCurrentProfile()
         end
     end
     
+    -- Ensure all defaults are in the profile (adds any new defaults that were added)
+    if ConsoleExperience.config and ConsoleExperience.config.DEFAULTS then
+        for key, defaultValue in pairs(ConsoleExperience.config.DEFAULTS) do
+            if profile.config[key] == nil then
+                profile.config[key] = defaultValue
+                CE_Debug("Profiles: Added missing default '" .. key .. "' = " .. tostring(defaultValue) .. " to profile when saving")
+            end
+        end
+    end
+    
     -- Save proxied actions (copy from ConsoleExperienceDB.proxiedActions)
     if ConsoleExperienceDB.proxiedActions then
         profile.proxiedActions = {}
@@ -431,16 +441,27 @@ function Profiles:LoadProfile(profileName)
     end
     
     -- Load config (merge with defaults)
-    if profile.config then
-        -- First, reset to defaults
-        if ConsoleExperience.config and ConsoleExperience.config.DEFAULTS then
-            for key, defaultValue in pairs(ConsoleExperience.config.DEFAULTS) do
-                ConsoleExperienceDB.config[key] = defaultValue
-            end
+    -- First, reset to defaults (ensures new defaults are added)
+    if ConsoleExperience.config and ConsoleExperience.config.DEFAULTS then
+        for key, defaultValue in pairs(ConsoleExperience.config.DEFAULTS) do
+            ConsoleExperienceDB.config[key] = defaultValue
         end
-        -- Then apply saved values
+    end
+    
+    -- Then apply saved values from profile
+    if profile.config then
         for key, value in pairs(profile.config) do
             ConsoleExperienceDB.config[key] = value
+        end
+    end
+    
+    -- Ensure any new defaults not in the profile are added
+    if ConsoleExperience.config and ConsoleExperience.config.DEFAULTS then
+        for key, defaultValue in pairs(ConsoleExperience.config.DEFAULTS) do
+            if ConsoleExperienceDB.config[key] == nil then
+                ConsoleExperienceDB.config[key] = defaultValue
+                CE_Debug("Profiles: Added missing default config '" .. key .. "' = " .. tostring(defaultValue) .. " when loading profile")
+            end
         end
     end
     
@@ -527,6 +548,11 @@ function Profiles:LoadProfile(profileName)
             ConsoleExperience.config:RefreshBindingIcons()
         end
         
+        -- Refresh proxied action dropdowns in config UI
+        if ConsoleExperience.config.RefreshProxiedDropdowns then
+            ConsoleExperience.config:RefreshProxiedDropdowns()
+        end
+        
         -- Update all action bar buttons (to reflect proxied actions, etc.)
         if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
             ConsoleExperience.actionbars:UpdateAllButtons()
@@ -537,11 +563,18 @@ function Profiles:LoadProfile(profileName)
         if ConsoleExperience.config.frame and ConsoleExperience.config.frame:IsVisible() then
             local currentSection = ConsoleExperience.config.currentSection
             if currentSection then
-                -- Small delay to ensure config values are set, then refresh the section
+                -- Small delay to ensure config values are set, then refresh checkboxes
                 local refreshFrame = CreateFrame("Frame")
                 refreshFrame:SetScript("OnUpdate", function()
                     refreshFrame:SetScript("OnUpdate", nil)
-                    -- Re-show section to refresh all checkboxes and UI elements
+                    -- Refresh checkboxes in the current section
+                    if ConsoleExperience.config.RefreshCheckboxes then
+                        local section = ConsoleExperience.config.contentSections[currentSection]
+                        if section then
+                            ConsoleExperience.config:RefreshCheckboxes(section)
+                        end
+                    end
+                    -- Also refresh dropdowns and other UI elements by re-showing the section
                     if ConsoleExperience.config.ShowSection then
                         ConsoleExperience.config:ShowSection(currentSection)
                     end
@@ -596,7 +629,7 @@ function Profiles:MigrateLegacyConfig()
     
     -- Migrate config settings
     if ConsoleExperienceDB.config then
-        -- Copy all config values
+        -- Copy all existing config values
         for key, value in pairs(ConsoleExperienceDB.config) do
             defaultProfile.config[key] = value
         end
@@ -605,14 +638,19 @@ function Profiles:MigrateLegacyConfig()
         ConsoleExperienceDB.config = {}
     end
     
-    -- Ensure all default values are set in both places
+    -- Ensure all default values are set in both places (generic migration)
+    -- This automatically adds any new default values that weren't in the old config
     if ConsoleExperience.config and ConsoleExperience.config.DEFAULTS then
         for key, defaultValue in pairs(ConsoleExperience.config.DEFAULTS) do
+            -- Add to ConsoleExperienceDB.config if missing
             if ConsoleExperienceDB.config[key] == nil then
                 ConsoleExperienceDB.config[key] = defaultValue
+                CE_Debug("Profiles: Added missing default config '" .. key .. "' = " .. tostring(defaultValue))
             end
+            -- Add to defaultProfile.config if missing
             if defaultProfile.config[key] == nil then
                 defaultProfile.config[key] = defaultValue
+                CE_Debug("Profiles: Added missing default config to profile '" .. key .. "' = " .. tostring(defaultValue))
             end
         end
     end

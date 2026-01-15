@@ -450,6 +450,12 @@ function Tooltip:GetBindings(buttonName)
     local bindings = {}
     local isKeyboardButton = false
     
+    -- Check if this is a party/raid/player frame (healer mode - D-pad only)
+    local isHealerModeFrame = false
+    if buttonName and ConsoleExperience.hooks and ConsoleExperience.hooks.IsPartyRaidFrame then
+        isHealerModeFrame = ConsoleExperience.hooks:IsPartyRaidFrame(buttonName)
+    end
+    
     -- Always include base navigation bindings (these never change)
     local CursorKeys = ConsoleExperience.cursor.keybindings
     if CursorKeys then
@@ -457,6 +463,11 @@ function Tooltip:GetBindings(buttonName)
         table.insert(bindings, {key = CursorKeys.CURSOR_CONTROLS.down, action = "CE_CURSOR_MOVE_DOWN"})
         table.insert(bindings, {key = CursorKeys.CURSOR_CONTROLS.left, action = "CE_CURSOR_MOVE_LEFT"})
         table.insert(bindings, {key = CursorKeys.CURSOR_CONTROLS.right, action = "CE_CURSOR_MOVE_RIGHT"})
+    end
+    
+    -- For healer mode frames, only return D-pad bindings (no action buttons)
+    if isHealerModeFrame then
+        return bindings
     end
     
     -- Get context-specific bindings for this button

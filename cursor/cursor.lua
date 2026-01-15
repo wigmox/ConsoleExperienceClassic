@@ -175,6 +175,20 @@ function Cursor:IsInteractiveElement(frame)
     
     local frameName = frame:GetName() or ""
     
+    -- Check if it's a party/raid/player frame (in healer mode, treat these as interactive)
+    if ConsoleExperience.hooks and ConsoleExperience.hooks.IsPartyRaidFrame then
+        if ConsoleExperience.hooks:IsPartyRaidFrame(frameName) then
+            -- Check if healer mode is enabled
+            local config = ConsoleExperience.config
+            if config and config.Get then
+                local healerMode = config:Get("healerMode")
+                if healerMode then
+                    return true
+                end
+            end
+        end
+    end
+    
     -- Check if it's a Button (has IsEnabled method)
     if frame:IsObjectType("Button") then
         -- For dropdown buttons, always consider them interactive if visible
@@ -287,6 +301,21 @@ function Cursor:FindFirstVisibleButton(frame)
         local button = self:FindFirstVisibleButton(child)
         if button then
             return button
+        end
+    end
+    
+    -- For party/raid/player frames in healer mode, return the frame itself even if no children are interactive
+    local frameName = frame:GetName() or ""
+    if ConsoleExperience.hooks and ConsoleExperience.hooks.IsPartyRaidFrame then
+        if ConsoleExperience.hooks:IsPartyRaidFrame(frameName) then
+            local config = ConsoleExperience.config
+            if config and config.Get then
+                local healerMode = config:Get("healerMode")
+                if healerMode then
+                    -- Party/raid/player frames themselves are the interactive element
+                    return frame
+                end
+            end
         end
     end
     
@@ -486,6 +515,12 @@ function Cursor:MoveCursorToButton(button)
     if not button then return end
     if not button.GetParent then return end
     
+    -- Check if we're already on this button - if so, don't do anything (prevents loops)
+    if self.navigationState.currentButton == button then
+        CE_Debug("Already on button, skipping move")
+        return
+    end
+    
     -- Hide tooltip for previous button
     if self.navigationState.currentButton and ConsoleExperience.cursor.tooltip then
         ConsoleExperience.cursor.tooltip:HideButtonTooltip()
@@ -500,21 +535,38 @@ function Cursor:MoveCursorToButton(button)
     -- Update state
     self.navigationState.currentButton = button
     
-    -- Use the button's parent as the current frame
-    self.navigationState.currentFrame = button:GetParent()
+    -- For party/raid/player frames, the button IS the frame, so use the button itself as currentFrame
+    -- Otherwise, use the button's parent
+    local buttonName = button:GetName() or ""
+    local isPartyRaidFrameButton = false
+    if ConsoleExperience.hooks and ConsoleExperience.hooks.IsPartyRaidFrame then
+        isPartyRaidFrameButton = ConsoleExperience.hooks:IsPartyRaidFrame(buttonName)
+    end
+    
+    if isPartyRaidFrameButton then
+        -- Button is the party/raid/player frame itself
+        self.navigationState.currentFrame = button
+    else
+        -- Normal button, use parent frame
+        self.navigationState.currentFrame = button:GetParent()
+    end
     
     -- Update cursor position
     self:UpdateCursorPosition(button)
     
     -- Apply context-specific bindings for this button
     if ConsoleExperience.cursor.tooltip and ConsoleExperience.cursor.keybindings then
-        local buttonName = button:GetName() or ""
         local bindings = ConsoleExperience.cursor.tooltip:GetBindings(buttonName)
         ConsoleExperience.cursor.keybindings:ApplyContextBindings(bindings, button)
     end
     
     -- Update navigation options (use currentFrame we determined above)
     self:UpdateNavigationState(button, self.navigationState.currentFrame)
+    
+    -- Show tooltip for the button
+    if ConsoleExperience.cursor.tooltip then
+        ConsoleExperience.cursor.tooltip:ShowButtonTooltip(button)
+    end
 end
 
 function Cursor:UpdateNavigationState(button, frame)
@@ -533,9 +585,14 @@ function Cursor:RefreshFrame()
     -- Recollect all visible buttons
     self.navigationState.allButtons = self:CollectAllVisibleButtons()
     
-    -- If we have a current button, update cursor
+    -- If we have a current button, just update navigation state and cursor position
+    -- Don't call MoveCursorToButton again (it would trigger save/restore cycle)
     if self.navigationState.currentButton then
-        self:MoveCursorToButton(self.navigationState.currentButton)
+        local button = self.navigationState.currentButton
+        -- Update navigation state without triggering bindings again
+        self:UpdateNavigationState(button, self.navigationState.currentFrame)
+        -- Just update cursor position visually
+        self:UpdateCursorPosition(button)
     end
 end
 

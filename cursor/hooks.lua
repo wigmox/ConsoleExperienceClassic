@@ -89,6 +89,9 @@ function Hooks:Initialize()
     -- Hook dropdown menus (DropDownList1, DropDownList2, etc.)
     self:HookDropdownMenus()
     
+    -- Hook party/raid/player frames if healer mode is enabled
+    self:HookPartyRaidFrames()
+    
     -- Create event frame to hook load-on-demand frames
     if not self.eventFrame then
         self.eventFrame = CreateFrame("Frame")
@@ -101,12 +104,25 @@ function Hooks:Initialize()
         self.eventFrame:RegisterEvent("MERCHANT_SHOW")
         self.eventFrame:RegisterEvent("AUCTION_HOUSE_SHOW")
         self.eventFrame:RegisterEvent("BANKFRAME_OPENED")
+        -- Register events for party/raid frame updates (healer mode)
+        self.eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED")
+        self.eventFrame:RegisterEvent("RAID_ROSTER_UPDATE")
+        self.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
         self.eventFrame:SetScript("OnEvent", function()
             Hooks:TryHookPendingFrames()
             
             -- Open all bags when interacting with merchants, auction house, or bank
             if event == "MERCHANT_SHOW" or event == "AUCTION_HOUSE_SHOW" or event == "BANKFRAME_OPENED" then
                 Hooks:OnVendorInteraction()
+            end
+            
+            -- Hook party/raid frames when they change or on world enter (healer mode)
+            if event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
+                Hooks:HookPartyRaidFrames()
+                -- Update action bar buttons (to hide/show D-pad buttons in healer mode)
+                if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+                    ConsoleExperience.actionbars:UpdateAllButtons()
+                end
             end
         end)
     end
@@ -237,6 +253,9 @@ function Hooks:TryHookPendingFrames()
         end
     end
     
+    -- Try to hook party/raid frames if healer mode is enabled
+    self:HookPartyRaidFrames()
+    
     -- Special handling for WorldMapFrame - check if it's visible and not yet initialized
     local worldMap = getglobal("WorldMapFrame")
     if worldMap and worldMap:IsVisible() then
@@ -365,8 +384,15 @@ function Hooks:OnFrameShow(frame)
     
     local Cursor = ConsoleExperience.cursor
     
-    -- Add to active frames
-    Cursor.navigationState.activeFrames[frame] = true
+    -- Check if this is a party/raid/player frame (healer mode)
+    local isPartyRaidFrame = self:IsPartyRaidFrame(frameName)
+    
+    -- Add to active frames (store as table to hold metadata for healer mode frames)
+    if isPartyRaidFrame then
+        Cursor.navigationState.activeFrames[frame] = { healerMode = true }
+    else
+        Cursor.navigationState.activeFrames[frame] = true
+    end
     
     -- Special handling for WorldMapFrame - disable its keyboard capture
     if frameName == "WorldMapFrame" then
@@ -387,7 +413,8 @@ function Hooks:OnFrameShow(frame)
     local firstButton = Cursor:FindFirstVisibleButton(frame)
     
     -- Set up cursor navigation bindings first (before moving to button)
-    if ConsoleExperience.cursor.keybindings then
+    -- Only setup if cursor mode is not already active (to avoid saving bindings multiple times)
+    if ConsoleExperience.cursor.keybindings and not ConsoleExperience.cursor.keybindings:IsCursorModeActive() then
         ConsoleExperience.cursor.keybindings:SetupCursorBindings()
     end
     
@@ -495,6 +522,243 @@ function Hooks:HasActiveFrames()
 end
 
 -- ============================================================================
+-- ============================================================================
+-- Party/Raid Frame Hooking (Healer Mode)
+-- ============================================================================
+
+-- Check if a frame name is a party/raid/player frame (for healer mode)
+function Hooks:IsPartyRaidFrame(frameName)
+    if not frameName then return false end
+    
+    -- Player frame
+    if frameName == "PlayerFrame" then
+        return true
+    end
+    
+    -- Party frames: PartyMemberFrame1, PartyMemberFrame2, etc.
+    if string.find(frameName, "^PartyMemberFrame%d+$") then
+        return true
+    end
+    
+    -- Raid frames: RaidGroupButton1, RaidGroupButton2, etc. (WoW 1.12 uses RaidGroupButton)
+    if string.find(frameName, "^RaidGroupButton%d+$") then
+        return true
+    end
+    
+    -- Also check for PartyFrame1, PartyFrame2 (alternative naming)
+    if string.find(frameName, "^PartyFrame%d+$") then
+        return true
+    end
+    
+    return false
+end
+
+-- Unhook party and raid frames (when leaving party/raid or disabling healer mode)
+function Hooks:UnhookPartyRaidFrames()
+    CE_Debug("Hooks: Unhooking party/raid/player frames...")
+    
+    -- Unhook player frame (if it was hooked by healer mode)
+    local playerFrame = getglobal("PlayerFrame")
+    if playerFrame and playerFrame.ceHooked then
+        local frameName = playerFrame:GetName() or ""
+        -- Only unhook if it's a party/raid/player frame (healer mode frames)
+        if frameName == "PlayerFrame" or self:IsPartyRaidFrame(frameName) then
+            -- Restore original scripts
+            playerFrame:SetScript("OnShow", nil)
+            playerFrame:SetScript("OnHide", nil)
+            playerFrame.ceHooked = nil
+            CE_Debug("Hooks: Unhooked PlayerFrame")
+            
+            -- Remove from active frames if present
+            local Cursor = ConsoleExperience.cursor
+            if Cursor and Cursor.navigationState then
+                Cursor.navigationState.activeFrames[playerFrame] = nil
+            end
+        end
+    end
+    
+    -- Unhook party frames (PartyMemberFrame1-4)
+    for i = 1, 4 do
+        local frameName = "PartyMemberFrame" .. i
+        local frame = getglobal(frameName)
+        if frame and frame.ceHooked then
+            -- Restore original scripts
+            frame:SetScript("OnShow", nil)
+            frame:SetScript("OnHide", nil)
+            frame.ceHooked = nil
+            CE_Debug("Hooks: Unhooked " .. frameName)
+            
+            -- Remove from active frames if present
+            local Cursor = ConsoleExperience.cursor
+            if Cursor and Cursor.navigationState then
+                Cursor.navigationState.activeFrames[frame] = nil
+            end
+        end
+    end
+    
+    -- Unhook raid frames (RaidGroupButton1-40)
+    for i = 1, 40 do
+        local frameName = "RaidGroupButton" .. i
+        local frame = getglobal(frameName)
+        if frame and frame.ceHooked then
+            -- Restore original scripts
+            frame:SetScript("OnShow", nil)
+            frame:SetScript("OnHide", nil)
+            frame.ceHooked = nil
+            CE_Debug("Hooks: Unhooked " .. frameName)
+            
+            -- Remove from active frames if present
+            local Cursor = ConsoleExperience.cursor
+            if Cursor and Cursor.navigationState then
+                Cursor.navigationState.activeFrames[frame] = nil
+            end
+        end
+    end
+    
+    -- Unhook PartyFrame1-4 if they exist (alternative naming)
+    for i = 1, 4 do
+        local frameName = "PartyFrame" .. i
+        local frame = getglobal(frameName)
+        if frame and frame.ceHooked then
+            -- Restore original scripts
+            frame:SetScript("OnShow", nil)
+            frame:SetScript("OnHide", nil)
+            frame.ceHooked = nil
+            CE_Debug("Hooks: Unhooked " .. frameName)
+            
+            -- Remove from active frames if present
+            local Cursor = ConsoleExperience.cursor
+            if Cursor and Cursor.navigationState then
+                Cursor.navigationState.activeFrames[frame] = nil
+            end
+        end
+    end
+end
+
+-- Hook party and raid frames when healer mode is enabled
+function Hooks:HookPartyRaidFrames()
+    -- Check if healer mode is enabled
+    local config = ConsoleExperience.config
+    if not config then
+        -- Healer mode disabled or config not available - unhook if needed
+        self:UnhookPartyRaidFrames()
+        return
+    end
+    if not config.Get then
+        self:UnhookPartyRaidFrames()
+        return
+    end
+    
+    local healerMode = config:Get("healerMode")
+    if not healerMode then
+        -- Healer mode disabled - unhook if needed
+        self:UnhookPartyRaidFrames()
+        return
+    end
+    
+    -- Check if we're actually in a party or raid
+    -- In WoW 1.12, GetNumPartyMembers() returns the number of party members (0-4)
+    -- GetNumRaidMembers() returns the number of raid members (0-40)
+    local numPartyMembers = GetNumPartyMembers and GetNumPartyMembers() or 0
+    local numRaidMembers = GetNumRaidMembers and GetNumRaidMembers() or 0
+    local inParty = numPartyMembers > 0
+    local inRaid = numRaidMembers > 0
+    
+    -- If not in party/raid, unhook all party/raid/player frames
+    if not inParty and not inRaid then
+        CE_Debug("Hooks: Not in party/raid, unhooking all party/raid/player frames")
+        self:UnhookPartyRaidFrames()
+        return
+    end
+    
+    CE_Debug("Hooks: Healer mode enabled, hooking party/raid/player frames...")
+    
+    -- Hook player frame
+    local playerFrame = getglobal("PlayerFrame")
+    if playerFrame then
+        local wasAlreadyHooked = playerFrame.ceHooked
+        self:HookFrame(playerFrame, "Player Frame")
+        CE_Debug("Hooks: Hooked PlayerFrame")
+        
+        -- If frame is already visible, trigger OnFrameShow
+        if playerFrame:IsVisible() then
+            if not wasAlreadyHooked then
+                CE_Debug("Hooks: Player frame is already visible, initializing cursor")
+            else
+                CE_Debug("Hooks: Player frame is already visible and hooked, re-initializing cursor")
+            end
+            self:OnFrameShow(playerFrame)
+        end
+    else
+        CE_Debug("Hooks: PlayerFrame not found")
+    end
+    
+    -- Hook party frames (PartyMemberFrame1-4)
+    for i = 1, 4 do
+        local frameName = "PartyMemberFrame" .. i
+        local frame = getglobal(frameName)
+        if frame then
+            local wasAlreadyHooked = frame.ceHooked
+            self:HookFrame(frame, "Party Member " .. i)
+            CE_Debug("Hooks: Hooked " .. frameName)
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if frame:IsVisible() then
+                if not wasAlreadyHooked then
+                    CE_Debug("Hooks: Party frame " .. frameName .. " is already visible, initializing cursor")
+                else
+                    CE_Debug("Hooks: Party frame " .. frameName .. " is already visible and hooked, re-initializing cursor")
+                end
+                self:OnFrameShow(frame)
+            end
+        else
+            CE_Debug("Hooks: Party frame " .. frameName .. " not found")
+        end
+    end
+    
+    -- Hook raid frames (RaidGroupButton1-40 in WoW 1.12)
+    for i = 1, 40 do
+        local frameName = "RaidGroupButton" .. i
+        local frame = getglobal(frameName)
+        if frame then
+            local wasAlreadyHooked = frame.ceHooked
+            self:HookFrame(frame, "Raid Member " .. i)
+            CE_Debug("Hooks: Hooked " .. frameName)
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if frame:IsVisible() then
+                if not wasAlreadyHooked then
+                    CE_Debug("Hooks: Raid frame " .. frameName .. " is already visible, initializing cursor")
+                else
+                    CE_Debug("Hooks: Raid frame " .. frameName .. " is already visible and hooked, re-initializing cursor")
+                end
+                self:OnFrameShow(frame)
+            end
+        end
+    end
+    
+    -- Also hook PartyFrame1-4 if they exist (alternative naming)
+    for i = 1, 4 do
+        local frameName = "PartyFrame" .. i
+        local frame = getglobal(frameName)
+        if frame then
+            local wasAlreadyHooked = frame.ceHooked
+            self:HookFrame(frame, "Party " .. i)
+            CE_Debug("Hooks: Hooked " .. frameName)
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if frame:IsVisible() then
+                if not wasAlreadyHooked then
+                    CE_Debug("Hooks: Party frame " .. frameName .. " is already visible, initializing cursor")
+                else
+                    CE_Debug("Hooks: Party frame " .. frameName .. " is already visible and hooked, re-initializing cursor")
+                end
+                self:OnFrameShow(frame)
+            end
+        end
+    end
+end
+
 -- ============================================================================
 -- Vendor/Auction House Bag Opening
 -- ============================================================================

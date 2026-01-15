@@ -120,6 +120,52 @@ function ConsoleExperience_ActionButton(slot)
             CE_Debug("Key slot=" .. slot .. " bonus=" .. bonusBar .. " actual=" .. actualSlot .. " has=" .. tostring(HasAction(actualSlot)))
         end
         
+        -- Check if healer mode is enabled and cursor is over a party/raid/player frame
+        local ActionBars = ConsoleExperience.actionbars
+        if ActionBars and ActionBars.ShouldCastOnHealerTarget and ActionBars:ShouldCastOnHealerTarget() then
+            local Cursor = ConsoleExperience.cursor
+            local currentButton = Cursor.navigationState.currentButton
+            local unit = ActionBars:GetUnitFromFrame(currentButton)
+            
+            if unit then
+                -- Use the action first
+                UseAction(actualSlot, 0)
+                
+                -- If spell is awaiting target selection, check if we can cast on the unit
+                if SpellIsTargeting() then
+                    -- Check if the spell can target this unit
+                    if SpellCanTargetUnit(unit) then
+                        -- Cast on the unit
+                        SpellTargetUnit(unit)
+                        CE_Debug("Healer mode: Casting action " .. actualSlot .. " on " .. unit)
+                        
+                        -- Update button visual
+                        local buttonNum = math.mod(slot - 1, 10) + 1
+                        local button = getglobal("ConsoleActionButton" .. buttonNum)
+                        if button and ConsoleExperience.actionbars then
+                            ConsoleExperience.actionbars:UpdateButtonState(button)
+                        end
+                        return
+                    else
+                        -- Can't target this unit, let it work normally (player can target manually or use current target)
+                        CE_Debug("Healer mode: Cannot cast action " .. actualSlot .. " on " .. unit .. " (invalid target, using default behavior)")
+                        -- Don't return - let it fall through to normal behavior below
+                    end
+                else
+                    -- Spell doesn't require targeting (instant cast, self-buff, etc.) - already executed
+                    CE_Debug("Healer mode: Used action " .. actualSlot .. " (no targeting required)")
+                    
+                    -- Update button visual
+                    local buttonNum = math.mod(slot - 1, 10) + 1
+                    local button = getglobal("ConsoleActionButton" .. buttonNum)
+                    if button and ConsoleExperience.actionbars then
+                        ConsoleExperience.actionbars:UpdateButtonState(button)
+                    end
+                    return
+                end
+            end
+        end
+        
         -- Use the action (checkCursor=0, onSelf=nil to use normal targeting)
         UseAction(actualSlot, 0)
         

@@ -533,6 +533,33 @@ function ActionBars:UpdateButton(button)
     local cooldown = getglobal(button:GetName().."Cooldown")
     local texture = GetActionTexture(actionID)
     
+    -- Check if D-pad buttons (5, 6, 7, 8) should be hidden in healer mode
+    -- Only hide base D-pad buttons on page 1 (no modifiers), and only when in party/raid
+    -- Modified D-pad buttons (Shift/Ctrl) should remain visible
+    local shouldHideDPad = false
+    if buttonID >= 5 and buttonID <= 8 then
+        -- Only hide on page 1 (no modifiers)
+        local currentPage = self.currentPage or 1
+        if currentPage == 1 then
+            local config = ConsoleExperience.config
+            local healerMode = false
+            if config and config.Get then
+                healerMode = config:Get("healerMode") or false
+            end
+            
+            if healerMode then
+                -- Check if player is in party or raid
+                local inParty = GetNumPartyMembers() > 0
+                local inRaid = GetNumRaidMembers() > 0
+                
+                if inParty or inRaid then
+                    -- Hide D-pad buttons when in healer mode and in party/raid (page 1 only)
+                    shouldHideDPad = true
+                end
+            end
+        end
+    end
+    
     -- Update controller icon based on current controller type
     local controllerIcon = getglobal(button:GetName().."ControllerIcon")
     if controllerIcon then
@@ -620,8 +647,13 @@ function ActionBars:UpdateButton(button)
     -- This handles normal texture, icon sizing/positioning, overlay, flash, etc.
     self:ApplyButtonAppearance(button)
     
-    -- Always keep button visible so we can drop actions onto it
-    button:Show()
+    -- Show or hide button based on healer mode
+    if shouldHideDPad then
+        button:Hide()
+    else
+        -- Always keep button visible so we can drop actions onto it
+        button:Show()
+    end
     
     -- Update equipped border (only if not a proxied action)
     local border = getglobal(button:GetName().."Border")
@@ -1267,6 +1299,162 @@ function ActionBars:ButtonOnUpdate(button, elapsed)
 end
 
 -- ============================================================================
+-- Healer Mode Helpers
+-- ============================================================================
+
+-- Get unit ID from a party/raid/player frame
+function ActionBars:GetUnitFromFrame(frame)
+    if not frame then 
+        CE_Debug("GetUnitFromFrame: frame is nil")
+        return nil 
+    end
+    
+    local frameName = frame:GetName()
+    if not frameName then 
+        CE_Debug("GetUnitFromFrame: frame has no name")
+        return nil 
+    end
+    
+    CE_Debug("GetUnitFromFrame: Checking frame name: " .. frameName)
+    
+    -- Player frame
+    if frameName == "PlayerFrame" then
+        CE_Debug("GetUnitFromFrame: Matched PlayerFrame -> 'player'")
+        return "player"
+    end
+    
+    -- Party frames: PartyMemberFrame1, PartyMemberFrame2, etc.
+    local partyStart, partyEnd, partyNumStr = string.find(frameName, "^PartyMemberFrame(%d+)$")
+    if partyStart then
+        local partyIndex = tonumber(partyNumStr)
+        if partyIndex and partyIndex >= 1 and partyIndex <= 4 then
+            -- Use GetPartyMember to check if party member exists, then construct unit ID
+            local partyMemberIndex = GetPartyMember(partyIndex)
+            if partyMemberIndex then
+                -- GetPartyMember returns the index (e.g., "1"), construct unit ID as "party" + index
+                local unit = "party" .. partyMemberIndex
+                CE_Debug("GetUnitFromFrame: Matched PartyMemberFrame" .. partyIndex .. " -> GetPartyMember(" .. partyIndex .. ") = '" .. partyMemberIndex .. "', unit = '" .. unit .. "'")
+                return unit
+            else
+                CE_Debug("GetUnitFromFrame: PartyMemberFrame" .. partyIndex .. " matched but GetPartyMember(" .. partyIndex .. ") returned nil")
+            end
+        end
+    end
+    
+    -- Also check for PartyFrame1, PartyFrame2 (alternative naming)
+    local partyFrameStart, partyFrameEnd, partyFrameNumStr = string.find(frameName, "^PartyFrame(%d+)$")
+    if partyFrameStart then
+        local partyIndex = tonumber(partyFrameNumStr)
+        if partyIndex and partyIndex >= 1 and partyIndex <= 4 then
+            -- Use GetPartyMember to check if party member exists, then construct unit ID
+            local partyMemberIndex = GetPartyMember(partyIndex)
+            if partyMemberIndex then
+                -- GetPartyMember returns the index (e.g., "1"), construct unit ID as "party" + index
+                local unit = "party" .. partyMemberIndex
+                CE_Debug("GetUnitFromFrame: Matched PartyFrame" .. partyIndex .. " -> GetPartyMember(" .. partyIndex .. ") = '" .. partyMemberIndex .. "', unit = '" .. unit .. "'")
+                return unit
+            else
+                CE_Debug("GetUnitFromFrame: PartyFrame" .. partyIndex .. " matched but GetPartyMember(" .. partyIndex .. ") returned nil")
+            end
+        end
+    end
+    
+    -- Raid frames: RaidGroupButton1, RaidGroupButton2, etc.
+    local raidStart, raidEnd, raidNumStr = string.find(frameName, "^RaidGroupButton(%d+)$")
+    if raidStart then
+        local raidIndex = tonumber(raidNumStr)
+        if raidIndex and raidIndex >= 1 and raidIndex <= 40 then
+            -- For raid, we can use "raid" .. raidIndex directly, but let's verify it exists
+            local unit = "raid" .. raidIndex
+            local unitName = UnitName(unit)
+            if unitName then
+                CE_Debug("GetUnitFromFrame: Matched RaidGroupButton" .. raidIndex .. " -> '" .. unit .. "' (name: " .. unitName .. ")")
+                return unit
+            else
+                CE_Debug("GetUnitFromFrame: RaidGroupButton" .. raidIndex .. " matched but unit '" .. unit .. "' doesn't exist")
+            end
+        end
+    end
+    
+    CE_Debug("GetUnitFromFrame: No match found for frame name: " .. frameName)
+    return nil
+end
+
+-- Get spell name from action slot (using tooltip method like AutoRank)
+function ActionBars:GetSpellNameFromSlot(slot)
+    if not HasAction(slot) then return nil end
+    
+    -- Use tooltip to get spell name (same approach as AutoRank)
+    GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    GameTooltip:SetAction(slot)
+    GameTooltip:Show()
+    
+    -- Get first line of tooltip (spell name)
+    local tooltipText = getglobal("GameTooltipTextLeft1")
+    if tooltipText and tooltipText:IsShown() then
+        local spellName = tooltipText:GetText()
+        if spellName and spellName ~= "" then
+            GameTooltip:Hide()
+            return spellName
+        end
+    end
+    
+    GameTooltip:Hide()
+    return nil
+end
+
+-- Check if healer mode is enabled and cursor is over a party/raid/player frame
+function ActionBars:ShouldCastOnHealerTarget()
+    -- Check if healer mode is enabled
+    local config = ConsoleExperience.config
+    if not config or not config.Get then 
+        CE_Debug("ShouldCastOnHealerTarget: Config not available")
+        return false 
+    end
+    
+    local healerMode = config:Get("healerMode")
+    if not healerMode then 
+        CE_Debug("ShouldCastOnHealerTarget: Healer mode disabled")
+        return false 
+    end
+    
+    CE_Debug("ShouldCastOnHealerTarget: Healer mode is enabled")
+    
+    -- Check if cursor is active and over a party/raid/player frame
+    local Cursor = ConsoleExperience.cursor
+    if not Cursor or not Cursor.navigationState then 
+        CE_Debug("ShouldCastOnHealerTarget: Cursor not available")
+        return false 
+    end
+    
+    local currentButton = Cursor.navigationState.currentButton
+    if not currentButton then 
+        CE_Debug("ShouldCastOnHealerTarget: No current button")
+        return false 
+    end
+    
+    local frameName = currentButton:GetName()
+    CE_Debug("ShouldCastOnHealerTarget: Current button name: " .. (frameName or "nil"))
+    
+    -- Check if current button is a party/raid/player frame
+    local Hooks = ConsoleExperience.hooks
+    if not Hooks or not Hooks.IsPartyRaidFrame then 
+        CE_Debug("ShouldCastOnHealerTarget: Hooks not available")
+        return false 
+    end
+    
+    if not frameName then 
+        CE_Debug("ShouldCastOnHealerTarget: Frame has no name")
+        return false 
+    end
+    
+    local isPartyRaidFrame = Hooks:IsPartyRaidFrame(frameName)
+    CE_Debug("ShouldCastOnHealerTarget: IsPartyRaidFrame('" .. frameName .. "') = " .. tostring(isPartyRaidFrame))
+    
+    return isPartyRaidFrame
+end
+
+-- ============================================================================
 -- Click and Drag Handlers
 -- ============================================================================
 
@@ -1299,7 +1487,87 @@ function ActionBars:ButtonOnClick(button, mouseButton)
         MacroFrame_SaveMacro()
     end
 
-    -- UseAction with checkCursor=1 handles both using actions and placing from cursor
+    -- Check if healer mode is enabled and cursor is over a party/raid/player frame
+    CE_Debug("ButtonOnClick: Checking healer mode, actionID=" .. actionID)
+    if self:ShouldCastOnHealerTarget() then
+        CE_Debug("ButtonOnClick: Healer mode check passed")
+        local Cursor = ConsoleExperience.cursor
+        local currentButton = Cursor.navigationState.currentButton
+        CE_Debug("ButtonOnClick: Current button: " .. (currentButton and (currentButton:GetName() or "unnamed") or "nil"))
+        
+        local unit = self:GetUnitFromFrame(currentButton)
+        CE_Debug("ButtonOnClick: Got unit from frame: " .. (unit or "nil"))
+        
+        if unit then
+            -- Verify unit exists
+            local unitName = UnitName(unit)
+            CE_Debug("ButtonOnClick: Unit '" .. unit .. "' name: " .. (unitName or "nil"))
+            
+            -- Get spell name from action slot
+            local spellName = self:GetSpellNameFromSlot(actionID)
+            if spellName then
+                CE_Debug("ButtonOnClick: Got spell name: " .. spellName)
+                
+                -- Save current target if we have one (and it's not the unit we want to cast on)
+                local hadTarget = false
+                if UnitName("target") and not UnitIsUnit("target", unit) then
+                    hadTarget = true
+                    CE_Debug("ButtonOnClick: Saving current target before casting")
+                end
+                
+                -- Cast spell by name (this puts us in targeting mode)
+                CE_Debug("ButtonOnClick: Calling CastSpellByName('" .. spellName .. "')")
+                CastSpellByName(spellName)
+                
+                -- Target the unit
+                CE_Debug("ButtonOnClick: Calling SpellTargetUnit('" .. unit .. "')")
+                SpellTargetUnit(unit)
+                
+                -- Restore previous target if we had one
+                if hadTarget then
+                    CE_Debug("ButtonOnClick: Restoring previous target")
+                    TargetLastTarget()
+                end
+                
+                CE_Debug("ButtonOnClick: Healer mode: Casting " .. spellName .. " on " .. unit)
+            else
+                -- No spell name found, fall back to UseAction
+                CE_Debug("ButtonOnClick: No spell name found, using UseAction")
+                UseAction(actionID, 1)
+                
+                -- If spell is awaiting target selection, check if we can cast on the unit
+                if SpellIsTargeting() then
+                    CE_Debug("ButtonOnClick: Spell is targeting")
+                    -- Check if the spell can target this unit
+                    local canTarget = SpellCanTargetUnit(unit)
+                    CE_Debug("ButtonOnClick: SpellCanTargetUnit('" .. unit .. "') = " .. tostring(canTarget))
+                    
+                    if canTarget then
+                        -- Cast on the unit
+                        CE_Debug("ButtonOnClick: Calling SpellTargetUnit('" .. unit .. "')")
+                        SpellTargetUnit(unit)
+                        CE_Debug("ButtonOnClick: Healer mode: Casting action " .. actionID .. " on " .. unit)
+                    else
+                        -- Can't target this unit, let it work normally
+                        CE_Debug("ButtonOnClick: Healer mode: Cannot cast action " .. actionID .. " on " .. unit .. " (invalid target, using default behavior)")
+                    end
+                else
+                    -- Spell doesn't require targeting (instant cast, self-buff, etc.)
+                    CE_Debug("ButtonOnClick: Healer mode: Used action " .. actionID .. " (no targeting required)")
+                end
+            end
+            
+            -- Always update button state and return (action already used)
+            self:UpdateButtonState(button)
+            return
+        else
+            CE_Debug("ButtonOnClick: No unit found from frame")
+        end
+    else
+        CE_Debug("ButtonOnClick: Healer mode check failed or not applicable")
+    end
+
+    -- Normal action use
     UseAction(actionID, 1)
     self:UpdateButtonState(button)
 end
