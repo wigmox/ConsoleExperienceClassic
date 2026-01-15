@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.15.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.14.3...v0.15.0) (2026-01-15)
+
+
+### Features
+
+* added healer mode ([52f2f24](https://github.com/pepordev/ConsoleExperienceClassic/commit/52f2f24f4f3bc69f02495b7384e18fde501a60ec))
+* added profiles ([964a652](https://github.com/pepordev/ConsoleExperienceClassic/commit/964a65290b25c0bf61f39d3a6a4dc11c56740211))
+* added slash command to change profiles ([9d5587d](https://github.com/pepordev/ConsoleExperienceClassic/commit/9d5587d641e6cd6b5fe4fc0c42d95e1bd4686c73))
+
+
+### Bug Fixes
+
+* correct cursor action bindings ([0b78696](https://github.com/pepordev/ConsoleExperienceClassic/commit/0b78696120de8e2fcee92018ecac56535a4b0229))
+* reconfigure profiles on change ([a88ca54](https://github.com/pepordev/ConsoleExperienceClassic/commit/a88ca548897057025c4b08c80c402d86bb4d58ff))
+* show keyboard on profile editbox ([5ae8797](https://github.com/pepordev/ConsoleExperienceClassic/commit/5ae8797c8787c7a7c946dd4ce286a1d9f3129542))
+
 ## [0.14.3](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.14.2...v0.14.3) (2026-01-13)
 
 
