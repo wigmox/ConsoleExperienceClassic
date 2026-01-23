@@ -86,6 +86,89 @@ function Hooks:Initialize()
         end
     end
     
+    -- Hook pfUI frames if pfUI is loaded (these are created dynamically)
+    self:HookPfUIFrames()
+    
+    -- Hook Bagshui frames if Bagshui is loaded (these are created dynamically)
+    self:HookBagshuiFrames()
+    
+    -- Hook Bagnon frames if Bagnon is loaded (these are created dynamically)
+    self:HookBagnonFrames()
+    
+    -- Also hook ToggleBackpack to catch when bags are opened (pfUI and Bagshui)
+    if not Hooks.backpackHooked then
+        local oldToggleBackpack = _G.ToggleBackpack
+        if oldToggleBackpack then
+            _G.ToggleBackpack = function()
+                oldToggleBackpack()
+                -- Small delay to let bag addons show their frames
+                local checkFrame = CreateFrame("Frame")
+                checkFrame:SetScript("OnUpdate", function()
+                    this.elapsed = (this.elapsed or 0) + arg1
+                    if this.elapsed > 0.1 then
+                        this:SetScript("OnUpdate", nil)
+                        -- Try to hook pfUI frames if not already hooked
+                        Hooks:HookPfUIFrames()
+                        -- Check if pfBag is visible and trigger OnFrameShow
+                        if pfUI and pfUI.bag and pfUI.bag.right then
+                            local frame = pfUI.bag.right
+                            if frame:IsVisible() then
+                                if frame.ceHooked then
+                                    local Cursor = ConsoleExperience.cursor
+                                    if not Cursor.navigationState.activeFrames[frame] then
+                                        CE_Debug("Hooks: Triggering OnFrameShow for pfBag after ToggleBackpack")
+                                        Hooks:OnFrameShow(frame)
+                                    end
+                                else
+                                    CE_Debug("Hooks: pfBag not hooked yet, hooking now")
+                                    Hooks:HookFrame(frame, "pfUI Bag")
+                                    Hooks:OnFrameShow(frame)
+                                end
+                            end
+                        end
+                        
+                        -- Try to hook Bagshui frames if not already hooked
+                        Hooks:HookBagshuiFrames()
+                        -- Check if BagshuiBagsFrame is visible and trigger OnFrameShow
+                        local bagsFrame = getglobal("BagshuiBagsFrame")
+                        if bagsFrame and bagsFrame:IsVisible() then
+                            if bagsFrame.ceHooked then
+                                local Cursor = ConsoleExperience.cursor
+                                if not Cursor.navigationState.activeFrames[bagsFrame] then
+                                    CE_Debug("Hooks: Triggering OnFrameShow for BagshuiBagsFrame after ToggleBackpack")
+                                    Hooks:OnFrameShow(bagsFrame)
+                                end
+                            else
+                                CE_Debug("Hooks: BagshuiBagsFrame not hooked yet, hooking now")
+                                Hooks:HookFrame(bagsFrame, "Bagshui Bags")
+                                Hooks:OnFrameShow(bagsFrame)
+                            end
+                        end
+                        
+                        -- Try to hook Bagnon frames if not already hooked
+                        Hooks:HookBagnonFrames()
+                        -- Check if Bagnon frame is visible and trigger OnFrameShow
+                        local bagnonFrame = getglobal("Bagnon")
+                        if bagnonFrame and bagnonFrame:IsVisible() then
+                            if bagnonFrame.ceHooked then
+                                local Cursor = ConsoleExperience.cursor
+                                if not Cursor.navigationState.activeFrames[bagnonFrame] then
+                                    CE_Debug("Hooks: Triggering OnFrameShow for Bagnon after ToggleBackpack")
+                                    Hooks:OnFrameShow(bagnonFrame)
+                                end
+                            else
+                                CE_Debug("Hooks: Bagnon not hooked yet, hooking now")
+                                Hooks:HookFrame(bagnonFrame, "Bagnon")
+                                Hooks:OnFrameShow(bagnonFrame)
+                            end
+                        end
+                    end
+                end)
+            end
+            Hooks.backpackHooked = true
+        end
+    end
+    
     -- Hook dropdown menus (DropDownList1, DropDownList2, etc.)
     self:HookDropdownMenus()
     
@@ -109,13 +192,44 @@ function Hooks:Initialize()
         self.eventFrame:RegisterEvent("RAID_ROSTER_UPDATE")
         self.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
         self.eventFrame:SetScript("OnEvent", function()
-            Hooks:TryHookPendingFrames()
+            -- Check for pfUI when addons load
+            if event == "ADDON_LOADED" and (arg1 == "pfUI" or arg1 == "pfUI-master") then
+                CE_Debug("Hooks: pfUI addon loaded, hooking frames")
+                Hooks:HookPfUIFrames()
+            end
             
+            -- Check for Bagshui when addons load
+            if event == "ADDON_LOADED" and arg1 == "Bagshui" then
+                CE_Debug("Hooks: Bagshui addon loaded, hooking frames")
+                Hooks:HookBagshuiFrames()
+            end
+            
+            -- Check for Bagnon when addons load
+            if event == "ADDON_LOADED" and (arg1 == "Bagnon" or arg1 == "Bagnon_Core") then
+                CE_Debug("Hooks: Bagnon addon loaded, hooking frames")
+                Hooks:HookBagnonFrames()
+            end
+            
+            -- Check pfUI bags on PLAYER_ENTERING_WORLD (when pfUI creates the bag frames)
+            if event == "PLAYER_ENTERING_WORLD" then
+                -- Small delay to ensure pfUI has created the frames
+                local checkFrame = CreateFrame("Frame")
+                checkFrame:SetScript("OnUpdate", function()
+                    this.elapsed = (this.elapsed or 0) + arg1
+                    if this.elapsed > 0.2 then
+                        this:SetScript("OnUpdate", nil)
+                        Hooks:HookPfUIFrames()
+                        Hooks:HookBagshuiFrames()
+                        Hooks:HookBagnonFrames()
+                    end
+                end)
+            end
+            
+            Hooks:TryHookPendingFrames()
             -- Open all bags when interacting with merchants, auction house, or bank
             if event == "MERCHANT_SHOW" or event == "AUCTION_HOUSE_SHOW" or event == "BANKFRAME_OPENED" then
                 Hooks:OnVendorInteraction()
             end
-            
             -- Hook party/raid frames when they change or on world enter (healer mode)
             if event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
                 Hooks:HookPartyRaidFrames()
@@ -256,6 +370,30 @@ function Hooks:TryHookPendingFrames()
     -- Try to hook party/raid frames if healer mode is enabled
     self:HookPartyRaidFrames()
     
+    -- Try to hook pfUI frames if pfUI is loaded
+    self:HookPfUIFrames()
+    
+    -- Special handling for pfUI bag frames - check if they're visible and not yet initialized
+    if pfUI and pfUI.bag then
+        -- Check pfBag (right bag frame - backpack/inventory)
+        if pfUI.bag.right and pfUI.bag.right:IsVisible() then
+            local Cursor = ConsoleExperience.cursor
+            if not Cursor.navigationState.activeFrames[pfUI.bag.right] then
+                CE_Debug("pfBag detected visible, initializing cursor")
+                self:OnFrameShow(pfUI.bag.right)
+            end
+        end
+        
+        -- Check pfBank (left bag frame - bank)
+        if pfUI.bag.left and pfUI.bag.left:IsVisible() then
+            local Cursor = ConsoleExperience.cursor
+            if not Cursor.navigationState.activeFrames[pfUI.bag.left] then
+                CE_Debug("pfBank detected visible, initializing cursor")
+                self:OnFrameShow(pfUI.bag.left)
+            end
+        end
+    end
+    
     -- Special handling for WorldMapFrame - check if it's visible and not yet initialized
     local worldMap = getglobal("WorldMapFrame")
     if worldMap and worldMap:IsVisible() then
@@ -350,10 +488,14 @@ end
 function Hooks:HookFrame(frame, frameName)
     if not frame or frame.ceHooked then return end
     
+    local frameNameStr = frame:GetName() or "Unknown"
+    CE_Debug("Hooks: Hooking frame " .. frameNameStr)
+    
     local oldOnShow = frame:GetScript("OnShow")
     local oldOnHide = frame:GetScript("OnHide")
     
     frame:SetScript("OnShow", function()
+        CE_Debug("Hooks: OnShow triggered for " .. frameNameStr)
         -- Run original OnShow first
         if oldOnShow then
             oldOnShow()
@@ -364,6 +506,7 @@ function Hooks:HookFrame(frame, frameName)
     end)
     
     frame:SetScript("OnHide", function()
+        CE_Debug("Hooks: OnHide triggered for " .. frameNameStr)
         -- Run original OnHide first
         if oldOnHide then
             oldOnHide()
@@ -409,6 +552,50 @@ function Hooks:OnFrameShow(frame)
     -- Ensure cursor is on top
     Cursor:EnsureOnTop(frame)
     
+    -- For pfUI, Bagshui, and Bagnon bags, add a small delay to ensure buttons are created
+    -- These addons create buttons dynamically which might run after OnShow
+    local isPfUIBag = (frameName == "pfBag" or frameName == "pfBank")
+    local isBagshuiBag = (frameName == "BagshuiBagsFrame" or frameName == "BagshuiBankFrame")
+    local isBagnonBag = (frameName == "Bagnon" or frameName == "Banknon")
+    if isPfUIBag or isBagshuiBag or isBagnonBag then
+        local addonName = isPfUIBag and "pfUI" or (isBagshuiBag and "Bagshui" or "Bagnon")
+        CE_Debug("OnFrameShow: " .. addonName .. " bag frame detected, waiting for buttons to be created")
+        local delayFrame = CreateFrame("Frame")
+        local attempts = 0
+        delayFrame:SetScript("OnUpdate", function()
+            this.elapsed = (this.elapsed or 0) + arg1
+            attempts = attempts + 1
+            -- Check every 0.1 seconds, up to 1 second (10 attempts)
+            if this.elapsed > 0.1 and attempts <= 10 then
+                this.elapsed = 0
+                local Cursor = ConsoleExperience.cursor
+                local allButtons = Cursor:CollectVisibleButtons(frame)
+                local buttonCount = table.getn(allButtons)
+                CE_Debug("OnFrameShow: Found " .. buttonCount .. " buttons in pfUI bag frame (attempt " .. attempts .. ")")
+                
+                if buttonCount > 0 then
+                    this:SetScript("OnUpdate", nil)
+                    CE_Debug("OnFrameShow: Buttons found, initializing cursor")
+                    Hooks:InitializeCursorOnFrame(frame)
+                elseif attempts >= 10 then
+                    this:SetScript("OnUpdate", nil)
+                    CE_Debug("OnFrameShow: No buttons found after 10 attempts, initializing anyway")
+                    Hooks:InitializeCursorOnFrame(frame)
+                end
+            end
+        end)
+    else
+        -- For other frames, initialize immediately
+        self:InitializeCursorOnFrame(frame)
+    end
+end
+
+function Hooks:InitializeCursorOnFrame(frame)
+    if not frame then return end
+    
+    local frameName = frame:GetName() or "Unknown"
+    local Cursor = ConsoleExperience.cursor
+    
     -- Find first visible button and move cursor to it
     local firstButton = Cursor:FindFirstVisibleButton(frame)
     
@@ -419,10 +606,21 @@ function Hooks:OnFrameShow(frame)
     end
     
     if firstButton then
-        CE_Debug("Found button: " .. (firstButton:GetName() or "unnamed"))
+        CE_Debug("InitializeCursorOnFrame: Found button: " .. (firstButton:GetName() or "unnamed"))
         Cursor:MoveCursorToButton(firstButton)
     else
-        CE_Debug("No buttons found in " .. frameName)
+        CE_Debug("InitializeCursorOnFrame: No buttons found in " .. frameName)
+        -- For pfUI, Bagshui, and Bagnon bags, try to find buttons by scanning children more thoroughly
+        if frameName == "pfBag" or frameName == "pfBank" or frameName == "BagshuiBagsFrame" or frameName == "BagshuiBankFrame" or frameName == "Bagnon" or frameName == "Banknon" then
+            local allButtons = Cursor:CollectVisibleButtons(frame)
+            local buttonCount = table.getn(allButtons)
+            CE_Debug("InitializeCursorOnFrame: Found " .. buttonCount .. " buttons in " .. frameName)
+            if buttonCount > 0 then
+                firstButton = allButtons[1].button
+                CE_Debug("InitializeCursorOnFrame: Using first button: " .. (firstButton:GetName() or "unnamed"))
+                Cursor:MoveCursorToButton(firstButton)
+            end
+        end
     end
 end
 
@@ -522,6 +720,243 @@ function Hooks:HasActiveFrames()
 end
 
 -- ============================================================================
+-- ============================================================================
+-- pfUI Frame Hooking
+-- ============================================================================
+
+-- Hook pfUI frames if pfUI is loaded
+function Hooks:HookPfUIFrames()
+    -- Check if pfUI is loaded
+    if not pfUI then
+        CE_Debug("Hooks:HookPfUIFrames: pfUI not loaded")
+        return
+    end
+    
+    -- Check if pfUI.bag exists (pfUI bag module)
+    if not pfUI.bag then
+        CE_Debug("Hooks:HookPfUIFrames: pfUI.bag not found")
+        return
+    end
+    
+    CE_Debug("Hooks: pfUI detected, hooking into pfUI bag frames")
+    
+    -- Hook pfBag (right bag frame - backpack/inventory)
+    -- This frame is created in CreateBags() which is called on PLAYER_ENTERING_WORLD
+    if pfUI.bag.right then
+        local frame = pfUI.bag.right
+        local frameName = frame:GetName() or "unnamed"
+        CE_Debug("Hooks: Found pfBag frame: " .. frameName)
+        if not frame.ceHooked then
+            self:HookFrame(frame, "pfUI Bag")
+            CE_Debug("Hooks: Hooked pfBag frame")
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if frame:IsVisible() then
+                CE_Debug("Hooks: pfBag is already visible, initializing cursor")
+                self:OnFrameShow(frame)
+            end
+        else
+            CE_Debug("Hooks: pfBag frame already hooked")
+            -- Frame is already hooked, but check if it's visible and cursor isn't active
+            if frame:IsVisible() then
+                local Cursor = ConsoleExperience.cursor
+                if not Cursor.navigationState.activeFrames[frame] then
+                    CE_Debug("Hooks: pfBag is visible but cursor not active, re-initializing")
+                    self:OnFrameShow(frame)
+                end
+            end
+        end
+    else
+        CE_Debug("Hooks: pfBag frame not yet created (will be created on PLAYER_ENTERING_WORLD)")
+    end
+    
+    -- Hook pfBank (left bag frame - bank)
+    -- This frame is created in CreateBags("bank") which is called on PLAYER_ENTERING_WORLD
+    if pfUI.bag.left then
+        local frame = pfUI.bag.left
+        local frameName = frame:GetName() or "unnamed"
+        CE_Debug("Hooks: Found pfBank frame: " .. frameName)
+        if not frame.ceHooked then
+            self:HookFrame(frame, "pfUI Bank")
+            CE_Debug("Hooks: Hooked pfBank frame")
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if frame:IsVisible() then
+                CE_Debug("Hooks: pfBank is already visible, initializing cursor")
+                self:OnFrameShow(frame)
+            end
+        else
+            CE_Debug("Hooks: pfBank frame already hooked")
+            -- Frame is already hooked, but check if it's visible and cursor isn't active
+            if frame:IsVisible() then
+                local Cursor = ConsoleExperience.cursor
+                if not Cursor.navigationState.activeFrames[frame] then
+                    CE_Debug("Hooks: pfBank is visible but cursor not active, re-initializing")
+                    self:OnFrameShow(frame)
+                end
+            end
+        end
+    else
+        CE_Debug("Hooks: pfBank frame not yet created (will be created on PLAYER_ENTERING_WORLD)")
+    end
+end
+
+-- ============================================================================
+-- Bagshui Frame Hooking
+-- ============================================================================
+
+-- Hook Bagshui frames if Bagshui is loaded
+function Hooks:HookBagshuiFrames()
+    -- Check if Bagshui is loaded
+    if not Bagshui then
+        CE_Debug("Hooks:HookBagshuiFrames: Bagshui not loaded")
+        return
+    end
+    
+    -- Check if Bagshui.components exists (Bagshui inventory components)
+    if not Bagshui.components then
+        CE_Debug("Hooks:HookBagshuiFrames: Bagshui.components not found")
+        return
+    end
+    
+    CE_Debug("Hooks: Bagshui detected, hooking into Bagshui bag frames")
+    
+    -- Hook BagshuiBagsFrame (main bag frame)
+    -- This frame is created when Bagshui initializes
+    local bagsFrame = getglobal("BagshuiBagsFrame")
+    if bagsFrame then
+        local frameName = bagsFrame:GetName() or "unnamed"
+        CE_Debug("Hooks: Found BagshuiBagsFrame: " .. frameName)
+        if not bagsFrame.ceHooked then
+            self:HookFrame(bagsFrame, "Bagshui Bags")
+            CE_Debug("Hooks: Hooked BagshuiBagsFrame")
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if bagsFrame:IsVisible() then
+                CE_Debug("Hooks: BagshuiBagsFrame is already visible, initializing cursor")
+                self:OnFrameShow(bagsFrame)
+            end
+        else
+            CE_Debug("Hooks: BagshuiBagsFrame already hooked")
+            -- Frame is already hooked, but check if it's visible and cursor isn't active
+            if bagsFrame:IsVisible() then
+                local Cursor = ConsoleExperience.cursor
+                if not Cursor.navigationState.activeFrames[bagsFrame] then
+                    CE_Debug("Hooks: BagshuiBagsFrame is visible but cursor not active, re-initializing")
+                    self:OnFrameShow(bagsFrame)
+                end
+            end
+        end
+    else
+        CE_Debug("Hooks: BagshuiBagsFrame not yet created")
+    end
+    
+    -- Hook BagshuiBankFrame (main bank frame)
+    -- This frame is created when Bagshui initializes
+    local bankFrame = getglobal("BagshuiBankFrame")
+    if bankFrame then
+        local frameName = bankFrame:GetName() or "unnamed"
+        CE_Debug("Hooks: Found BagshuiBankFrame: " .. frameName)
+        if not bankFrame.ceHooked then
+            self:HookFrame(bankFrame, "Bagshui Bank")
+            CE_Debug("Hooks: Hooked BagshuiBankFrame")
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if bankFrame:IsVisible() then
+                CE_Debug("Hooks: BagshuiBankFrame is already visible, initializing cursor")
+                self:OnFrameShow(bankFrame)
+            end
+        else
+            CE_Debug("Hooks: BagshuiBankFrame already hooked")
+            -- Frame is already hooked, but check if it's visible and cursor isn't active
+            if bankFrame:IsVisible() then
+                local Cursor = ConsoleExperience.cursor
+                if not Cursor.navigationState.activeFrames[bankFrame] then
+                    CE_Debug("Hooks: BagshuiBankFrame is visible but cursor not active, re-initializing")
+                    self:OnFrameShow(bankFrame)
+                end
+            end
+        end
+    else
+        CE_Debug("Hooks: BagshuiBankFrame not yet created")
+    end
+end
+
+-- ============================================================================
+-- Bagnon Frame Hooking
+-- ============================================================================
+
+-- Hook Bagnon frames if Bagnon is loaded
+function Hooks:HookBagnonFrames()
+    -- Check if Bagnon is loaded (check for Bagnon_Core which is the core addon)
+    if not BagnonSets then
+        CE_Debug("Hooks:HookBagnonFrames: Bagnon not loaded")
+        return
+    end
+    
+    CE_Debug("Hooks: Bagnon detected, hooking into Bagnon bag frames")
+    
+    -- Hook Bagnon (main inventory frame)
+    -- This frame is created when Bagnon loads
+    local bagnonFrame = getglobal("Bagnon")
+    if bagnonFrame then
+        local frameName = bagnonFrame:GetName() or "unnamed"
+        CE_Debug("Hooks: Found Bagnon frame: " .. frameName)
+        if not bagnonFrame.ceHooked then
+            self:HookFrame(bagnonFrame, "Bagnon")
+            CE_Debug("Hooks: Hooked Bagnon frame")
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if bagnonFrame:IsVisible() then
+                CE_Debug("Hooks: Bagnon is already visible, initializing cursor")
+                self:OnFrameShow(bagnonFrame)
+            end
+        else
+            CE_Debug("Hooks: Bagnon frame already hooked")
+            -- Frame is already hooked, but check if it's visible and cursor isn't active
+            if bagnonFrame:IsVisible() then
+                local Cursor = ConsoleExperience.cursor
+                if not Cursor.navigationState.activeFrames[bagnonFrame] then
+                    CE_Debug("Hooks: Bagnon is visible but cursor not active, re-initializing")
+                    self:OnFrameShow(bagnonFrame)
+                end
+            end
+        end
+    else
+        CE_Debug("Hooks: Bagnon frame not yet created")
+    end
+    
+    -- Hook Banknon (main bank frame)
+    -- This frame is created when Banknon loads
+    local banknonFrame = getglobal("Banknon")
+    if banknonFrame then
+        local frameName = banknonFrame:GetName() or "unnamed"
+        CE_Debug("Hooks: Found Banknon frame: " .. frameName)
+        if not banknonFrame.ceHooked then
+            self:HookFrame(banknonFrame, "Bagnon Bank")
+            CE_Debug("Hooks: Hooked Banknon frame")
+            
+            -- If frame is already visible, trigger OnFrameShow
+            if banknonFrame:IsVisible() then
+                CE_Debug("Hooks: Banknon is already visible, initializing cursor")
+                self:OnFrameShow(banknonFrame)
+            end
+        else
+            CE_Debug("Hooks: Banknon frame already hooked")
+            -- Frame is already hooked, but check if it's visible and cursor isn't active
+            if banknonFrame:IsVisible() then
+                local Cursor = ConsoleExperience.cursor
+                if not Cursor.navigationState.activeFrames[banknonFrame] then
+                    CE_Debug("Hooks: Banknon is visible but cursor not active, re-initializing")
+                    self:OnFrameShow(banknonFrame)
+                end
+            end
+        end
+    else
+        CE_Debug("Hooks: Banknon frame not yet created")
+    end
+end
+
 -- ============================================================================
 -- Party/Raid Frame Hooking (Healer Mode)
 -- ============================================================================

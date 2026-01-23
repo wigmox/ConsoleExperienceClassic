@@ -199,6 +199,36 @@ function Tooltip:Initialize()
             actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
         },
+        -- pfUI bag items - A = Pickup, X = Bind, B = Use, Y = Drop
+        {
+            pattern = "pfBag%-?%d+item%d+",
+            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
+        },
+        -- Bagshui bag items - A = Pickup, X = Bind, B = Use, Y = Drop
+        {
+            pattern = "BagshuiBagsItem%d+",
+            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
+        },
+        -- Bagshui bank items - A = Pickup, X = Bind, B = Use, Y = Drop
+        {
+            pattern = "BagshuiBankItem%d+",
+            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
+        },
+        -- Bagnon bag items - A = Pickup, X = Bind, B = Use, Y = Drop
+        {
+            pattern = "BagnonItem%d+",
+            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
+        },
+        -- Bagnon bank items - A = Pickup, X = Bind, B = Use, Y = Drop
+        {
+            pattern = "BanknonItem%d+",
+            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
+        },
         -- Character equipment slots - B = Unequip
         {
             pattern = "Character[A-Za-z0-9]+Slot",
@@ -401,7 +431,7 @@ function Tooltip:GetActions(buttonName, elementType)
         for _, config in ipairs(self.frameActions) do
             if string.find(buttonName, config.pattern) then
                 -- Special handling for container items - dynamic B button text
-                if config.pattern == "ContainerFrame%d+Item%d+" then
+                if config.pattern == "ContainerFrame%d+Item%d+" or config.pattern == "pfBag%-?%d+item%d+" then
                     return self:GetContainerItemActions()
                 end
                 return config.actions
@@ -557,12 +587,42 @@ function Tooltip:ShowButtonTooltip(button)
     -- Handle different button types FIRST (before element type checks)
     -- This ensures specific button types like SpellButton are handled correctly
     if string.find(buttonName, "ContainerFrame%d+Item%d+") then
-        -- Bag item
+        -- Blizzard bag item
         local _, _, bagID = string.find(buttonName, "ContainerFrame(%d+)")
         if bagID then
             bagID = tonumber(bagID) - 1
             GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
             GameTooltip:SetBagItem(bagID, button:GetID())
+        end
+    elseif string.find(buttonName, "pfBag%-?%d+item%d+") then
+        -- pfUI bag item: "pfBag{bag}item{slot}"
+        local _, _, bagNum, slotNum = string.find(buttonName, "pfBag(%-?%d+)item(%d+)")
+        if bagNum and slotNum then
+            local bagID = tonumber(bagNum)
+            local slotID = tonumber(slotNum)
+            if bagID and slotID then
+                GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+                GameTooltip:SetBagItem(bagID, slotID)
+            end
+        end
+    elseif string.find(buttonName, "BagshuiBagsItem%d+") or string.find(buttonName, "BagshuiBankItem%d+") then
+        -- Bagshui bag/bank item: "BagshuiBagsItem{num}" or "BagshuiBankItem{num}"
+        -- Bag and slot info is stored in bagshuiData
+        if button.bagshuiData and button.bagshuiData.bagNum and button.bagshuiData.slotNum then
+            local bagID = button.bagshuiData.bagNum
+            local slotID = button.bagshuiData.slotNum
+            GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+            GameTooltip:SetBagItem(bagID, slotID)
+        end
+    elseif string.find(buttonName, "BagnonItem%d+") or string.find(buttonName, "BanknonItem%d+") then
+        -- Bagnon bag/bank item: "BagnonItem{num}" or "BanknonItem{num}"
+        -- Uses same structure as Blizzard: GetID() for slot, GetParent():GetID() for bag
+        local parent = button:GetParent()
+        if parent then
+            local bagID = parent:GetID()
+            local slotID = button:GetID()
+            GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+            GameTooltip:SetBagItem(bagID, slotID)
         end
     elseif string.find(buttonName, "Character[A-Za-z0-9]+Slot") then
         -- Equipment slot

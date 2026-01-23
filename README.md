@@ -36,6 +36,7 @@ Full documentation is available in the [docs folder](docs/Home.md):
 - **[Home](docs/Home.md)** - Overview and quick start
 - **[Installation Guide](docs/Installation.md)** - How to install the addon
 - **[Configuration](docs/Configuration.md)** - All settings explained
+- **[Addon Integrations](docs/AddonIntegrations.md)** - Integration with pfUI, Bagshui, and Bagnon
 - **[Keybindings](docs/Keybindings.md)** - Controller and keyboard bindings
 - **[Troubleshooting](docs/Troubleshooting.md)** - Common issues and solutions
 

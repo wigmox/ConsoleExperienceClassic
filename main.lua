@@ -19,13 +19,31 @@ ConsoleExperience:RegisterEvent("PLAYER_LOGOUT")
 ConsoleExperienceDB = ConsoleExperienceDB or {}
 
 ConsoleExperience:SetScript("OnEvent", function()
-    if event == "ADDON_LOADED" and arg1 == "ConsoleExperienceClassic" then
-        -- Initialize configuration if it doesn't exist
-        if ConsoleExperienceDB == nil then
-            ConsoleExperienceDB = {}
+    if event == "ADDON_LOADED" then
+        -- Check if pfUI just loaded
+        if arg1 == "pfUI" or arg1 == "pfUI-master" then
+            -- pfUI loaded, disable chat module if not already disabled
+            if ConsoleExperience.config then
+                local currentValue = ConsoleExperience.config:Get("chatEnabled")
+                if currentValue ~= false then
+                    ConsoleExperience.config:Set("chatEnabled", false)
+                    CE_Debug("pfUI detected on ADDON_LOADED - chat module automatically disabled")
+                    -- If chat module is already initialized, disable it now
+                    if ConsoleExperience.chat and ConsoleExperience.chat.Disable then
+                        ConsoleExperience.chat:Disable()
+                    end
+                end
+            end
         end
         
+        if arg1 == "ConsoleExperienceClassic" then
+            -- Initialize configuration if it doesn't exist
+            if ConsoleExperienceDB == nil then
+                ConsoleExperienceDB = {}
+            end
+            
 -- Addon loaded message (always show)
+        end
         
     elseif event == "VARIABLES_LOADED" then
         -- Initialize config DB with defaults
@@ -63,9 +81,35 @@ ConsoleExperience:SetScript("OnEvent", function()
             ConsoleExperience.placement:Initialize()
         end
         
+        -- Check if pfUI is loaded and disable chat module if it is
+        -- pfUI has its own chat module, so we should disable ours to avoid conflicts
+        if pfUI then
+            local config = ConsoleExperience.config
+            if config then
+                -- Check if chatEnabled is not already explicitly set to false
+                local currentValue = config:Get("chatEnabled")
+                if currentValue ~= false then
+                    -- Auto-disable chat module when pfUI is detected
+                    config:Set("chatEnabled", false)
+                    CE_Debug("pfUI detected - chat module automatically disabled")
+                end
+            end
+        end
+        
         -- Initialize chat frame module
-        if ConsoleExperience.chat and ConsoleExperience.chat.Initialize then
-            ConsoleExperience.chat:Initialize()
+        -- Initialize chat module only if enabled
+        if ConsoleExperience.chat then
+            local config = ConsoleExperience.config
+            if config and config:Get("chatEnabled") ~= false then
+                if ConsoleExperience.chat.Initialize then
+                    ConsoleExperience.chat:Initialize()
+                end
+            else
+                -- Chat is disabled, call Disable to ensure clean state
+                if ConsoleExperience.chat.Disable then
+                    ConsoleExperience.chat:Disable()
+                end
+            end
         end
         
         -- Initialize keyboard module

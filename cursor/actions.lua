@@ -374,11 +374,47 @@ function CE_ClickCursor(mouseButton)
             local step = element:GetValueStep() or ((max - min) / 10)
             element:SetValue(current - step)
         end
-    elseif buttonName and string.find(buttonName, "ContainerFrame%d+Item%d+") then
+    elseif buttonName and (string.find(buttonName, "ContainerFrame%d+Item%d+") or string.find(buttonName, "pfBag%-?%d+item%d+") or string.find(buttonName, "BagshuiBagsItem%d+") or string.find(buttonName, "BagshuiBankItem%d+") or string.find(buttonName, "BagnonItem%d+") or string.find(buttonName, "BanknonItem%d+")) then
         -- Container items: A button picks up item (or places/swaps if cursor has item)
         -- B button uses the item directly without picking up
-        local _, _, containerFrameNum = string.find(buttonName, "ContainerFrame(%d+)")
-        CE_Debug("CE_ClickCursor: Container item detected - buttonName=" .. (buttonName or "nil") .. ", ContainerFrame=" .. (containerFrameNum or "nil"))
+        local bagID, slotID = nil, nil
+        local isPfUI = string.find(buttonName, "pfBag%-?%d+item%d+")
+        local isBagshui = string.find(buttonName, "BagshuiBagsItem%d+") or string.find(buttonName, "BagshuiBankItem%d+")
+        local isBagnon = string.find(buttonName, "BagnonItem%d+") or string.find(buttonName, "BanknonItem%d+")
+        
+        if isBagnon then
+            -- Bagnon bag/bank item: Uses same structure as Blizzard - GetID() for slot, GetParent():GetID() for bag
+            local parent = button:GetParent()
+            if parent then
+                bagID = parent:GetID()
+                slotID = button:GetID()
+            end
+            CE_Debug("CE_ClickCursor: Bagnon bag item detected - buttonName=" .. (buttonName or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        elseif isBagshui then
+            -- Bagshui bag/bank item: bag and slot info stored in bagshuiData
+            if button.bagshuiData and button.bagshuiData.bagNum and button.bagshuiData.slotNum then
+                bagID = button.bagshuiData.bagNum
+                slotID = button.bagshuiData.slotNum
+            end
+            CE_Debug("CE_ClickCursor: Bagshui bag item detected - buttonName=" .. (buttonName or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        elseif isPfUI then
+            -- pfUI bag item: "pfBag{bag}item{slot}"
+            local _, _, bagNum, slotNum = string.find(buttonName, "pfBag(%-?%d+)item(%d+)")
+            if bagNum and slotNum then
+                bagID = tonumber(bagNum)
+                slotID = tonumber(slotNum)
+            end
+            CE_Debug("CE_ClickCursor: pfUI bag item detected - buttonName=" .. (buttonName or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        else
+            -- Blizzard bag item: "ContainerFrame{num}Item{num}"
+            local _, _, containerFrameNum = string.find(buttonName, "ContainerFrame(%d+)")
+            if containerFrameNum then
+                bagID = tonumber(containerFrameNum) - 1
+                slotID = button:GetID()
+            end
+            CE_Debug("CE_ClickCursor: Blizzard container item detected - buttonName=" .. (buttonName or "nil") .. ", ContainerFrame=" .. (containerFrameNum or "nil"))
+        end
+        
         if mouseButton == "LeftButton" then
             -- Check cursor state before clicking
             local hadCursorItem = CursorHasItem() or CursorHasSpell()
@@ -386,12 +422,44 @@ function CE_ClickCursor(mouseButton)
             
             if hadCursorItem then
                 -- Cursor has item - check if slot has item (for swapping)
-                -- Use Blizzard's method: GetParent():GetID() for bag ID, GetID() for slot ID
                 local slotItemTexture = nil
-                local parentFrame = element:GetParent()
-                local bagID = parentFrame and parentFrame:GetID()
-                local slotID = element:GetID()
-                CE_Debug("CE_ClickCursor: Using Blizzard method - parentFrame=" .. (parentFrame and parentFrame:GetName() or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+                
+                if not bagID or not slotID then
+                    -- Fallback: Try to get from button structure
+                    if isBagnon then
+                        -- Bagnon: Uses same structure as Blizzard - GetID() for slot, GetParent():GetID() for bag
+                        local parentFrame = element:GetParent()
+                        if parentFrame then
+                            bagID = parentFrame:GetID()
+                            slotID = element:GetID()
+                        end
+                    elseif isBagshui then
+                        -- Bagshui: bag and slot info stored in bagshuiData
+                        if element.bagshuiData and element.bagshuiData.bagNum and element.bagshuiData.slotNum then
+                            bagID = element.bagshuiData.bagNum
+                            slotID = element.bagshuiData.slotNum
+                        end
+                    elseif isPfUI then
+                        -- pfUI: bag ID and slot ID already extracted from name
+                        -- If extraction failed, try to get from button properties
+                        if not bagID then
+                            local bagFrame = element:GetParent()
+                            if bagFrame and bagFrame.GetID then
+                                bagID = bagFrame:GetID()
+                            end
+                        end
+                        if not slotID then
+                            slotID = element:GetID()
+                        end
+                    else
+                        -- Blizzard: Use GetParent():GetID() for bag ID, GetID() for slot ID
+                        local parentFrame = element:GetParent()
+                        bagID = parentFrame and parentFrame:GetID()
+                        slotID = element:GetID()
+                    end
+                end
+                
+                CE_Debug("CE_ClickCursor: bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
                 if bagID and slotID then
                     -- Get slot item texture before clicking (in case we swap)
                     slotItemTexture = GetContainerItemInfo(bagID, slotID)
@@ -484,13 +552,44 @@ function CE_DeleteItem()
     
     CE_Debug("CE_DeleteItem: buttonName=" .. buttonName)
     
-    -- Check if this is a bag item
-    if string.find(buttonName, "ContainerFrame%d+Item%d+") then
-        -- Use Blizzard's method: GetParent():GetID() for bag ID, GetID() for slot ID
-        local parentFrame = button:GetParent()
-        local bagID = parentFrame and parentFrame:GetID()
-        local slotID = button:GetID()
-        CE_Debug("CE_DeleteItem: Using Blizzard method - parentFrame=" .. (parentFrame and parentFrame:GetName() or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+    -- Check if this is a bag item (Blizzard, pfUI, Bagshui, or Bagnon)
+    local isPfUI = string.find(buttonName, "pfBag%-?%d+item%d+")
+    local isBagshui = string.find(buttonName, "BagshuiBagsItem%d+") or string.find(buttonName, "BagshuiBankItem%d+")
+    local isBagnon = string.find(buttonName, "BagnonItem%d+") or string.find(buttonName, "BanknonItem%d+")
+    if string.find(buttonName, "ContainerFrame%d+Item%d+") or isPfUI or isBagshui or isBagnon then
+        local bagID, slotID = nil, nil
+        
+        if isBagnon then
+            -- Bagnon bag/bank item: Uses same structure as Blizzard - GetID() for slot, GetParent():GetID() for bag
+            local parentFrame = button:GetParent()
+            if parentFrame then
+                bagID = parentFrame:GetID()
+                slotID = button:GetID()
+            end
+            CE_Debug("CE_DeleteItem: Bagnon bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        elseif isBagshui then
+            -- Bagshui bag/bank item: bag and slot info stored in bagshuiData
+            if button.bagshuiData and button.bagshuiData.bagNum and button.bagshuiData.slotNum then
+                bagID = button.bagshuiData.bagNum
+                slotID = button.bagshuiData.slotNum
+            end
+            CE_Debug("CE_DeleteItem: Bagshui bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        elseif isPfUI then
+            -- pfUI bag item: extract from name "pfBag{bag}item{slot}"
+            local _, _, bagNum, slotNum = string.find(buttonName, "pfBag(%-?%d+)item(%d+)")
+            if bagNum and slotNum then
+                bagID = tonumber(bagNum)
+                slotID = tonumber(slotNum)
+            end
+            CE_Debug("CE_DeleteItem: pfUI bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        else
+            -- Blizzard bag item: Use GetParent():GetID() for bag ID, GetID() for slot ID
+            local parentFrame = button:GetParent()
+            bagID = parentFrame and parentFrame:GetID()
+            slotID = button:GetID()
+            CE_Debug("CE_DeleteItem: Blizzard bag item - parentFrame=" .. (parentFrame and parentFrame:GetName() or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        end
+        
         if bagID and slotID then
             -- Check if slot has item before deleting
             local texture, itemCount = GetContainerItemInfo(bagID, slotID)
@@ -549,13 +648,44 @@ function CE_UseItem()
     
     CE_Debug("CE_UseItem: buttonName=" .. buttonName)
     
-    -- Check if this is a container item
-    if string.find(buttonName, "ContainerFrame%d+Item%d+") then
-        -- Use Blizzard's method: GetParent():GetID() for bag ID, GetID() for slot ID
-        local parentFrame = button:GetParent()
-        local bagID = parentFrame and parentFrame:GetID()
-        local slotID = button:GetID()
-        CE_Debug("CE_UseItem: Using Blizzard method - parentFrame=" .. (parentFrame and parentFrame:GetName() or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+    -- Check if this is a container item (Blizzard, pfUI, Bagshui, or Bagnon)
+    local isPfUI = string.find(buttonName, "pfBag%-?%d+item%d+")
+    local isBagshui = string.find(buttonName, "BagshuiBagsItem%d+") or string.find(buttonName, "BagshuiBankItem%d+")
+    local isBagnon = string.find(buttonName, "BagnonItem%d+") or string.find(buttonName, "BanknonItem%d+")
+    if string.find(buttonName, "ContainerFrame%d+Item%d+") or isPfUI or isBagshui or isBagnon then
+        local bagID, slotID = nil, nil
+        
+        if isBagnon then
+            -- Bagnon bag/bank item: Uses same structure as Blizzard - GetID() for slot, GetParent():GetID() for bag
+            local parentFrame = button:GetParent()
+            if parentFrame then
+                bagID = parentFrame:GetID()
+                slotID = button:GetID()
+            end
+            CE_Debug("CE_UseItem: Bagnon bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        elseif isBagshui then
+            -- Bagshui bag/bank item: bag and slot info stored in bagshuiData
+            if button.bagshuiData and button.bagshuiData.bagNum and button.bagshuiData.slotNum then
+                bagID = button.bagshuiData.bagNum
+                slotID = button.bagshuiData.slotNum
+            end
+            CE_Debug("CE_UseItem: Bagshui bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        elseif isPfUI then
+            -- pfUI bag item: extract from name "pfBag{bag}item{slot}"
+            local _, _, bagNum, slotNum = string.find(buttonName, "pfBag(%-?%d+)item(%d+)")
+            if bagNum and slotNum then
+                bagID = tonumber(bagNum)
+                slotID = tonumber(slotNum)
+            end
+            CE_Debug("CE_UseItem: pfUI bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        else
+            -- Blizzard bag item: Use GetParent():GetID() for bag ID, GetID() for slot ID
+            local parentFrame = button:GetParent()
+            bagID = parentFrame and parentFrame:GetID()
+            slotID = button:GetID()
+            CE_Debug("CE_UseItem: Blizzard bag item - parentFrame=" .. (parentFrame and parentFrame:GetName() or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        end
+        
         if bagID and slotID then
             -- Check if slot has item before using
             local texture, itemCount = GetContainerItemInfo(bagID, slotID)
@@ -633,12 +763,44 @@ function CE_PickupItem()
     local pickedUpTexture = nil
     
     -- Handle different button types
-    if string.find(buttonName, "ContainerFrame%d+Item%d+") then
-        -- Bag item - use Blizzard's method: GetParent():GetID() for bag ID, GetID() for slot ID
-        local parentFrame = button:GetParent()
-        local bagID = parentFrame and parentFrame:GetID()
-        local slotID = button:GetID()
-        CE_Debug("CE_PickupItem: Using Blizzard method - parentFrame=" .. (parentFrame and parentFrame:GetName() or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+    local isPfUI = string.find(buttonName, "pfBag%-?%d+item%d+")
+    local isBagshui = string.find(buttonName, "BagshuiBagsItem%d+") or string.find(buttonName, "BagshuiBankItem%d+")
+    local isBagnon = string.find(buttonName, "BagnonItem%d+") or string.find(buttonName, "BanknonItem%d+")
+    if string.find(buttonName, "ContainerFrame%d+Item%d+") or isPfUI or isBagshui or isBagnon then
+        -- Bag item (Blizzard, pfUI, Bagshui, or Bagnon)
+        local bagID, slotID = nil, nil
+        
+        if isBagnon then
+            -- Bagnon bag/bank item: Uses same structure as Blizzard - GetID() for slot, GetParent():GetID() for bag
+            local parentFrame = button:GetParent()
+            if parentFrame then
+                bagID = parentFrame:GetID()
+                slotID = button:GetID()
+            end
+            CE_Debug("CE_PickupItem: Bagnon bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        elseif isBagshui then
+            -- Bagshui bag/bank item: bag and slot info stored in bagshuiData
+            if button.bagshuiData and button.bagshuiData.bagNum and button.bagshuiData.slotNum then
+                bagID = button.bagshuiData.bagNum
+                slotID = button.bagshuiData.slotNum
+            end
+            CE_Debug("CE_PickupItem: Bagshui bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        elseif isPfUI then
+            -- pfUI bag item: extract from name "pfBag{bag}item{slot}"
+            local _, _, bagNum, slotNum = string.find(buttonName, "pfBag(%-?%d+)item(%d+)")
+            if bagNum and slotNum then
+                bagID = tonumber(bagNum)
+                slotID = tonumber(slotNum)
+            end
+            CE_Debug("CE_PickupItem: pfUI bag item - bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        else
+            -- Blizzard bag item: use GetParent():GetID() for bag ID, GetID() for slot ID
+            local parentFrame = button:GetParent()
+            bagID = parentFrame and parentFrame:GetID()
+            slotID = button:GetID()
+            CE_Debug("CE_PickupItem: Blizzard bag item - parentFrame=" .. (parentFrame and parentFrame:GetName() or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
+        end
+        
         if bagID and slotID then
             -- Get the item texture before picking up
             pickedUpTexture = GetContainerItemInfo(bagID, slotID)

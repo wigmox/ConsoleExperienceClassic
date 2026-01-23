@@ -26,6 +26,7 @@ A controller-friendly addon for World of Warcraft 1.12 (Vanilla) that provides a
 
 - [Installation Guide](Installation.md)
 - [Configuration Options](Configuration.md)
+- [Addon Integrations](AddonIntegrations.md)
 - **Features:**
   - [Action Bars](features/ActionBars.md)
   - [Cursor Navigation](features/CursorNavigation.md)
