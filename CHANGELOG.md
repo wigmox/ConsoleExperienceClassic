@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.15.0...v0.16.0) (2026-01-23)
+
+
+### Features
+
+* add integration with pfUI, BagOn, Bagshui ([d91cbee](https://github.com/pepordev/ConsoleExperienceClassic/commit/d91cbee0310588db5bfac48e991d167ad40f3076))
+* add support to toggle the chat module ([6adce2f](https://github.com/pepordev/ConsoleExperienceClassic/commit/6adce2f9d3ef9eade8f1766b606c05f102da79af))
+
 ## [0.15.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.14.3...v0.15.0) (2026-01-15)
 
 
