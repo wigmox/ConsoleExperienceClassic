@@ -15,6 +15,8 @@ local Chat = ConsoleExperience.chat
 -- State tracking
 Chat.managePositionsHook = nil
 Chat.oskHelper = nil
+Chat.initialized = false
+Chat.wasDisabled = false
 Chat.chatFrameOriginalState = {
     scale = nil,
     points = {},
@@ -52,12 +54,28 @@ function Chat:RestoreChatFrameState()
         ChatFrame1:SetPoint(unpack(pointData))
     end
     
-    if self.chatFrameOriginalState.color and FCF_SetWindowColor then
-        FCF_SetWindowColor(ChatFrame1, unpack(self.chatFrameOriginalState.color))
+    -- Try to restore color, but wrap in pcall to avoid errors if function doesn't exist or has wrong signature
+    if self.chatFrameOriginalState.color then
+        if FCF_SetWindowColor then
+            local success, err = pcall(function()
+                FCF_SetWindowColor(ChatFrame1, unpack(self.chatFrameOriginalState.color))
+            end)
+            if not success then
+                CE_Debug("Chat: Failed to restore window color: " .. tostring(err))
+            end
+        end
     end
     
-    if self.chatFrameOriginalState.alpha and FCF_SetWindowAlpha then
-        FCF_SetWindowAlpha(ChatFrame1, self.chatFrameOriginalState.alpha)
+    -- Try to restore alpha, but wrap in pcall to avoid errors
+    if self.chatFrameOriginalState.alpha then
+        if FCF_SetWindowAlpha then
+            local success, err = pcall(function()
+                FCF_SetWindowAlpha(ChatFrame1, self.chatFrameOriginalState.alpha)
+            end)
+            if not success then
+                CE_Debug("Chat: Failed to restore window alpha: " .. tostring(err))
+            end
+        end
     end
 end
 
@@ -78,10 +96,95 @@ function Chat:GetChatAnchor()
     return anchor
 end
 
+-- Check if chat module is enabled
+function Chat:IsEnabled()
+    local config = ConsoleExperience.config
+    if not config then return true end  -- Default to enabled if config not available
+    return config:Get("chatEnabled") ~= false
+end
+
+-- Enable chat module
+function Chat:Enable()
+    if not self:IsEnabled() then
+        -- Force enable by setting config
+        local config = ConsoleExperience.config
+        if config then
+            config:Set("chatEnabled", true)
+        end
+    end
+    
+    -- Initialize if not already initialized
+    if not self.initialized then
+        self:Initialize()
+        self.initialized = true
+    end
+    
+    -- Restore chat frame state if it was saved
+    if self.wasDisabled then
+        self.wasDisabled = false
+        -- Re-hook into frame management
+        if UIParent_ManageFramePositions then
+            self.managePositionsHook = UIParent_ManageFramePositions
+            UIParent_ManageFramePositions = function(a1, a2, a3)
+                Chat:ManagePositions(a1, a2, a3)
+            end
+        end
+        self:UpdateChatLayout()
+    end
+end
+
+-- Disable chat module
+function Chat:Disable()
+    CE_Debug("Chat: Disable called")
+    
+    -- Save state
+    self.wasDisabled = true
+    self.initialized = false
+    
+    -- Only restore state if we have saved state (don't restore if never initialized)
+    if self.chatFrameOriginalState.scale then
+        -- Restore original chat frame state (wrapped in pcall to catch any errors)
+        local success, err = pcall(function()
+            self:RestoreChatFrameState()
+        end)
+        if not success then
+            CE_Debug("Chat: Error restoring chat frame state: " .. tostring(err))
+        end
+    end
+    
+    -- Unhook from frame management
+    if self.managePositionsHook then
+        UIParent_ManageFramePositions = self.managePositionsHook
+        self.managePositionsHook = nil
+        CE_Debug("Chat: Unhooked from UIParent_ManageFramePositions")
+    end
+    
+    -- Hide keyboard if visible
+    local config = ConsoleExperience.config
+    if config then
+        config:Set("keyboardEnabled", false)
+    end
+    if ConsoleExperience.keyboard and ConsoleExperience.keyboard:IsVisible() then
+        ConsoleExperience.keyboard:Hide()
+    end
+    
+    -- Hide OSK helper if it exists
+    if self.oskHelper then
+        self.oskHelper:Hide()
+    end
+    
+    CE_Debug("Chat: Disable completed")
+end
+
 -- Update chat layout based on action bar positions
 -- forceUpdate: if true, update even if edit box is visible (used when transitioning from focused mode)
 function Chat:UpdateChatLayout(forceUpdate)
     if not ChatFrame1 then return end
+    
+    -- Check if chat module is enabled
+    if not self:IsEnabled() then
+        return
+    end
     
     -- Get config values
     local config = ConsoleExperience.config
@@ -166,6 +269,14 @@ end
 
 -- Manage chat frame positions (called from UIParent_ManageFramePositions hook)
 function Chat:ManagePositions(a1, a2, a3)
+    -- Check if chat module is enabled
+    if not self:IsEnabled() then
+        -- If disabled, call original function and return
+        if self.managePositionsHook then
+            return self.managePositionsHook(a1, a2, a3)
+        end
+        return
+    end
     -- Run original function first
     if self.managePositionsHook then
         self.managePositionsHook(a1, a2, a3)
@@ -209,6 +320,12 @@ function Chat:ManagePositions(a1, a2, a3)
         -- Set up OnUpdate script once
         local helper = self.oskHelper
         helper:SetScript("OnUpdate", function()
+            -- Check if chat module is enabled
+            if not Chat:IsEnabled() then
+                helper.state = 0
+                return
+            end
+            
             if ChatFrameEditBox and ChatFrameEditBox:IsVisible() and helper.state ~= 1 then
                 -- Edit box is visible - show full-screen chat (focused mode)
                 if ChatFrame1 then
@@ -325,16 +442,38 @@ end
 
 -- Initialize the chat module
 function Chat:Initialize()
-    -- Wait for PLAYER_ENTERING_WORLD to hook into frame management
-    local initFrame = CreateFrame("Frame")
-    initFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    initFrame:SetScript("OnEvent", function()
+    -- Check if chat module is enabled
+    if not self:IsEnabled() then
+        CE_Debug("Chat frame module initialization skipped (disabled)")
+        return
+    end
+    
+    CE_Debug("Chat: Initialize called, chatEnabled=" .. tostring(self:IsEnabled()))
+    
+    -- Function to actually initialize the hooks
+    local function DoInitialize()
+        -- Check again if enabled (config might have changed)
+        if not self:IsEnabled() then
+            CE_Debug("Chat: DoInitialize skipped - chat not enabled")
+            return
+        end
+        
+        CE_Debug("Chat: DoInitialize starting")
+        
         -- Hook into UIParent_ManageFramePositions
         if UIParent_ManageFramePositions then
-            self.managePositionsHook = UIParent_ManageFramePositions
-            UIParent_ManageFramePositions = function(a1, a2, a3)
-                Chat:ManagePositions(a1, a2, a3)
+            -- Only hook if we haven't already hooked (or if hook was removed)
+            if not self.managePositionsHook or UIParent_ManageFramePositions == self.managePositionsHook then
+                self.managePositionsHook = UIParent_ManageFramePositions
+                UIParent_ManageFramePositions = function(a1, a2, a3)
+                    Chat:ManagePositions(a1, a2, a3)
+                end
+                CE_Debug("Chat: Hooked into UIParent_ManageFramePositions")
+            else
+                CE_Debug("Chat: Already hooked, skipping hook setup")
             end
+        else
+            CE_Debug("Chat: UIParent_ManageFramePositions not available")
         end
         
         -- Trigger initial position update
@@ -344,21 +483,56 @@ function Chat:Initialize()
         
         -- Update chat layout after action bars are positioned
         self:UpdateChatLayout()
-        
-        initFrame:UnregisterAllEvents()
-    end)
+        CE_Debug("Chat: DoInitialize completed")
+    end
     
-    -- Also set up a one-time update frame
+    -- Check if we're already in the world (e.g., after reload)
+    if UnitName("player") then
+        -- Already in world, initialize immediately
+        DoInitialize()
+    else
+        -- Wait for PLAYER_ENTERING_WORLD to hook into frame management
+        local initFrame = CreateFrame("Frame")
+        initFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        initFrame:SetScript("OnEvent", function()
+            DoInitialize()
+            initFrame:UnregisterAllEvents()
+        end)
+    end
+    
+    -- Also set up a one-time update frame (for cases where we need a small delay)
+    -- This ensures the layout is updated even if DoInitialize runs before frames are ready
     local updateFrame = CreateFrame("Frame")
     updateFrame:SetScript("OnUpdate", function()
+        -- Check if enabled
+        if not self:IsEnabled() then
+            updateFrame:Hide()
+            return
+        end
+        
+        -- Only run once
+        if updateFrame.executed then
+            return
+        end
+        updateFrame.executed = true
+        
+        -- Small delay to ensure everything is ready
+        updateFrame.elapsed = (updateFrame.elapsed or 0) + arg1
+        if updateFrame.elapsed < 0.1 then
+            return
+        end
+        
         if UIParent_ManageFramePositions then
             UIParent_ManageFramePositions()
         end
         -- Update chat layout
         self:UpdateChatLayout()
         updateFrame:Hide()
+        CE_Debug("Chat: OnUpdate frame executed")
     end)
+    updateFrame:Show()
     
+    self.initialized = true
     CE_Debug("Chat frame module initialized")
 end
 

@@ -41,6 +41,7 @@ Config.DEFAULTS = {
     sideBarLeftButtons = 3,  -- Number of buttons on left bar (1-5)
     sideBarRightButtons = 3,  -- Number of buttons on right bar (1-5)
     -- Chat settings
+    chatEnabled = true,  -- If true, enable chat module functionality
     chatWidth = 400,
     chatHeight = 150,
     chatBottomY = 20,  -- Y position from bottom (adjusted for XP/Rep bars)
@@ -123,9 +124,14 @@ function Config:InitializeDB()
     -- Apply action bar layout
     self:UpdateActionBarLayout()
     
-    -- Apply chat layout
-    if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
-        ConsoleExperience.chat:UpdateChatLayout()
+    -- Apply chat module state (only if chat is enabled)
+    -- Note: Don't call UpdateChatLayout here as chat module might not be initialized yet
+    -- The initialization will happen in main.lua after VARIABLES_LOADED
+    if not ConsoleExperienceDB.config.chatEnabled and ConsoleExperience.chat then
+        -- Disable chat module if chatEnabled is false
+        if ConsoleExperience.chat.Disable then
+            ConsoleExperience.chat:Disable()
+        end
     end
     
     -- Apply XP/Rep bar layout
@@ -200,15 +206,24 @@ function Config:CreateMainFrame()
     frame:SetClampedToScreen(true)
     frame:Hide()
     
-    -- Background
-    frame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true,
-        tileSize = 32,
-        edgeSize = 32,
-        insets = { left = 11, right = 12, top = 12, bottom = 11 }
-    })
+    -- Background - use pfUI styling if available
+    if pfUI and CreateBackdrop then
+        -- Use pfUI's CreateBackdrop for consistent styling
+        CreateBackdrop(frame, nil, true, .75)
+        if CreateBackdropShadow then
+            CreateBackdropShadow(frame)
+        end
+    else
+        -- Default Blizzard styling
+        frame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 32,
+            insets = { left = 11, right = 12, top = 12, bottom = 11 }
+        })
+    end
     
     -- Title bar for dragging (full width like UIOptionsFrame)
     local titleRegion = CreateFrame("Frame", nil, frame)
@@ -286,6 +301,10 @@ function Config:CreateMainFrame()
         end
         ConsoleExperience.config.frame:Hide()
     end)
+    -- Apply pfUI styling if available
+    if pfUI and SkinButton then
+        SkinButton(closeButton)
+    end
     frame.closeButton = closeButton
     
     -- Debug button (left side)
@@ -330,6 +349,11 @@ function Config:CreateMainFrame()
         frame.titleText:SetText(T("Console Experience"))
     end
     
+    -- Apply pfUI styling to title text if available
+    if pfUI and pfUI.font_default and frame.titleText then
+        frame.titleText:SetFont(pfUI.font_default, 14, "OUTLINE")
+    end
+    
     -- Add to special frames so Escape closes it
     table.insert(UISpecialFrames, "ConsoleExperienceConfigFrame")
     
@@ -346,6 +370,8 @@ function Config:CreateMainFrame()
     if ConsoleExperience.hooks and ConsoleExperience.hooks.HookDynamicFrame then
         ConsoleExperience.hooks:HookDynamicFrame(frame, "Console Experience Config")
     end
+    
+    -- Apply pfUI styling will be done via the periodic check
     
     return frame
 end
@@ -922,12 +948,51 @@ function Config:CreateInterfaceSection()
     resetChatButton:SetPoint("RIGHT", chatBox, "RIGHT", chatBox.contentRight, 0)
     resetChatButton:SetText(T("Reset"))
     resetChatButton.label = T("Reset Chat Settings")
-    resetChatButton.tooltipText = T("Reset chat width, height, and keyboard settings to defaults.")
+    resetChatButton.tooltipText = T("Reset chat module, width, height, and keyboard settings to defaults.")
     
-    -- Row 2: Virtual Keyboard toggle
-    local keyboardCheck = self:CreateCheckbox(chatBox, T("Enable Virtual Keyboard"), 
-        function() return Config:Get("keyboardEnabled") end,
+    -- Row 2: Chat Module toggle
+    -- Note: We need to declare keyboardCheck variable first so it can be referenced in the callback
+    local keyboardCheck = nil
+    
+    local chatEnabledCheck = self:CreateCheckbox(chatBox, T("Enable Chat Module"), 
+        function() return Config:Get("chatEnabled") end,
         function(checked)
+            Config:Set("chatEnabled", checked)
+            CE_Debug("Chat module " .. (checked and "enabled" or "disabled"))
+            
+            if checked then
+                -- Enable chat module
+                if ConsoleExperience.chat and ConsoleExperience.chat.Enable then
+                    ConsoleExperience.chat:Enable()
+                end
+            else
+                -- Disable chat module and also disable keyboard
+                Config:Set("keyboardEnabled", false)
+                if ConsoleExperience.chat and ConsoleExperience.chat.Disable then
+                    ConsoleExperience.chat:Disable()
+                end
+                -- Hide keyboard if visible
+                if ConsoleExperience.keyboard and ConsoleExperience.keyboard:IsVisible() then
+                    ConsoleExperience.keyboard:Hide()
+                end
+                -- Update keyboard checkbox to reflect disabled state
+                if keyboardCheck then
+                    keyboardCheck:SetChecked(false)
+                end
+            end
+        end,
+        T("When enabled, the chat module manages chat frame positioning and behavior. Disabling also disables the virtual keyboard."))
+    chatEnabledCheck:SetPoint("TOPLEFT", chatWidthLabel, "BOTTOMLEFT", 0, -15)
+    
+    -- Row 3: Virtual Keyboard toggle
+    keyboardCheck = self:CreateCheckbox(chatBox, T("Enable Virtual Keyboard"), 
+        function() return Config:Get("keyboardEnabled") and Config:Get("chatEnabled") end,
+        function(checked)
+            -- Only allow enabling keyboard if chat is enabled
+            if not Config:Get("chatEnabled") then
+                keyboardCheck:SetChecked(false)
+                return
+            end
             Config:Set("keyboardEnabled", checked)
             CE_Debug("Virtual keyboard " .. (checked and "enabled" or "disabled"))
             if not checked and ConsoleExperience.keyboard and ConsoleExperience.keyboard:IsVisible() then
@@ -947,17 +1012,19 @@ function Config:CreateInterfaceSection()
                 end)
             end
         end,
-        T("When enabled, a virtual keyboard appears when typing in chat. Disable to use an external keyboard."))
-    keyboardCheck:SetPoint("TOPLEFT", chatWidthLabel, "BOTTOMLEFT", 0, -15)
+        T("When enabled, a virtual keyboard appears when typing in chat. Requires chat module to be enabled."))
+    keyboardCheck:SetPoint("TOPLEFT", chatEnabledCheck, "BOTTOMLEFT", 0, -10)
     resetChatButton:SetScript("OnClick", function()
         Config:Set("chatWidth", Config.DEFAULTS.chatWidth)
         Config:Set("chatHeight", Config.DEFAULTS.chatHeight)
+        Config:Set("chatEnabled", Config.DEFAULTS.chatEnabled)
         Config:Set("keyboardEnabled", Config.DEFAULTS.keyboardEnabled)
         if ConsoleExperience.chat and ConsoleExperience.chat.UpdateChatLayout then
             ConsoleExperience.chat:UpdateChatLayout()
         end
         chatWidthEditBox:SetText(tostring(Config.DEFAULTS.chatWidth))
         chatHeightEditBox:SetText(tostring(Config.DEFAULTS.chatHeight))
+        chatEnabledCheck:SetChecked(Config.DEFAULTS.chatEnabled)
         keyboardCheck:SetChecked(Config.DEFAULTS.keyboardEnabled)
         CE_Debug("Chat settings reset to defaults")
     end)
@@ -3027,6 +3094,8 @@ function Config:CreateGameMenuButton()
         HideUIPanel(GameMenuFrame)
     end)
     
+    -- Apply pfUI styling if pfUI is loaded (will be applied later via ApplyPfUIStyling)
+    
     -- Move buttons below us down
     if GameMenuButtonKeybindings then
         GameMenuButtonKeybindings:SetPoint("TOP", button, "BOTTOM", 0, -1)
@@ -3036,8 +3105,217 @@ function Config:CreateGameMenuButton()
     GameMenuFrame:SetHeight(GameMenuFrame:GetHeight() + 25)
 end
 
+-- Helper function to recursively find all buttons and dropdowns in a frame
+local function FindAllButtonsAndDropdowns(parent, results)
+    results = results or {}
+    if not parent then return results end
+    
+    -- Check all children
+    local children = {parent:GetChildren()}
+    for _, child in ipairs(children) do
+        local objType = child:GetObjectType()
+        local name = child:GetName() or ""
+        
+        -- Check if it's a Frame with UIDropDownMenuTemplate (dropdowns are Frames, not Buttons)
+        if objType == "Frame" then
+            -- Check if it has a button child (indicating it's a dropdown)
+            local buttonName = name .. "Button"
+            local button = _G[buttonName]
+            if button then
+                -- This is a dropdown frame
+                table.insert(results, {frame = child, type = "dropdown"})
+            else
+                -- Regular frame, check its children
+                FindAllButtonsAndDropdowns(child, results)
+            end
+        elseif objType == "Button" then
+            -- Regular button (not a dropdown)
+            table.insert(results, {frame = child, type = "button"})
+        elseif objType == "CheckButton" then
+            -- Checkbox
+            table.insert(results, {frame = child, type = "checkbox"})
+        else
+            -- Other frame types, check their children
+            FindAllButtonsAndDropdowns(child, results)
+        end
+    end
+    
+    return results
+end
+
+-- Function to apply pfUI styling to config frame and buttons
+function Config:ApplyPfUIStyling()
+    if not pfUI or not pfUI.GetEnvironment then 
+        CE_Debug("ApplyPfUIStyling: pfUI not found or GetEnvironment not available")
+        return 
+    end
+    
+    local frame = self.frame
+    if not frame then 
+        CE_Debug("ApplyPfUIStyling: frame not found")
+        return 
+    end
+    
+    -- Try to get pfUI environment functions
+    local env = pfUI:GetEnvironment()
+    if not env then 
+        CE_Debug("ApplyPfUIStyling: Could not get pfUI environment")
+        return 
+    end
+    
+    CE_Debug("ApplyPfUIStyling: Got pfUI environment")
+    
+    -- Check if functions exist in environment
+    local CreateBackdrop = env.CreateBackdrop
+    local CreateBackdropShadow = env.CreateBackdropShadow
+    local SkinButton = env.SkinButton
+    
+    CE_Debug("ApplyPfUIStyling: CreateBackdrop=" .. tostring(CreateBackdrop ~= nil) .. 
+             ", CreateBackdropShadow=" .. tostring(CreateBackdropShadow ~= nil) .. 
+             ", SkinButton=" .. tostring(SkinButton ~= nil))
+    
+    -- Apply pfUI styling to main frame if CreateBackdrop is available
+    if CreateBackdrop then
+        -- Remove default backdrop if it exists
+        if frame.backdrop then
+            frame.backdrop = nil
+        end
+        -- Call CreateBackdrop from pfUI's environment
+        local success, err = pcall(function()
+            CreateBackdrop(frame, nil, true, .75)
+            if CreateBackdropShadow then
+                CreateBackdropShadow(frame)
+            end
+        end)
+        if success then
+            CE_Debug("ApplyPfUIStyling: Successfully applied backdrop")
+        else
+            CE_Debug("ApplyPfUIStyling: Failed to apply backdrop: " .. tostring(err))
+        end
+    end
+    
+    -- Apply pfUI styling to all buttons and dropdowns
+    local SkinDropDown = env.SkinDropDown
+    local SkinCheckbox = env.SkinCheckbox
+    if SkinButton or SkinDropDown or SkinCheckbox then
+        local success, err = pcall(function()
+            -- Find all buttons and dropdowns in the config frame
+            local allElements = FindAllButtonsAndDropdowns(frame)
+            local styledCount = 0
+            
+            for _, element in ipairs(allElements) do
+                if element.frame and not element.frame.pfUISkinned then
+                    if element.type == "dropdown" and SkinDropDown then
+                        -- Use SkinDropDown for dropdowns (this styles the frame, button, text, and arrow)
+                        SkinDropDown(element.frame)
+                        element.frame.pfUISkinned = true
+                        styledCount = styledCount + 1
+                    elseif element.type == "checkbox" and SkinCheckbox then
+                        -- Use SkinCheckbox for checkboxes (this properly styles the checkbox texture)
+                        SkinCheckbox(element.frame)
+                        element.frame.pfUISkinned = true
+                        styledCount = styledCount + 1
+                    elseif element.type == "button" and SkinButton then
+                        -- Use SkinButton for regular buttons only
+                        SkinButton(element.frame)
+                        element.frame.pfUISkinned = true
+                        styledCount = styledCount + 1
+                    end
+                end
+            end
+            
+            -- Also style specific known buttons
+            if frame.closeButton and not frame.closeButton.pfUISkinned and SkinButton then
+                SkinButton(frame.closeButton)
+                frame.closeButton.pfUISkinned = true
+                styledCount = styledCount + 1
+            end
+            if frame.debugButton and not frame.debugButton.pfUISkinned and SkinButton then
+                SkinButton(frame.debugButton)
+                frame.debugButton.pfUISkinned = true
+                styledCount = styledCount + 1
+            end
+            
+            -- Style sidebar buttons
+            if self.sidebarButtons and SkinButton then
+                for _, button in pairs(self.sidebarButtons) do
+                    if button and not button.pfUISkinned then
+                        SkinButton(button)
+                        button.pfUISkinned = true
+                        styledCount = styledCount + 1
+                    end
+                end
+            end
+            
+            CE_Debug("ApplyPfUIStyling: Styled " .. styledCount .. " buttons/dropdowns")
+        end)
+        if success then
+            CE_Debug("ApplyPfUIStyling: Successfully applied button styling")
+        else
+            CE_Debug("ApplyPfUIStyling: Failed to apply button styling: " .. tostring(err))
+        end
+    end
+    
+    -- Apply pfUI font to title if available
+    if pfUI.font_default and frame.titleText then
+        frame.titleText:SetFont(pfUI.font_default, 14, "OUTLINE")
+        CE_Debug("ApplyPfUIStyling: Applied pfUI font to title")
+    end
+end
+
+-- Function to apply pfUI styling to main menu button
+function Config:ApplyPfUIStylingToMainMenuButton()
+    if not pfUI or not pfUI.GetEnvironment then return end
+    
+    local env = pfUI:GetEnvironment()
+    if not env or not env.SkinButton then return end
+    
+    if GameMenuButtonConsoleExperience then
+        pcall(function()
+            env.SkinButton(GameMenuButtonConsoleExperience)
+            CE_Debug("ApplyPfUIStylingToMainMenuButton: Styled main menu button")
+        end)
+    end
+end
+
 -- Create the game menu button when the addon loads
 Config:CreateGameMenuButton()
+
+-- Apply pfUI styling after pfUI loads (check periodically)
+local pfUICheckFrame = CreateFrame("Frame")
+local pfUICheckElapsed = 0
+local pfUICheckAttempts = 0
+pfUICheckFrame:SetScript("OnUpdate", function()
+    pfUICheckElapsed = pfUICheckElapsed + arg1
+    if pfUICheckElapsed > 0.5 then
+        pfUICheckElapsed = 0
+        pfUICheckAttempts = pfUICheckAttempts + 1
+        
+        if pfUI and pfUI.GetEnvironment then
+            local env = pfUI:GetEnvironment()
+            if env and env.SkinButton then
+                -- Apply styling to config frame
+                if Config.frame and not Config.frame.pfUIStyled then
+                    Config:ApplyPfUIStyling()
+                    Config.frame.pfUIStyled = true
+                end
+                
+                -- Apply styling to main menu button
+                Config:ApplyPfUIStylingToMainMenuButton()
+                
+                -- Stop checking once both are styled
+                if Config.frame and Config.frame.pfUIStyled then
+                    this:SetScript("OnUpdate", nil)
+                end
+            end
+        end
+        
+        -- Stop checking after 20 attempts (10 seconds)
+        if pfUICheckAttempts >= 20 then
+            this:SetScript("OnUpdate", nil)
+        end
+    end
+end)
 
 -- Create reload UI popup
 StaticPopupDialogs["CE_RELOAD_UI"] = {
