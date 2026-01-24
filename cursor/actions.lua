@@ -384,17 +384,17 @@ function CE_ClickCursor(mouseButton)
         
         if isBagnon then
             -- Bagnon bag/bank item: Uses same structure as Blizzard - GetID() for slot, GetParent():GetID() for bag
-            local parent = button:GetParent()
+            local parent = element:GetParent()
             if parent then
                 bagID = parent:GetID()
-                slotID = button:GetID()
+                slotID = element:GetID()
             end
             CE_Debug("CE_ClickCursor: Bagnon bag item detected - buttonName=" .. (buttonName or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
         elseif isBagshui then
             -- Bagshui bag/bank item: bag and slot info stored in bagshuiData
-            if button.bagshuiData and button.bagshuiData.bagNum and button.bagshuiData.slotNum then
-                bagID = button.bagshuiData.bagNum
-                slotID = button.bagshuiData.slotNum
+            if element.bagshuiData and element.bagshuiData.bagNum and element.bagshuiData.slotNum then
+                bagID = element.bagshuiData.bagNum
+                slotID = element.bagshuiData.slotNum
             end
             CE_Debug("CE_ClickCursor: Bagshui bag item detected - buttonName=" .. (buttonName or "nil") .. ", bagID=" .. tostring(bagID) .. ", slotID=" .. tostring(slotID))
         elseif isPfUI then
@@ -410,7 +410,7 @@ function CE_ClickCursor(mouseButton)
             local _, _, containerFrameNum = string.find(buttonName, "ContainerFrame(%d+)")
             if containerFrameNum then
                 bagID = tonumber(containerFrameNum) - 1
-                slotID = button:GetID()
+                slotID = element:GetID()
             end
             CE_Debug("CE_ClickCursor: Blizzard container item detected - buttonName=" .. (buttonName or "nil") .. ", ContainerFrame=" .. (containerFrameNum or "nil"))
         end

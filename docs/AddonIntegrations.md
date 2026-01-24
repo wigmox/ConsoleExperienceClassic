@@ -19,7 +19,7 @@ When pfUI is detected, ConsoleExperienceClassic will:
 **Important:** You must manually disable the Action Bar module in pfUI to avoid conflicts with ConsoleExperience's action bars.
 
 1. Open pfUI configuration with `/pfui`
-2. Navigate to **Components** → **Action Bars**
+2. Navigate to **Modules** → **Action Bars**
 3. Disable the Action Bar module
 4. Reload your UI with `/rl`
 
