@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.2](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.16.1...v0.16.2) (2026-01-24)
+
+
+### Bug Fixes
+
+* properly handle pfUI chat integration and prevent memory leak ([f5b237e](https://github.com/pepordev/ConsoleExperienceClassic/commit/f5b237e7739ab83657e421f2ad072a799bf7f711))
+
 ## [0.16.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.16.0...v0.16.1) (2026-01-24)
 
 
