@@ -17,6 +17,8 @@ Chat.managePositionsHook = nil
 Chat.oskHelper = nil
 Chat.initialized = false
 Chat.wasDisabled = false
+Chat._managePositionsWrapper = nil
+Chat._inManagePositions = false
 Chat.chatFrameOriginalState = {
     scale = nil,
     points = {},
@@ -124,9 +126,17 @@ function Chat:Enable()
         self.wasDisabled = false
         -- Re-hook into frame management
         if UIParent_ManageFramePositions then
-            self.managePositionsHook = UIParent_ManageFramePositions
-            UIParent_ManageFramePositions = function(a1, a2, a3)
-                Chat:ManagePositions(a1, a2, a3)
+            -- Create a stable wrapper once so we can detect whether we're already hooked
+            if not self._managePositionsWrapper then
+                self._managePositionsWrapper = function(a1, a2, a3)
+                    Chat:ManagePositions(a1, a2, a3)
+                end
+            end
+
+            -- Only hook if not already hooked to our wrapper
+            if UIParent_ManageFramePositions ~= self._managePositionsWrapper then
+                self.managePositionsHook = UIParent_ManageFramePositions
+                UIParent_ManageFramePositions = self._managePositionsWrapper
             end
         end
         self:UpdateChatLayout()
@@ -154,7 +164,10 @@ function Chat:Disable()
     
     -- Unhook from frame management
     if self.managePositionsHook then
-        UIParent_ManageFramePositions = self.managePositionsHook
+        -- Only restore if we're currently hooked to our wrapper
+        if self._managePositionsWrapper and UIParent_ManageFramePositions == self._managePositionsWrapper then
+            UIParent_ManageFramePositions = self.managePositionsHook
+        end
         self.managePositionsHook = nil
         CE_Debug("Chat: Unhooked from UIParent_ManageFramePositions")
     end
@@ -269,12 +282,24 @@ end
 
 -- Manage chat frame positions (called from UIParent_ManageFramePositions hook)
 function Chat:ManagePositions(a1, a2, a3)
+    -- Prevent re-entrant recursion (can happen when chat/layout changes trigger UIParent_ManageFramePositions again)
+    if self._inManagePositions then
+        if self.managePositionsHook then
+            return self.managePositionsHook(a1, a2, a3)
+        end
+        return
+    end
+    self._inManagePositions = true
+
     -- Check if chat module is enabled
     if not self:IsEnabled() then
         -- If disabled, call original function and return
         if self.managePositionsHook then
-            return self.managePositionsHook(a1, a2, a3)
+            local ret = self.managePositionsHook(a1, a2, a3)
+            self._inManagePositions = false
+            return ret
         end
+        self._inManagePositions = false
         return
     end
     -- Run original function first
@@ -438,6 +463,8 @@ function Chat:ManagePositions(a1, a2, a3)
             bottomButton.Show = function() return end
         end
     end
+
+    self._inManagePositions = false
 end
 
 -- Initialize the chat module
@@ -462,12 +489,17 @@ function Chat:Initialize()
         
         -- Hook into UIParent_ManageFramePositions
         if UIParent_ManageFramePositions then
-            -- Only hook if we haven't already hooked (or if hook was removed)
-            if not self.managePositionsHook or UIParent_ManageFramePositions == self.managePositionsHook then
-                self.managePositionsHook = UIParent_ManageFramePositions
-                UIParent_ManageFramePositions = function(a1, a2, a3)
+            -- Create a stable wrapper once so we can detect whether we're already hooked
+            if not self._managePositionsWrapper then
+                self._managePositionsWrapper = function(a1, a2, a3)
                     Chat:ManagePositions(a1, a2, a3)
                 end
+            end
+
+            -- Only hook if not already hooked to our wrapper
+            if UIParent_ManageFramePositions ~= self._managePositionsWrapper then
+                self.managePositionsHook = UIParent_ManageFramePositions
+                UIParent_ManageFramePositions = self._managePositionsWrapper
                 CE_Debug("Chat: Hooked into UIParent_ManageFramePositions")
             else
                 CE_Debug("Chat: Already hooked, skipping hook setup")

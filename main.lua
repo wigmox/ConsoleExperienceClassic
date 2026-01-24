@@ -21,7 +21,7 @@ ConsoleExperienceDB = ConsoleExperienceDB or {}
 ConsoleExperience:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" then
         -- Check if pfUI just loaded
-        if arg1 == "pfUI" or arg1 == "pfUI-master" then
+        if arg1 == "pfUI" then
             -- pfUI loaded, disable chat module if not already disabled
             if ConsoleExperience.config then
                 local currentValue = ConsoleExperience.config:Get("chatEnabled")
@@ -79,21 +79,6 @@ ConsoleExperience:SetScript("OnEvent", function()
         -- Initialize placement frame
         if ConsoleExperience.placement and ConsoleExperience.placement.Initialize then
             ConsoleExperience.placement:Initialize()
-        end
-        
-        -- Check if pfUI is loaded and disable chat module if it is
-        -- pfUI has its own chat module, so we should disable ours to avoid conflicts
-        if pfUI then
-            local config = ConsoleExperience.config
-            if config then
-                -- Check if chatEnabled is not already explicitly set to false
-                local currentValue = config:Get("chatEnabled")
-                if currentValue ~= false then
-                    -- Auto-disable chat module when pfUI is detected
-                    config:Set("chatEnabled", false)
-                    CE_Debug("pfUI detected - chat module automatically disabled")
-                end
-            end
         end
         
         -- Initialize chat frame module
