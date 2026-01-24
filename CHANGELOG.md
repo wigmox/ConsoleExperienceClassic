@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.16.0...v0.16.1) (2026-01-24)
+
+
+### Bug Fixes
+
+* properly handle UI when bagnon/bashui is loaded ([02f640d](https://github.com/pepordev/ConsoleExperienceClassic/commit/02f640debe28208781fded75f99bdbd99ad213f6))
+
 ## [0.16.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.15.0...v0.16.0) (2026-01-23)
 
 
