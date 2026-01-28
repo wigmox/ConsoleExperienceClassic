@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.16.2...v0.16.3) (2026-01-28)
+
+
+### Bug Fixes
+
+* **i18n:** Add CN support & UI: Add adjust buttons + tweak spacing ([1509ed9](https://github.com/pepordev/ConsoleExperienceClassic/commit/1509ed92d3edff938c66398cea6fff9f5d864320))
+
 ## [0.16.2](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.16.1...v0.16.2) (2026-01-24)
 
 
