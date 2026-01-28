@@ -286,7 +286,7 @@ function Placement:CreateFrame()
     -- Title text
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", frame, "TOP", 0, -15)
-    title:SetText("Place Action")
+    title:SetText(L("Place Action"))
     
     -- Close button
     local closeButton = CreateFrame("Button", "CEPlacementCloseButton", frame, "UIPanelCloseButton")

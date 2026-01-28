@@ -1,3 +1,11 @@
+-- Get localized text (with fallback)
+local function L(key)
+    if ConsoleExperience.locale and ConsoleExperience.locale.T then
+        return ConsoleExperience.locale.T(key)
+    end
+    return key
+end
+
 --[[
     ConsoleExperienceClassic - Keybindings Module
     
@@ -18,7 +26,7 @@
 -- ============================================================================
 
 -- Binding header
-_G["BINDING_HEADER_CONSOLEEXPERIENCE"] = "Console Experience"
+_G["BINDING_HEADER_CONSOLEEXPERIENCE"] = L("Console Experience")
 
 -- Controller button names for each position (1-10)
 local buttonNames = {
@@ -26,10 +34,10 @@ local buttonNames = {
     [2] = "X",
     [3] = "Y",
     [4] = "B",
-    [5] = "Down",
-    [6] = "Left",
-    [7] = "Up",
-    [8] = "Right",
+    [5] = L("Down"),
+    [6] = L("Left"),
+    [7] = L("Up"),
+    [8] = L("Right"),
     [9] = "RB",
     [10] = "LB",
 }
@@ -48,30 +56,30 @@ for i = 1, 40 do
     local buttonIndex = math.mod(i - 1, 10) + 1
     local buttonName = buttonNames[buttonIndex]
     local modifier = modifierPrefixes[page]
-    _G["BINDING_NAME_CE_ACTION_" .. i] = "Action " .. i .. " (" .. modifier .. buttonName .. ")"
+    _G["BINDING_NAME_CE_ACTION_" .. i] = L("Action") .. i .. " (" .. modifier .. buttonName .. ")"
 end
 
 -- Cursor header and binding names
-_G["BINDING_HEADER_CECURSOR"] = "CE Cursor"
-_G["BINDING_NAME_CE_CURSOR_MOVE_UP"] = "Cursor Up"
-_G["BINDING_NAME_CE_CURSOR_MOVE_DOWN"] = "Cursor Down"
-_G["BINDING_NAME_CE_CURSOR_MOVE_LEFT"] = "Cursor Left"
-_G["BINDING_NAME_CE_CURSOR_MOVE_RIGHT"] = "Cursor Right"
-_G["BINDING_NAME_CE_CURSOR_CLICK_LEFT"] = "Cursor Click"
-_G["BINDING_NAME_CE_CURSOR_CLICK_RIGHT"] = "Cursor Right-Click"
-_G["BINDING_NAME_CE_CURSOR_PICKUP"] = "Cursor Pickup"
-_G["BINDING_NAME_CE_CURSOR_BIND"] = "Cursor Bind"
-_G["BINDING_NAME_CE_CURSOR_DELETE"] = "Cursor Delete"
-_G["BINDING_NAME_CE_CURSOR_UNEQUIP"] = "Cursor Unequip"
-_G["BINDING_NAME_CE_CURSOR_CLOSE"] = "Cursor Close"
+_G["BINDING_HEADER_CECURSOR"] = L("CE Cursor")
+_G["BINDING_NAME_CE_CURSOR_MOVE_UP"] = L("Cursor Up")
+_G["BINDING_NAME_CE_CURSOR_MOVE_DOWN"] = L("Cursor Down")
+_G["BINDING_NAME_CE_CURSOR_MOVE_LEFT"] = L("Cursor Left")
+_G["BINDING_NAME_CE_CURSOR_MOVE_RIGHT"] = L("Cursor Right")
+_G["BINDING_NAME_CE_CURSOR_CLICK_LEFT"] = L("Cursor Click")
+_G["BINDING_NAME_CE_CURSOR_CLICK_RIGHT"] = L("Cursor Right-Click")
+_G["BINDING_NAME_CE_CURSOR_PICKUP"] = L("Cursor Pickup")
+_G["BINDING_NAME_CE_CURSOR_BIND"] = L("Cursor Bind")
+_G["BINDING_NAME_CE_CURSOR_DELETE"] = L("Cursor Delete")
+_G["BINDING_NAME_CE_CURSOR_UNEQUIP"] = L("Cursor Unequip")
+_G["BINDING_NAME_CE_CURSOR_CLOSE"] = L("Cursor Close")
 
 -- Radial menu header and binding name
-_G["BINDING_HEADER_CERADIAL"] = "CE Radial Menu"
-_G["BINDING_NAME_CE_TOGGLE_RADIAL"] = "Toggle Radial Menu"
+_G["BINDING_HEADER_CERADIAL"] = L("CE Radial Menu")
+_G["BINDING_NAME_CE_TOGGLE_RADIAL"] = L("Toggle Radial Menu")
 
 -- Interact header and binding name
-_G["BINDING_HEADER_CEINTERACT"] = "CE Interact"
-_G["BINDING_NAME_CE_INTERACT"] = "Interact with Target"
+_G["BINDING_HEADER_CEINTERACT"] = L("CE Interact")
+_G["BINDING_NAME_CE_INTERACT"] = L("Interact with Target")
 
 -- ============================================================================
 -- CE_InteractNearest Function (used by CE_INTERACT binding)
@@ -83,7 +91,7 @@ function CE_InteractNearest()
         InteractNearest(1)
     else
         -- Fallback: target nearest enemy if Interact.dll is not loaded
-        DEFAULT_CHAT_FRAME:AddMessage("|cffff9900[CE]|r Interact.dll not loaded - using TargetNearestEnemy() as fallback", 1, 0.6, 0)
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff9900[CE]|r " .. L("Interact.dll not loaded - using TargetNearestEnemy() as fallback"), 1, 0.6, 0)
         TargetNearestEnemy()
     end
 end

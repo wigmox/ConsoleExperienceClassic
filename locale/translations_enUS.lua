@@ -43,12 +43,14 @@ ConsoleExperience_translation["enUS"] = {
     ["Size of the crosshair in pixels. Range: 4-100 pixels."] = "Size of the crosshair in pixels. Range: 4-100 pixels.",
     ["Width"] = "Width",
     ["Height"] = "Height",
-    ["Chat Width"] = "Chat Width",
-    ["Chat Height"] = "Chat Height",
     ["Width of the chat frame in pixels. Range: 100-2000."] = "Width of the chat frame in pixels. Range: 100-2000.",
     ["Height of the chat frame in pixels. Range: 50-1000."] = "Height of the chat frame in pixels. Range: 50-1000.",
     ["Reset Chat Settings"] = "Reset Chat Settings",
     ["Reset chat width, height, and keyboard settings to defaults."] = "Reset chat width, height, and keyboard settings to defaults.",
+    ["Enable Chat Module"] = "Enable Chat Module",
+    ["Reset Chat Module, Width, Height, and Keyboard Settings to Defaults."] = "Reset Chat Module, Width, Height, and Keyboard Settings to Defaults.",
+    ["Healer Mode"] = "Healer Mode",
+    ["Enable healer mode for improved healing and targeting."] = "Enable healer mode for improved healing and targeting.",
     
     -- XP/Rep Bars
     ["XP Bar"] = "XP Bar",
@@ -261,6 +263,9 @@ ConsoleExperience_translation["enUS"] = {
     ["Quest Log"] = "Quest Log",
     ["Toggle quest log"] = "Toggle quest log",
     ["Toggle friends list"] = "Toggle friends list",
+    ["Spellbook"] = "Spellbook",
+    ["Talents"] = "Talents",
+    ["Social"] = "Social",
     
     -- Proxied Actions - Camera
     ["Zoom In"] = "Zoom In",
@@ -302,5 +307,80 @@ ConsoleExperience_translation["enUS"] = {
     ["Shrug"] = "Shrug",
     ["Agree"] = "Agree",
     ["Disagree"] = "Disagree",
-}
+    
+    -- Controller button names for each position
+    ["Action"] = "Action",
+    ["Up"] = "Up",
+    ["Down"] = "Down",
+    ["Left"] = "Left",
+    ["Right"] = "Right",
+    
+    -- Cursor header and binding names
+    ["CE Cursor"] = "Cursor",
+    ["Cursor Up"] = "Cursor Up",
+    ["Cursor Down"] = "Cursor Down",
+    ["Cursor Left"] = "Cursor Left",
+    ["Cursor Right"] = "Cursor Right",
+    ["Cursor Click"] = "Cursor Click",
+    ["Cursor Right-Click"] = "Cursor Right-Click",
+    ["Cursor Pickup"] = "Cursor Pickup",
+    ["Cursor Bind"] = "Cursor Bind",
+    ["Cursor Delete"] = "Cursor Delete",
+    ["Cursor Unequip"] = "Cursor Unequip",
+    ["Cursor Close"] = "Cursor Close",
 
+    -- Radial menu header and binding name
+    ["CE Radial Menu"] = "Radial Menu",
+    ["Toggle Radial Menu"] = "Toggle Radial Menu",
+
+    -- Interact header and binding name
+    ["CE Interact"] = "Interact",
+    ["Interact with Target"] = "Interact with Target",
+
+    --ConsoleExperienceClassic - Radial Menu Module
+    ["Character"] = "Character",
+    ["Inventory"] = "Inventory",
+    ["Guild"] = "Guild",
+    ["LFG"] = "LFG",
+    ["Options"] = "Options",
+    ["Action Bar Bindings"] = "Action Bar Bindings",
+
+    -- Fallback: target nearest enemy if Interact.dll is not loaded
+    ["Interact.dll not loaded - using TargetNearestEnemy()] as fallback."] = "Interact.dll not loaded - using TargetNearestEnemy() as fallback.",
+    
+    -- Profile
+    ["Profile"] = "Profile",
+    ["Profiles"] = "Profiles",
+    ["Current Profile"] = "Current Profile",
+    ["Active Profile"] = "Active Profile",
+    ["Default"] = "Default",
+    ["Profile Management"] = "Profile Management",
+    ["Create New"] = "Create New",
+    ["Clone Current"] = "Clone Current",
+    ["Delete"] = "Delete",
+    
+    -- ConsoleExperienceClassic - Tooltip Module
+    ["Status"] = "Status",
+    ["Enabled"] = "Enabled",
+    ["Disabled"] = "Disabled",
+    ["Current: "] = "Current: ",
+    ["Buy"] = "Buy",
+    ["Withdraw"] = "Withdraw",
+    ["Bid"] = "Bid",
+    ["Pickup / Place"] = "Pickup / Place",
+    ["Trade"] = "Trade",
+    ["Toggle"] = "Toggle",
+    ["Loot"] = "Loot",
+    ["Send"] = "Send",
+    ["Press"] = "Press",
+    ["Emote"] = "Emote",
+    ["Edit Text"] = "Edit Text",
+    ["Increase"] = "Increase",
+    ["Decrease"] = "Decrease",
+    ["Click"] = "Click",
+    ["Sell"] = "Sell",
+    ["Auction"] = "Auction",
+    ["Attach"] = "Attach",
+    ["Deposit"] = "Deposit",
+    ["TextInput"] = "TextInput",
+}

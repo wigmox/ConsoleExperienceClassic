@@ -4,6 +4,14 @@
     Handles tooltip display for cursor navigation with controller button icons
 ]]
 
+-- Get localized text (with fallback)
+local function L(key)
+    if ConsoleExperience.locale and ConsoleExperience.locale.T then
+        return ConsoleExperience.locale.T(key)
+    end
+    return key
+end
+
 -- Create tooltip module namespace
 ConsoleExperience.cursor = ConsoleExperience.cursor or {}
 ConsoleExperience.cursor.tooltip = ConsoleExperience.cursor.tooltip or {}
@@ -173,7 +181,7 @@ TooltipHookFrame:SetScript("OnShow", function()
             end
         end
         if not hasXAction then
-            table.insert(actions, {icon = "x", prompt = "Send"})
+            table.insert(actions, {icon = "x", prompt = L("Send")})
         end
     end
     
@@ -196,232 +204,232 @@ function Tooltip:Initialize()
         -- Container (bag) items - A = Pickup, X = Bind, B = Use, Y = Drop
         {
             pattern = "ContainerFrame%d+Item%d+",
-            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            actions = {{icon = "a", prompt = L("Pickup")}, {icon = "x", prompt = L("Bind")}, {icon = "b", prompt = L("Use")}, {icon = "y", prompt = L("Drop")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
         },
         -- pfUI bag items - A = Pickup, X = Bind, B = Use, Y = Drop
         {
             pattern = "pfBag%-?%d+item%d+",
-            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            actions = {{icon = "a", prompt = L("Pickup")}, {icon = "x", prompt = L("Bind")}, {icon = "b", prompt = L("Use")}, {icon = "y", prompt = L("Drop")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
         },
         -- Bagshui bag items - A = Pickup, X = Bind, B = Use, Y = Drop
         {
             pattern = "BagshuiBagsItem%d+",
-            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            actions = {{icon = "a", prompt = L("Pickup")}, {icon = "x", prompt = L("Bind")}, {icon = "b", prompt = L("Use")}, {icon = "y", prompt = L("Drop")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
         },
         -- Bagshui bank items - A = Pickup, X = Bind, B = Use, Y = Drop
         {
             pattern = "BagshuiBankItem%d+",
-            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            actions = {{icon = "a", prompt = L("Pickup")}, {icon = "x", prompt = L("Bind")}, {icon = "b", prompt = L("Use")}, {icon = "y", prompt = L("Drop")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
         },
         -- Bagnon bag items - A = Pickup, X = Bind, B = Use, Y = Drop
         {
             pattern = "BagnonItem%d+",
-            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            actions = {{icon = "a", prompt = L("Pickup")}, {icon = "x", prompt = L("Bind")}, {icon = "b", prompt = L("Use")}, {icon = "y", prompt = L("Drop")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
         },
         -- Bagnon bank items - A = Pickup, X = Bind, B = Use, Y = Drop
         {
             pattern = "BanknonItem%d+",
-            actions = {{icon = "a", prompt = "Pickup"}, {icon = "x", prompt = "Bind"}, {icon = "b", prompt = "Use"}, {icon = "y", prompt = "Drop"}},
+            actions = {{icon = "a", prompt = L("Pickup")}, {icon = "x", prompt = L("Bind")}, {icon = "b", prompt = L("Use")}, {icon = "y", prompt = L("Drop")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}, {key = "3", action = "CE_CURSOR_DELETE"}}
         },
         -- Character equipment slots - B = Unequip
         {
             pattern = "Character[A-Za-z0-9]+Slot",
-            actions = {{icon = "a", prompt = "Select"}, {icon = "b", prompt = "Unequip"}},
+            actions = {{icon = "a", prompt = L("Select")}, {icon = "b", prompt = L("Unequip")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "4", action = "CE_CURSOR_UNEQUIP"}}
         },
         -- Spellbook tabs
         {
             pattern = "SpellBookFrameTabButton%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Spellbook skill line tabs
         {
             pattern = "SpellBookSkillLineTab%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Spellbook buttons
         {
             pattern = "SpellButton%d+",
-            actions = {{icon = "a", prompt = "Cast"}, {icon = "x", prompt = "Bind"}},
+            actions = {{icon = "a", prompt = L("Cast")}, {icon = "x", prompt = L("Bind")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}}
         },
         -- Talent frame
         {
             pattern = "TalentFrameTalent%d+",
-            actions = {{icon = "a", prompt = "Learn"}},
+            actions = {{icon = "a", prompt = L("Learn")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Quest log titles
         {
             pattern = "QuestLogTitle%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Static popup buttons
         {
             pattern = "StaticPopup%d+Button%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Gossip buttons
         {
             pattern = "GossipTitleButton%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Quest title buttons
         {
             pattern = "QuestTitleButton%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Merchant items - B = Buy (right click)
         {
             pattern = "MerchantItem%d+ItemButton",
-            actions = {{icon = "a", prompt = "Select"}, {icon = "b", prompt = "Buy"}},
+            actions = {{icon = "a", prompt = L("Select")}, {icon = "b", prompt = L("Buy")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}}
         },
         -- Bank items - B = Withdraw
         {
             pattern = "BankFrameItem%d+",
-            actions = {{icon = "a", prompt = "Select"}, {icon = "b", prompt = "Withdraw"}},
+            actions = {{icon = "a", prompt = L("Select")}, {icon = "b", prompt = L("Withdraw")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}}
         },
         -- Auction house browse buttons - B = Bid
         {
             pattern = "BrowseButton%d+",
-            actions = {{icon = "a", prompt = "Select"}, {icon = "b", prompt = "Bid"}},
+            actions = {{icon = "a", prompt = L("Select")}, {icon = "b", prompt = L("Bid")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}}
         },
         -- Auction house auctions buttons
         {
             pattern = "AuctionsButton%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- WorldMap buttons - B = Zoom Out
         {
             pattern = "WorldMap.*",
-            actions = {{icon = "a", prompt = "Zoom In"}, {icon = "b", prompt = "Zoom Out"}},
+            actions = {{icon = "a", prompt = L("Zoom In")}, {icon = "b", prompt = L("Zoom Out")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "4", action = "CE_CURSOR_CLICK_RIGHT"}}
         },
         -- Game menu buttons
         {
             pattern = "GameMenuButton.*",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Console Experience config buttons
         {
             pattern = "ConsoleExperience.*",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Radial menu buttons
         {
             pattern = "CERadialButton%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Spell placement buttons
         {
             pattern = "CEPlacementButton%d+",
-            actions = {{icon = "a", prompt = "Pickup / Place"}, {icon = "b", prompt = "Clear"}},
+            actions = {{icon = "a", prompt = L("Pickup / Place")}, {icon = "b", prompt = L("Clear")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "4", action = "CE_PLACEMENT_CLEAR"}}
         },
         -- Macro buttons
         {
             pattern = "MacroButton%d+",
-            actions = {{icon = "a", prompt = "Select"}, {icon = "x", prompt = "Bind"}},
+            actions = {{icon = "a", prompt = L("Select")}, {icon = "x", prompt = L("Bind")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}}
         },
         -- Friends list
         {
             pattern = "FriendsFrameFriendButton%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Mail items
         {
             pattern = "MailItem%d+Button",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Trainer skill buttons
         {
             pattern = "ClassTrainerSkill%d+",
-            actions = {{icon = "a", prompt = "Learn"}},
+            actions = {{icon = "a", prompt = L("Learn")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Profession skill buttons
         {
             pattern = "TradeSkillSkill%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Profession reagent buttons
         {
             pattern = "TradeSkillReagent%d+",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Roll frame buttons
         {
             pattern = "GroupLootFrame%d+.*Button",
-            actions = {{icon = "a", prompt = "Select"}},
+            actions = {{icon = "a", prompt = L("Select")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Trade items
         {
             pattern = "TradePlayerItem%d+ItemButton",
-            actions = {{icon = "a", prompt = "Trade"}},
+            actions = {{icon = "a", prompt = L("Trade")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- UICheckButton (checkboxes)
         {
             pattern = ".*CheckButton.*",
-            actions = {{icon = "a", prompt = "Toggle"}},
+            actions = {{icon = "a", prompt = L("Toggle")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Loot buttons
         {
             pattern = "LootButton%d+",
-            actions = {{icon = "a", prompt = "Loot"}},
+            actions = {{icon = "a", prompt = L("Loot")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}}
         },
         -- Keyboard keys
         {
             pattern = "CEKeyboardKey.*",
-            actions = {{icon = "a", prompt = "Type"}, {icon = "x", prompt = "Send"}},
+            actions = {{icon = "a", prompt = L("Type")}, {icon = "x", prompt = L("Send")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}}
         },
         -- Keyboard special keys (Shift, Space, Backspace, etc.)
         {
             pattern = "CEKeyboardSpecialKey.*",
-            actions = {{icon = "a", prompt = "Press"}, {icon = "x", prompt = "Send"}},
+            actions = {{icon = "a", prompt = L("Press")}, {icon = "x", prompt = L("Send")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}}
         },
         -- Keyboard emote buttons
         {
             pattern = "CEKeyboardEmote.*",
-            actions = {{icon = "a", prompt = "Emote"}, {icon = "x", prompt = "Send"}},
+            actions = {{icon = "a", prompt = L("Emote")}, {icon = "x", prompt = L("Send")}},
             bindings = {{key = "1", action = "CE_CURSOR_CLICK_LEFT"}, {key = "2", action = "CE_CURSOR_BIND"}}
         },
     }
     
     -- Special actions for element types (not pattern based)
     self.elementTypeActions = {
-        editbox = {{icon = "a", prompt = "Edit Text"}},
-        slider = {{icon = "a", prompt = "Increase"}, {icon = "b", prompt = "Decrease"}},
-        checkbox = {{icon = "a", prompt = "Toggle"}},
+        editbox = {{icon = "a", prompt = L("Edit Text")}},
+        slider = {{icon = "a", prompt = L("Increase")}, {icon = "b", prompt = L("Decrease")}},
+        checkbox = {{icon = "a", prompt = L("Toggle")}},
     }
 end
 
@@ -444,35 +452,35 @@ function Tooltip:GetActions(buttonName, elementType)
         return self.elementTypeActions[elementType]
     end
     
-    return {{icon = "a", prompt = "Click"}}
+    return {{icon = "a", prompt = L("Click")}}
 end
 
 -- Get dynamic actions for container (bag) items based on open frames
 function Tooltip:GetContainerItemActions()
-    local bAction = "Use"  -- Default action
+    local bAction = L("Use")  -- Default action
     
     -- Check if merchant frame is visible
     if MerchantFrame and MerchantFrame:IsVisible() then
-        bAction = "Sell"
+        bAction = L("Sell")
     -- Check if auction frame is visible
     elseif AuctionFrame and AuctionFrame:IsVisible() then
-        bAction = "Auction"
+        bAction = L("Auction")
     -- Check if trade frame is visible
     elseif TradeFrame and TradeFrame:IsVisible() then
-        bAction = "Trade"
+        bAction = L("Trade")
     -- Check if mail frame is visible (send mail)
     elseif SendMailFrame and SendMailFrame:IsVisible() then
-        bAction = "Attach"
+        bAction = L("Attach")
     -- Check if bank frame is visible
     elseif BankFrame and BankFrame:IsVisible() then
-        bAction = "Deposit"
+        bAction = L("Deposit")
     end
     
     return {
-        {icon = "a", prompt = "Pickup"},
-        {icon = "x", prompt = "Bind"},
+        {icon = "a", prompt = L("Pickup")},
+        {icon = "x", prompt = L("Bind")},
         {icon = "b", prompt = bAction},
-        {icon = "y", prompt = "Drop"}
+        {icon = "y", prompt = L("Drop")}
     }
 end
 
@@ -725,7 +733,7 @@ function Tooltip:ShowButtonTooltip(button)
             local currentText = button:GetText() or ""
             GameTooltip:SetText(tostring(label))
             if currentText ~= "" then
-                GameTooltip:AddLine("Current: " .. currentText, 0.7, 0.7, 0.7)
+                GameTooltip:AddLine(L("Current: ") .. currentText, 0.7, 0.7, 0.7)
             end
             -- tooltipText is added in OnShow handler (above actions)
             GameTooltip:Show()
@@ -766,9 +774,9 @@ function Tooltip:ShowButtonTooltip(button)
             if not label or label == "" then
                 label = "Checkbox"
             end
-            local checked = button:GetChecked() and "Enabled" or "Disabled"
+            local checked = button:GetChecked() and L("Enabled") or L("Disabled")
             GameTooltip:SetText(tostring(label))
-            GameTooltip:AddLine("Status: " .. checked, 0.7, 0.7, 0.7)
+            GameTooltip:AddLine(L("Status: ") .. checked, 0.7, 0.7, 0.7)
             -- tooltipText is added in OnShow handler (above actions)
             GameTooltip:Show()
             return

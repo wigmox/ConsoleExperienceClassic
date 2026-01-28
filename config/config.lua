@@ -1133,7 +1133,7 @@ function Config:CreateBarsSection()
     end)
     
     local padLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    padLabel:SetPoint("LEFT", sizeEditBox, "RIGHT", 10, 0)
+    padLabel:SetPoint("LEFT", sizeEditBox, "RIGHT", 35, 0)
     padLabel:SetText(T("Pad") .. ":")
     
     local paddingEditBox = self:CreateEditBox(generalBox, 35,
@@ -1157,7 +1157,7 @@ function Config:CreateBarsSection()
     end)
     
     local xLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    xLabel:SetPoint("LEFT", paddingEditBox, "RIGHT", 10, 0)
+    xLabel:SetPoint("LEFT", paddingEditBox, "RIGHT", 35, 0)
     xLabel:SetText("X:")
     
     local xEditBox = self:CreateEditBox(generalBox, 35,
@@ -1177,7 +1177,7 @@ function Config:CreateBarsSection()
     end)
     
     local yLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    yLabel:SetPoint("LEFT", xEditBox, "RIGHT", 10, 0)
+    yLabel:SetPoint("LEFT", xEditBox, "RIGHT", 35, 0)
     yLabel:SetText("Y:")
     
     local yEditBox = self:CreateEditBox(generalBox, 35,
@@ -1197,7 +1197,7 @@ function Config:CreateBarsSection()
     end)
     
     local starLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    starLabel:SetPoint("LEFT", yEditBox, "RIGHT", 10, 0)
+    starLabel:SetPoint("LEFT", yEditBox, "RIGHT", 35, 0)
     starLabel:SetText(T("Gap") .. ":")
     
     local starPaddingEditBox = self:CreateEditBox(generalBox, 35,
@@ -1221,7 +1221,7 @@ function Config:CreateBarsSection()
     end)
     
     local scaleLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    scaleLabel:SetPoint("LEFT", starPaddingEditBox, "RIGHT", 10, 0)
+    scaleLabel:SetPoint("LEFT", starPaddingEditBox, "RIGHT", 35, 0)
     scaleLabel:SetText(T("Scale") .. ":")
     
     local scaleEditBox = self:CreateEditBox(generalBox, 35,
@@ -1509,7 +1509,7 @@ function Config:CreateBarsSection()
     xpWidthEditBox:SetPoint("LEFT", xpWidthLabel, "RIGHT", 5, 0)
     
     local xpHeightLabel = xpBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    xpHeightLabel:SetPoint("LEFT", xpWidthEditBox, "RIGHT", 10, 0)
+    xpHeightLabel:SetPoint("LEFT", xpWidthEditBox, "RIGHT", 35, 0)
     xpHeightLabel:SetText(T("Height") .. ":")
     
     local xpHeightEditBox = self:CreateEditBox(xpBox, 30,
@@ -1531,7 +1531,7 @@ function Config:CreateBarsSection()
     xpHeightEditBox:SetPoint("LEFT", xpHeightLabel, "RIGHT", 5, 0)
     
     local xpTimeoutLabel = xpBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    xpTimeoutLabel:SetPoint("LEFT", xpHeightEditBox, "RIGHT", 10, 0)
+    xpTimeoutLabel:SetPoint("LEFT", xpHeightEditBox, "RIGHT", 35, 0)
     xpTimeoutLabel:SetText(T("Timeout") .. ":")
     
     local xpTimeoutEditBox = self:CreateEditBox(xpBox, 30,
@@ -1637,7 +1637,7 @@ function Config:CreateBarsSection()
     repWidthEditBox:SetPoint("LEFT", repWidthLabel, "RIGHT", 5, 0)
     
     local repHeightLabel = repBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    repHeightLabel:SetPoint("LEFT", repWidthEditBox, "RIGHT", 10, 0)
+    repHeightLabel:SetPoint("LEFT", repWidthEditBox, "RIGHT", 35, 0)
     repHeightLabel:SetText(T("Height") .. ":")
     
     local repHeightEditBox = self:CreateEditBox(repBox, 30,
@@ -1659,7 +1659,7 @@ function Config:CreateBarsSection()
     repHeightEditBox:SetPoint("LEFT", repHeightLabel, "RIGHT", 5, 0)
     
     local repTimeoutLabel = repBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    repTimeoutLabel:SetPoint("LEFT", repHeightEditBox, "RIGHT", 10, 0)
+    repTimeoutLabel:SetPoint("LEFT", repHeightEditBox, "RIGHT", 35, 0)
     repTimeoutLabel:SetText(T("Timeout") .. ":")
     
     local repTimeoutEditBox = self:CreateEditBox(repBox, 30,
@@ -2524,7 +2524,7 @@ function Config:CreateProfilesSection()
     local cloneButton = CreateFrame("Button", "CEConfigCloneProfile", managementBox, "UIPanelButtonTemplate")
     cloneButton:SetWidth(140)
     cloneButton:SetHeight(24)
-    cloneButton:SetPoint("LEFT", createButton, "RIGHT", 10, 0)
+    cloneButton:SetPoint("LEFT", createButton, "RIGHT", 35, 0)
     cloneButton:SetText(T("Clone Current"))
     cloneButton:SetScript("OnClick", function()
         -- Show input dialog
@@ -2535,7 +2535,7 @@ function Config:CreateProfilesSection()
     local deleteButton = CreateFrame("Button", "CEConfigDeleteProfile", managementBox, "UIPanelButtonTemplate")
     deleteButton:SetWidth(140)
     deleteButton:SetHeight(24)
-    deleteButton:SetPoint("LEFT", cloneButton, "RIGHT", 10, 0)
+    deleteButton:SetPoint("LEFT", cloneButton, "RIGHT", 35, 0)
     deleteButton:SetText(T("Delete"))
     
     -- Function to update delete button state
@@ -2907,8 +2907,63 @@ function Config:CreateEditBox(parent, width, getFunc, setFunc, label, tooltipTex
     editBox:SetFontObject(GameFontHighlight)
     editBox:SetJustifyH("CENTER")
     
+	-- initial value
+    editBox:SetText(getFunc() or "0")
+	
+    --  Create an increase button (Up)
+    local btnUp = CreateFrame("Button", name.."Up", editBox)
+    btnUp:SetWidth(18)
+    btnUp:SetHeight(10)
+    btnUp:SetPoint("TOPLEFT", editBox, "TOPRIGHT", -1, 0)
+    
+    -- Use the built-in up arrow texture in the system
+    local upTex = btnUp:CreateTexture(nil, "ARTWORK")
+    upTex:SetTexture("Interface\\Buttons\\UI-ScrollBar-ScrollUpButton-Up")
+    upTex:SetTexCoord(0.2, 0.8, 0.2, 0.8)
+    upTex:SetAllPoints(btnUp)
+    btnUp:SetNormalTexture(upTex)
+    
+    btnUp:SetScript("OnClick", function()
+        local val = tonumber(editBox:GetText()) or 0
+        editBox:SetText(val + 1)
+        -- Trigger the OnTextChanged logic of the EditBox to save data
+        if editBox:GetScript("OnTextChanged") then
+            -- In version 1.12, manually invoke script logic using this method
+            local script = editBox:GetScript("OnTextChanged")
+            arg1 = true -- Analog input
+            script()
+        end
+        PlaySound("igMainMenuOptionCheckBoxOn")
+    end)
+
+     -- Create a decrease button (Down)
+    local btnDown = CreateFrame("Button", name.."Down", editBox)
+    btnDown:SetWidth(18)
+    btnDown:SetHeight(10)
+    btnDown:SetPoint("BOTTOMLEFT", editBox, "BOTTOMRIGHT", -1, 0)
+    
+    -- Use the built-in downward arrow image in the system
+    local downTex = btnDown:CreateTexture(nil, "ARTWORK")
+    downTex:SetTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up")
+    downTex:SetTexCoord(0.2, 0.8, 0.2, 0.8)
+    downTex:SetAllPoints(btnDown)
+    btnDown:SetNormalTexture(downTex)
+    
+    btnDown:SetScript("OnClick", function()
+        local val = tonumber(editBox:GetText()) or 0
+        editBox:SetText(val - 1)
+        -- Trigger the OnTextChanged logic of the EditBox
+        if editBox:GetScript("OnTextChanged") then
+            local script = editBox:GetScript("OnTextChanged")
+            arg1 = true -- Analog input
+            script()
+        end
+        PlaySound("igMainMenuOptionCheckBoxOn")
+    end)
+    -- end
+    
     -- Store label and tooltip for cursor tooltip
-    editBox.label = label or "Text Input"
+    editBox.label = label or T("Text Input")
     editBox.tooltipText = tooltipText
     
     -- Background

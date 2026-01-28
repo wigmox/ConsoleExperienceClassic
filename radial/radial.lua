@@ -5,6 +5,14 @@
     Similar to modern WoW's radial menu
 ]]
 
+-- Get localized text (with fallback)
+local function L(key)
+    if ConsoleExperience.locale and ConsoleExperience.locale.T then
+        return ConsoleExperience.locale.T(key)
+    end
+    return key
+end
+
 -- Create radial module namespace
 ConsoleExperience.radial = ConsoleExperience.radial or {}
 local Radial = ConsoleExperience.radial
@@ -19,12 +27,12 @@ local NUM_SEGMENTS = 13
 -- Menu items (clockwise from top)
 local menuItems = {
     {
-        name = "Character",
+        name = L("Character"),
         icon = "Interface\\Icons\\INV_Shirt_White_01",
         action = function() ToggleCharacter("PaperDollFrame") end
     },
     {
-        name = "Inventory",
+        name = L("Inventory"),
         icon = "Interface\\Icons\\INV_Misc_Bag_08",
         action = function()
             if IsBagOpen(0) then
@@ -35,32 +43,32 @@ local menuItems = {
         end
     },
     {
-        name = "Spellbook",
+        name = L("Spellbook"),
         icon = "Interface\\Icons\\INV_Misc_Book_09",
         action = function() ToggleSpellBook(BOOKTYPE_SPELL) end
     },
     {
-        name = "Talents",
+        name = L("Talents"),
         icon = "Interface\\Icons\\Ability_Marksmanship",
         action = function() ToggleTalentFrame() end
     },
     {
-        name = "Quest Log",
+        name = L("Quest Log"),
         icon = "Interface\\Icons\\INV_Misc_Note_01",
         action = function() ToggleQuestLog() end
     },
     {
-        name = "World Map",
+        name = L("World Map"),
         icon = "Interface\\Icons\\INV_Misc_Map_01",
         action = function() ToggleWorldMap() end
     },
     {
-        name = "Social",
+        name = L("Social"),
         icon = "Interface\\Icons\\INV_Letter_02",
         action = function() ToggleFriendsFrame(1) end
     },
     {
-        name = "Guild",
+        name = L("Guild"),
         icon = "Interface\\Icons\\Spell_Holy_PrayerOfSpirit",
         action = function() 
             if IsInGuild() then
@@ -71,7 +79,7 @@ local menuItems = {
         end
     },
     {
-        name = "LFG",
+        name = L("LFG"),
         icon = "Interface\\FrameXML\\LFT\\images\\eye\\battlenetworking0",
         action = function() 
             if ToggleLFTFrame then
@@ -88,7 +96,7 @@ local menuItems = {
         end
     },
     {
-        name = "Chat",
+        name = L("Chat"),
         icon = "Interface\\Icons\\INV_Misc_Note_02",
         action = function() 
             if ChatFrameEditBox then
@@ -102,7 +110,7 @@ local menuItems = {
         end
     },
     {
-        name = "CE Options",
+        name = L("CE Options"),
         icon = "Interface\\Icons\\Trade_Engineering",
         action = function() 
             if ConsoleExperience.config then
@@ -111,7 +119,7 @@ local menuItems = {
         end
     },
     {
-        name = "Action Bar Bindings",
+        name = L("Action Bar Bindings"),
         icon = "Interface\\Icons\\Spell_Nature_Lightning",
         action = function() 
             if ConsoleExperience.placement then
