@@ -61,6 +61,65 @@ ActionBars.BONUS_BAR_BASE = 60  -- (6 pages * 12 buttons) - 12 = 60
 -- Current active page
 ActionBars.currentPage = 1
 
+-- Get current druid form name (returns nil if not druid or in caster form)
+function ActionBars:GetCurrentDruidForm()
+    local _, class = UnitClass("player")
+    if class ~= "DRUID" then return nil end
+    
+    local numForms = GetNumShapeshiftForms() or 0
+    for i = 1, numForms do
+        local texture, name, isActive = GetShapeshiftFormInfo(i)
+        if isActive == 1 and name then
+            return name
+        end
+    end
+    
+    return nil  -- Caster form
+end
+
+-- Check if druid is in cat form with stealth/prowl active
+-- Based on pfUI's IsCatStealth() function
+function ActionBars:IsCatStealth()
+    local _, class = UnitClass("player")
+    if class ~= "DRUID" then return nil end
+    
+    local cat, stealth = nil, nil
+    
+    -- Check player buffs for cat form and stealth
+    -- In WoW 1.12, we need to check buff textures
+    for i = 0, 31 do
+        local texture = nil
+        
+        -- Try different methods to get buff texture (WoW 1.12 compatibility)
+        if GetPlayerBuffTexture then
+            texture = GetPlayerBuffTexture(i)
+        elseif GetPlayerBuff then
+            -- GetPlayerBuff returns texture, rank, and other info
+            texture = GetPlayerBuff(i)
+        end
+        
+        if not texture then break end
+        
+        -- Cat form icon detected
+        if string.find(texture, "Ability_Druid_CatForm") then
+            if stealth then 
+                return true 
+            end
+            cat = true
+        end
+        
+        -- Stealth/prowl icon detected (uses Ambush icon)
+        if string.find(texture, "Ability_Ambush") then
+            if cat then 
+                return true 
+            end
+            stealth = true
+        end
+    end
+    
+    return nil
+end
+
 -- Function to get controller icon path based on controller type
 function ActionBars:GetControllerIconPath(iconName)
     local controllerType = "xbox"  -- Default
@@ -292,12 +351,53 @@ function ActionBars:CreateModifierFrame()
     
     self.modifierFrame = CreateFrame("Frame", "ConsoleExperienceModifierFrame", UIParent)
     self.modifierFrame.timeSinceLastUpdate = 0
+    self.modifierFrame.stealthCheckTime = 0
+    self.modifierFrame.lastStealthState = nil
     
     self.modifierFrame:SetScript("OnUpdate", function()
         this.timeSinceLastUpdate = this.timeSinceLastUpdate + arg1
         if this.timeSinceLastUpdate >= ActionBars.MODIFIER_CHECK_TIME then
             this.timeSinceLastUpdate = 0
             ActionBars:CheckModifiers()
+        end
+        
+        -- Check for druid stealth state changes (check less frequently)
+        this.stealthCheckTime = this.stealthCheckTime + arg1
+        if this.stealthCheckTime >= 0.1 then  -- Check every 100ms
+            this.stealthCheckTime = 0
+            
+            -- Only check if druid stealth feature is enabled
+            local useDruidStealth = false
+            if ConsoleExperience.config and ConsoleExperience.config.Get then
+                useDruidStealth = ConsoleExperience.config:Get("druidStealth") or false
+            elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.druidStealth then
+                useDruidStealth = ConsoleExperienceDB.config.druidStealth
+            end
+            
+            if useDruidStealth then
+                local _, class = UnitClass("player")
+                if class == "DRUID" then
+                    local bonusBar = GetBonusBarOffset() or 0
+                    
+                    if bonusBar == 1 then
+                        -- In cat form, check stealth state
+                        local currentStealth = ActionBars:IsCatStealth()
+                        
+                        -- If stealth state changed, update buttons
+                        if currentStealth ~= this.lastStealthState then
+                            CE_Debug("Stealth state changed: " .. tostring(this.lastStealthState) .. " -> " .. tostring(currentStealth))
+                            this.lastStealthState = currentStealth
+                            -- Force update all buttons when stealth state changes
+                            ActionBars:UpdateAllButtons()
+                        end
+                    else
+                        -- Not in cat form, reset stealth state tracking
+                        if this.lastStealthState ~= nil then
+                            this.lastStealthState = nil
+                        end
+                    end
+                end
+            end
         end
     end)
 end
@@ -364,10 +464,52 @@ function ActionBars:GetActionOffset()
     
     -- For page 1 (no modifier), check for bonus bar (stances/forms)
     -- Warriors: Battle=1, Defensive=2, Berserker=3
-    -- Druids: Bear=1, Aquatic=2, Cat=3, Travel=4, Moonkin=5
+    -- Druids: Cat=1, Aquatic=2, Bear=3, Travel=4, Moonkin=5
     -- Rogues: Stealth=1
     local bonusBar = GetBonusBarOffset()
+    CE_Debug("GetActionOffset: bonusBar=" .. tostring(bonusBar) .. ", currentPage=" .. tostring(self.currentPage))
+    
+    -- Check for druid forms that don't use bonus bars (like Travel Form, Aquatic Form)
+    local _, class = UnitClass("player")
+    if class == "DRUID" then
+        local currentForm = self:GetCurrentDruidForm()
+        if currentForm then
+            local formLower = string.lower(currentForm)
+            CE_Debug("GetActionOffset: Current form: " .. currentForm)
+            
+            -- Travel form doesn't use a bonus bar, but we want to use travel form bar slots
+            if string.find(formLower, "travel") then
+                CE_Debug("GetActionOffset: Using travel form bar (bonus bar 4)")
+                return self.BONUS_BAR_BASE + (4 * 12)
+            end
+            
+            -- Aquatic form doesn't use a bonus bar, but we want to use aquatic form bar slots
+            if string.find(formLower, "aquatic") then
+                CE_Debug("GetActionOffset: Using aquatic form bar (bonus bar 2)")
+                return self.BONUS_BAR_BASE + (2 * 12)
+            end
+        end
+    end
+    
     if bonusBar and bonusBar > 0 then
+        -- Check if druid stealth feature is enabled and druid is in cat form with stealth
+        -- When enabled, use travel form bar (bonus bar 4) instead of cat form bar (bonus bar 1)
+        local useDruidStealth = false
+        if ConsoleExperience.config and ConsoleExperience.config.Get then
+            useDruidStealth = ConsoleExperience.config:Get("druidStealth") or false
+        elseif ConsoleExperienceDB and ConsoleExperienceDB.config and ConsoleExperienceDB.config.druidStealth then
+            useDruidStealth = ConsoleExperienceDB.config.druidStealth
+        end
+        
+        if useDruidStealth and bonusBar == 1 then
+            local isStealth = self:IsCatStealth()
+            if isStealth then
+                -- In cat form with stealth active, use travel form bar (bonus bar 4)
+                CE_Debug("GetActionOffset: Using travel form bar (stealth active)")
+                return self.BONUS_BAR_BASE + (4 * 12)
+            end
+        end
+        
         -- Bonus bar slots start at 73 (offset 72)
         -- Formula: 60 + (bonusBar * 12) = offset for first slot
         -- But we use 10 buttons, so: 60 + (bonusBar * 12)
@@ -1195,6 +1337,10 @@ function ActionBars:ButtonOnEvent(button, event)
         -- Use a flag to only trigger once per event (all buttons receive the event)
         if not self._bonusBarUpdatePending then
             self._bonusBarUpdatePending = true
+            
+            local bonusBar = GetBonusBarOffset() or 0
+            CE_Debug("Form changed - bonus bar: " .. bonusBar)
+            
             -- Schedule update for next frame to batch all button updates
             if not self._bonusBarUpdateFrame then
                 self._bonusBarUpdateFrame = CreateFrame("Frame")
@@ -1202,10 +1348,15 @@ function ActionBars:ButtonOnEvent(button, event)
                 self._bonusBarUpdateFrame:SetScript("OnUpdate", function()
                     this:Hide()
                     this.actionBars._bonusBarUpdatePending = false
+                    -- Force immediate update of all buttons
                     this.actionBars:UpdateAllButtons()
                 end)
             end
+            -- Show frame to trigger OnUpdate on next frame
             self._bonusBarUpdateFrame:Show()
+            
+            -- Also update immediately (in case OnUpdate doesn't fire fast enough)
+            self:UpdateAllButtons()
         end
     end
 end

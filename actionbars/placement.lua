@@ -71,6 +71,31 @@ local function GetSpellTextureFromSpellbook(spellName)
     return nil
 end
 
+-- Map druid form names to their actual bonus bar numbers
+-- This ensures the placement frame shows the correct slots for each form
+local function GetDruidFormBonusBar(formName)
+    if not formName then return nil end
+    
+    -- Normalize form name (handle both "Bear Form" and "Dire Bear Form", etc.)
+    local nameLower = string.lower(formName)
+    
+    -- Map form names to bonus bar numbers (WoW 1.12 mapping)
+    -- Note: In WoW 1.12, Cat Form uses bonus bar 1, Bear Form uses bonus bar 3
+    if string.find(nameLower, "cat") then
+        return 1  -- Cat Form (uses bonus bar 1)
+    elseif string.find(nameLower, "aquatic") then
+        return 2  -- Aquatic Form
+    elseif string.find(nameLower, "bear") then
+        return 3  -- Bear Form / Dire Bear Form (uses bonus bar 3)
+    elseif string.find(nameLower, "travel") then
+        return 4  -- Travel Form
+    elseif string.find(nameLower, "moonkin") or string.find(nameLower, "moon") then
+        return 5  -- Moonkin Form
+    end
+    
+    return nil
+end
+
 -- Get stance/form info for the player's class
 -- Form index directly equals bonus bar offset (standard WoW behavior)
 function Placement:GetStanceInfo()
@@ -100,16 +125,24 @@ function Placement:GetStanceInfo()
             bonusBar = 0,
             offset = GetStanceOffset(0)
         })
-        -- Each form uses bonus bar = form index
+        -- Map each form to its actual bonus bar number based on form name
         for i = 1, numForms do
             local texture, name = GetShapeshiftFormInfo(i)
             -- Get texture from spellbook to ensure consistency regardless of current form
             local spellbookTexture = GetSpellTextureFromSpellbook(name)
+            
+            -- Determine the actual bonus bar for this form
+            local bonusBar = GetDruidFormBonusBar(name)
+            -- Fallback to form index if name mapping fails
+            if not bonusBar then
+                bonusBar = i
+            end
+            
             table.insert(stances, {
                 name = name or (L("Form") .. " " .. i),
                 texture = spellbookTexture or texture,
-                bonusBar = i,
-                offset = GetStanceOffset(i)
+                bonusBar = bonusBar,
+                offset = GetStanceOffset(bonusBar)
             })
         end
     elseif class == "ROGUE" then

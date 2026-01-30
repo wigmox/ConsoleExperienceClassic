@@ -35,6 +35,7 @@ Config.DEFAULTS = {
     barScale = 1.0,
     barAppearance = "classic",  -- "classic" or "modern"
     autoRankEnabled = true,  -- Automatically update spells to highest rank
+    druidStealth = false,  -- Use travel form bar when prowl/stealth is active in cat form
     -- Side Action Bars (touch screen)
     sideBarLeftEnabled = false,  -- Left side bar disabled by default
     sideBarRightEnabled = false,  -- Right side bar disabled by default
@@ -1088,6 +1089,38 @@ function Config:CreateBarsSection()
     local currentAppearance = Config:Get("barAppearance") or "classic"
     UIDropDownMenu_SetSelectedValue(appearanceDropdown, currentAppearance)
     UIDropDownMenu_SetText(currentAppearance == "classic" and T("Classic") or T("Modern"), appearanceDropdown)
+    
+    -- Druid stealth option (middle of row 1, only visible to druids)
+    local _, playerClass = UnitClass("player")
+    local isDruid = (playerClass == "DRUID")
+    
+    local druidStealthLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    druidStealthLabel:SetPoint("TOP", appearanceLabel, "TOP", 0, 0)
+    druidStealthLabel:SetPoint("LEFT", appearanceDropdown, "RIGHT", 50, 0)
+    druidStealthLabel:SetText(T("Use travel form bar in prowl"))
+    
+    local druidStealthCheck = CreateFrame("CheckButton", self:GetNextElementName("Check"), generalBox, "UICheckButtonTemplate")
+    druidStealthCheck:SetWidth(24)
+    druidStealthCheck:SetHeight(24)
+    druidStealthCheck:SetPoint("LEFT", druidStealthLabel, "RIGHT", 5, 0)
+    druidStealthCheck.label = T("Use travel form bar in prowl")
+    druidStealthCheck.tooltipText = T("When enabled, druids in cat form will use the travel form action bar when prowl/stealth is active.")
+    druidStealthCheck:SetChecked(Config:Get("druidStealth"))
+    druidStealthCheck:SetScript("OnClick", function()
+        if not isDruid then return end  -- Prevent clicking if not druid
+        local checked = this:GetChecked() == 1
+        Config:Set("druidStealth", checked)
+        -- Update buttons immediately when toggled
+        if ConsoleExperience.actionbars and ConsoleExperience.actionbars.UpdateAllButtons then
+            ConsoleExperience.actionbars:UpdateAllButtons()
+        end
+    end)
+    
+    -- Show/hide based on class
+    if not isDruid then
+        druidStealthLabel:Hide()
+        druidStealthCheck:Hide()
+    end
     
     -- Auto-rank label and checkbox (right side of row 1, label on left of toggle)
     local autoRankLabel = generalBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")

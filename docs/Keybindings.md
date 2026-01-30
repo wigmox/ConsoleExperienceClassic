@@ -83,6 +83,18 @@ System Bindings allow you to assign controller buttons to system actions (like J
 
 ![Bindings Configuration](images/bindings.png)
 
+### Side Bar Bindings
+
+Side bar slots (touch screen bars) can also be assigned system bindings:
+
+- **Left Side Bar** (slots 41-45): Labeled as "Left 1" through "Left 5"
+- **Right Side Bar** (slots 46-50): Labeled as "Right 1" through "Right 5"
+
+These bindings only appear in the config when the corresponding side bar is enabled and has at least one button configured. Side bar slots can be:
+- Assigned system actions (like Jump, Auto Run, etc.)
+- Left as action bar slots (click/touch to activate)
+- Keybound in the standard WoW keybindings menu (Escape → Key Bindings → ConsoleExperience → CELEFTBAR / CERIGHTBAR)
+
 ### Available System Actions
 
 | Category | Action | Description |
