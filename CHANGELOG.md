@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.16.3...v0.17.0) (2026-01-30)
+
+
+### Features
+
+* add support for to create bindings for touch action bars ([ffe3f80](https://github.com/pepordev/ConsoleExperienceClassic/commit/ffe3f8068456b13997f2b05395afe44b5c45f9ee))
+
+
+### Bug Fixes
+
+* properly handle druid forms ([ec00306](https://github.com/pepordev/ConsoleExperienceClassic/commit/ec0030637b5982f6d87900f407602d481b081656))
+
 ## [0.16.3](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.16.2...v0.16.3) (2026-01-28)
 
 
