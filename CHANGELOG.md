@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.17.0...v0.17.1) (2026-01-31)
+
+
+### Bug Fixes
+
+* Redraw overlay icon serenity.tga in modern style, expand display area for better visual effect ([f603156](https://github.com/pepordev/ConsoleExperienceClassic/commit/f60315644a428f1538bd69902be928a5491064bc))
+
 ## [0.17.0](https://github.com/pepordev/ConsoleExperienceClassic/compare/v0.16.3...v0.17.0) (2026-01-30)
 
 
